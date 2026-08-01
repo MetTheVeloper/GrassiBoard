@@ -2,6 +2,16 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.5.1] - 2026-08-01
+
+### Fixed
+
+- Identify the root audio device by its `ROOT\GrassiBoardVirtualAudio` hardware ID instead of assuming its generated PnP instance ID has the same spelling.
+- Wait for the base device to report `OK`, persist the actual OEM INF identity, and recognize both Windows speaker naming and the custom microphone endpoint.
+- Recover the active driver signer certificate and OEM INF before removal, including v0.5.0 installations whose state file was not written after the false validation failure.
+- Verify that the device and both endpoints disappear after uninstall, while retaining explicit reboot handling.
+- Include the actual root device, signed-driver record, installer-state status, and relevant GrassiBoard events in diagnostics.
+
 ## [0.5.0] - 2026-08-01
 
 ### Added

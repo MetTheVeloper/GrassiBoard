@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v0.5.0`
+- Version: `v0.5.1`
 - Milestone: `4 — Virtual Driver Skeleton`
-- Status: automated acceptance passed; awaiting manual Windows acceptance
+- Status: lifecycle hotfix in progress; awaiting automated and manual uninstall acceptance
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -16,6 +16,8 @@ The driver is a minimal extraction of Microsoft's SysVAD/WaveRT code pinned to c
 CI builds the driver and native root-device helper from pinned WDK/SDK NuGet packages. An ephemeral certificate signs the SYS and generated CAT; only the public CER is packaged. Installation, removal, TESTSIGNING changes, and diagnostics are explicit scripts. No script changes Secure Boot or BitLocker and no script reboots automatically.
 
 Manual acceptance is pending on Windows 10 x64. PCM cable transport is outside this milestone.
+
+Windows 10 build 19045 testing of v0.5.0 confirmed that the driver, both endpoints, and Windows Audio were healthy, but exposed an installer lifecycle bug. The generated instance ID was `ROOT\GRASSIBOARD_VIRTUAL_AUDIO\0000`, while scripts incorrectly assumed that it matched hardware ID `ROOT\GrassiBoardVirtualAudio`. v0.5.1 identifies the device by its HardwareID property and recovers the installed INF and signer certificate before removal. Milestone 4 remains open until the corrected uninstall/reinstall/uninstall sequence passes.
 
 ## Milestone 4 automated result
 

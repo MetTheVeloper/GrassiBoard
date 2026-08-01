@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 0.5.0
+  GRASSIBOARD_VERSION: 0.5.1
   DOTNET_SDK_VERSION: 8.0.423
   WDK_NUGET_VERSION: 10.0.26100.6584
   WINDOWS_SDK_VERSION: 10.0.26100.0
@@ -90,6 +90,7 @@ jobs:
         shell: pwsh
         run: |
           ./tools/Test-DriverPackageSource.ps1
+          ./tools/Test-DriverLifecycleHelpers.ps1
           $solutionDirectory = "$env:GITHUB_WORKSPACE\"
           msbuild ./src/GrassiBoard.DeviceTool/GrassiBoard.DeviceTool.vcxproj `
             /m `

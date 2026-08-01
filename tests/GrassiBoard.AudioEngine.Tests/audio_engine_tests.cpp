@@ -12,7 +12,7 @@ int main()
         return 1;
     }
 
-    if (std::strcmp(gb_get_version(), "0.5.0") != 0) {
+    if (std::strcmp(gb_get_version(), "0.5.1") != 0) {
         std::cerr << "Unexpected native engine version.\n";
         return 2;
     }

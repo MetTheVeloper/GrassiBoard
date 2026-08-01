@@ -8,6 +8,7 @@ on:
       - src/GrassiBoard.Driver/**
       - src/GrassiBoard.DeviceTool/**
       - tools/Test-DriverPackageSource.ps1
+      - tools/Test-DriverLifecycleHelpers.ps1
       - tools/New-TestSignedDriverPackage.ps1
       - packages.config
       - Directory.Build.props
@@ -17,6 +18,7 @@ on:
       - src/GrassiBoard.Driver/**
       - src/GrassiBoard.DeviceTool/**
       - tools/Test-DriverPackageSource.ps1
+      - tools/Test-DriverLifecycleHelpers.ps1
       - tools/New-TestSignedDriverPackage.ps1
       - packages.config
       - Directory.Build.props
@@ -27,7 +29,7 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 0.5.0
+  GRASSIBOARD_VERSION: 0.5.1
   WDK_NUGET_VERSION: 10.0.26100.6584
 
 jobs:
@@ -50,7 +52,9 @@ jobs:
 
       - name: Validate source contract
         shell: pwsh
-        run: ./tools/Test-DriverPackageSource.ps1
+        run: |
+          ./tools/Test-DriverPackageSource.ps1
+          ./tools/Test-DriverLifecycleHelpers.ps1
 
       - name: Build driver and root-device helper
         shell: pwsh

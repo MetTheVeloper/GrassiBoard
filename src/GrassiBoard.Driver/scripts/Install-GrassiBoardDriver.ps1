@@ -39,18 +39,21 @@ $exitCode = Invoke-GrassiBoardDeviceTool @('install', $infPath)
 $deadline = [DateTime]::UtcNow.AddSeconds(20)
 do {
     Start-Sleep -Milliseconds 500
-    $device = Get-PnpDevice -PresentOnly -ErrorAction SilentlyContinue |
-        Where-Object { $_.InstanceId -like 'ROOT\GRASSIBOARDVIRTUALAUDIO*' } |
-        Select-Object -First 1
-} until ($device -or [DateTime]::UtcNow -ge $deadline)
+    $device = Get-GrassiBoardPnpDevice
+} until (($device -and $device.Status -eq 'OK') -or [DateTime]::UtcNow -ge $deadline)
 
 if (-not $device -or $device.Status -ne 'OK') {
     throw 'The driver was installed but Device Manager does not report an OK device. Run Collect-DriverDiagnostics.ps1, then uninstall.'
 }
 
-$signedDriver = Get-CimInstance Win32_PnPSignedDriver |
-    Where-Object { $_.DeviceID -like 'ROOT\GRASSIBOARDVIRTUALAUDIO*' } |
-    Select-Object -First 1
+$deadline = [DateTime]::UtcNow.AddSeconds(20)
+do {
+    $signedDriver = Get-GrassiBoardSignedDriver -Device $device
+    if (-not $signedDriver -or -not $signedDriver.InfName) { Start-Sleep -Milliseconds 500 }
+} until (($signedDriver -and $signedDriver.InfName) -or [DateTime]::UtcNow -ge $deadline)
+if (-not $signedDriver -or $signedDriver.InfName -notmatch '^oem\d+\.inf$') {
+    throw 'The device is OK, but Windows did not expose its installed OEM INF identity. Run Collect-DriverDiagnostics.ps1 before uninstalling.'
+}
 
 New-Item -ItemType Directory -Path $script:GrassiBoardStateDirectory -Force | Out-Null
 @{
@@ -60,10 +63,13 @@ New-Item -ItemType Directory -Path $script:GrassiBoardStateDirectory -Force | Ou
     InstalledUtc = [DateTime]::UtcNow.ToString('o')
 } | ConvertTo-Json | Set-Content -LiteralPath $script:GrassiBoardStatePath -Encoding UTF8
 
-$endpoints = Get-PnpDevice -Class AudioEndpoint -PresentOnly -ErrorAction SilentlyContinue |
-    Where-Object { $_.FriendlyName -like '*GrassiBoard Virtual Cable Input*' -or $_.FriendlyName -like '*GrassiBoard Virtual Microphone*' }
+$deadline = [DateTime]::UtcNow.AddSeconds(20)
+do {
+    $endpoints = @(Get-GrassiBoardEndpointDevices)
+    if ($endpoints.Count -ne 2) { Start-Sleep -Milliseconds 500 }
+} until ($endpoints.Count -eq 2 -or [DateTime]::UtcNow -ge $deadline)
 
 Write-Host "Driver installed. Device Manager status: $($device.Status)."
-Write-Host "Detected GrassiBoard endpoints: $(@($endpoints).Count) of 2."
+Write-Host "Detected GrassiBoard endpoints: $($endpoints.Count) of 2."
 if ($exitCode -eq 10) { Write-Warning 'Windows requested a reboot to finish installation.' }
-if (@($endpoints).Count -ne 2) { Write-Warning 'Endpoint discovery is still settling. Check Sound settings after a few seconds.' }
+if ($endpoints.Count -ne 2) { Write-Warning 'Endpoint discovery is still settling. Check Sound settings after a few seconds.' }

@@ -1,4 +1,4 @@
-GrassiBoard v0.5.0 — Milestone 4
+GrassiBoard v0.5.1 — Milestone 4 hotfix
 
 SAFETY: Use headphones and lower their volume before starting the engine.
 

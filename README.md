@@ -4,7 +4,7 @@ GrassiBoard is a Windows x64 voice-processing and soundboard application. Develo
 
 ## Current release
 
-`v0.5.0` implements **Milestone 4 — Virtual driver skeleton** while retaining the accepted Milestone 3 app and DSP:
+`v0.5.1` is the **Milestone 4 — Virtual driver skeleton** lifecycle hotfix while retaining the accepted Milestone 3 app and DSP:
 
 - Live pitch and Fine Pitch from Milestone 2
 - Formant preservation and independent formant shift from −12 to +12 semitones
@@ -36,7 +36,7 @@ GitHub Actions builds the self-contained Windows package, comparison WAV files, 
 
 ## Safety
 
-Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. The v0.5.0 driver is test-signed and distributed separately; read `DRIVER-TESTING.md` inside that package before changing TESTSIGNING.
+Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. The v0.5.1 driver is test-signed and distributed separately; read `DRIVER-TESTING.md` inside that package before changing TESTSIGNING.
 
 ## Documentation
 

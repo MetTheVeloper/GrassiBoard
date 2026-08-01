@@ -28,7 +28,7 @@ The real-time loop performs no logging, file I/O, exception propagation, blockin
 
 ## Version contract
 
-- Product version: `0.5.0`
+- Product version: `0.5.1`
 - Native ABI version: `4`
 - Architecture: `x64`
 - Processing format: `48,000 Hz`, 32-bit float, mono processing and stereo monitoring

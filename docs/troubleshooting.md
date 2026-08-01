@@ -38,4 +38,8 @@ Report the source and destination modes, the latency shown after the switch, whe
 
 ## Driver questions
 
-The v0.5.0 driver is in a separate test-signed ZIP. Read `DRIVER-TESTING.md` before changing TESTSIGNING. If installation or removal fails, run `scripts/Collect-DriverDiagnostics.ps1` before making further changes. The scripts do not disable Secure Boot, suspend BitLocker, or reboot automatically.
+The v0.5.1 driver is in a separate test-signed ZIP. Read `DRIVER-TESTING.md` before changing TESTSIGNING. If installation or removal fails, run `scripts/Collect-DriverDiagnostics.ps1` before making further changes. The scripts do not disable Secure Boot, suspend BitLocker, or reboot automatically.
+
+Browser-downloaded PowerShell scripts can be blocked by `RemoteSigned`. After verifying that the ZIP came from the GrassiBoard release, run `Get-ChildItem -Filter *.ps1 -File | Unblock-File` only inside its `scripts` directory. Do not permanently set the machine execution policy to `Unrestricted` or `Bypass`.
+
+The v0.5.0 installer could report a false failure because Windows generated instance ID `ROOT\GRASSIBOARD_VIRTUAL_AUDIO\0000`, which does not resemble hardware ID `ROOT\GrassiBoardVirtualAudio`. Do not rerun that installer. Use the v0.5.1 diagnostics and uninstaller, which resolve the device by HardwareID and abort before removal if the exact OEM INF cannot be recovered.
