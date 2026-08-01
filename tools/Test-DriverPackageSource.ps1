@@ -7,6 +7,10 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $DriverSource).Path
 $inf = Get-Content -LiteralPath (Join-Path $root 'GrassiBoardVirtualAudio.inf') -Raw
 $minipairs = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtualAudio\minipairs.h') -Raw
+$endpointProject = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\GrassiBoard.EndpointsCommon.vcxproj') -Raw
+$streamSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\minwavertstream.cpp') -Raw
+$transportSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\cabletransport.cpp') -Raw
+$ringSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\pcmring.h') -Raw
 $scriptsDirectory = Join-Path $root 'scripts'
 $commonScript = Get-Content -LiteralPath (Join-Path $scriptsDirectory 'DriverScript.Common.ps1') -Raw
 $installScript = Get-Content -LiteralPath (Join-Path $scriptsDirectory 'Install-GrassiBoardDriver.ps1') -Raw
@@ -26,6 +30,31 @@ foreach ($text in $requiredInfText) {
 if (($minipairs | Select-String -Pattern '&GrassiBoardRenderMiniports' -AllMatches).Matches.Count -ne 1 -or
     ($minipairs | Select-String -Pattern '&GrassiBoardCaptureMiniports' -AllMatches).Matches.Count -ne 1) {
     throw 'The driver must define and register exactly one render and one capture endpoint.'
+}
+
+$requiredTransportText = @(
+    'GrassiBoardCableTransport::SetRenderActive',
+    'GrassiBoardCableTransport::SetCaptureActive',
+    'GrassiBoardCableTransport::Write',
+    'GrassiBoardCableTransport::Read'
+)
+foreach ($text in $requiredTransportText) {
+    if (-not $streamSource.Contains($text)) { throw "WaveRT stream does not route PCM through: $text" }
+}
+if (-not $endpointProject.Contains('cabletransport.cpp') -or
+    -not $transportSource.Contains('TransportPreRollBytes') -or
+    -not $ringSource.Contains('m_underruns') -or
+    -not $ringSource.Contains('m_overruns') -or
+    -not $ringSource.Contains('m_generation') -or
+    -not $ringSource.Contains('TOps::Zero(destination, byteCount)')) {
+    throw 'The driver PCM ring must provide pre-roll, silence, stale-data invalidation, and underrun/overrun accounting.'
+}
+if (-not $minipairs.Contains('GrassiBoardCablePcmFormats') -or
+    -not $minipairs.Contains('GrassiBoardCableTransport::SampleRate') -or
+    -not $minipairs.Contains('GrassiBoardCableTransport::BlockAlign') -or
+    -not $minipairs.Contains('GrassiBoardRenderFormatsAndModes') -or
+    -not $minipairs.Contains('GrassiBoardCaptureFormatsAndModes')) {
+    throw 'Render and capture endpoints must advertise the same fixed PCM transport format.'
 }
 
 $requiredScriptText = @(
@@ -67,4 +96,4 @@ if ($upstream -notmatch 'ef7c3074748ab05726c3a9161d3256118efd76e2') {
     throw 'The SysVAD upstream commit is not pinned.'
 }
 
-Write-Host 'Driver source contract passed: unique IDs, two endpoints, hardware-ID lifecycle recovery, pinned provenance, and no private key material.'
+Write-Host 'Driver source contract passed: unique IDs, two endpoints, fixed-format PCM ring transport, lifecycle recovery, pinned provenance, and no private key material.'

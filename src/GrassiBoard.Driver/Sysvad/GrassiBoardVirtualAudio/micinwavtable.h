@@ -27,7 +27,7 @@ Abstract:
 //
 // Max # of pin instances.
 //
-#define MICIN_MAX_INPUT_STREAMS             5
+#define MICIN_MAX_INPUT_STREAMS             1
 
 //=============================================================================
 static 
