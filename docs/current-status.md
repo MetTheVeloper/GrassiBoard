@@ -1,23 +1,31 @@
 # Current status
 
-- Version: `v0.5.1`
-- Milestone: `4 — Virtual Driver Skeleton`
-- Status: lifecycle hotfix automated acceptance passed; awaiting manual uninstall/reinstall/uninstall acceptance
+- Version: `v0.6.0`
+- Milestone: `5 — Virtual Cable PCM Transport`
+- Status: implementation and PR CI passed; awaiting manual cable acceptance on Windows 10
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
 - Backend: Signalsmith Stretch 1.3.2 + Signalsmith Linear 0.3.1, both pinned
-- Virtual driver: one test-signed render endpoint and one capture endpoint; PCM transport intentionally disabled until Milestone 5
+- Virtual driver: one test-signed render endpoint and one capture endpoint connected by a fixed-format PCM ring
 
-## Milestone 4 implementation
+## Milestone 5 implementation
 
 The driver is a minimal extraction of Microsoft's SysVAD/WaveRT code pinned to commit `ef7c3074748ab05726c3a9161d3256118efd76e2`. It uses hardware ID `ROOT\GrassiBoardVirtualAudio` and exposes `GrassiBoard Virtual Cable Input` plus `GrassiBoard Virtual Microphone`.
 
-CI builds the driver and native root-device helper from pinned WDK/SDK NuGet packages. An ephemeral certificate signs the SYS and generated CAT; only the public CER is packaged. Installation, removal, TESTSIGNING changes, and diagnostics are explicit scripts. No script changes Secure Boot or BitLocker and no script reboots automatically.
+The two system streams now advertise one shared 48 kHz, 16-bit, stereo PCM device format. A preallocated 250 ms SPSC ring transports consumed render frames to capture. Capture uses a 10 ms pre-roll, zero-fills underruns, and invalidates queued frames whenever render or capture pauses/stops so old audio cannot repeat. The transport counts fill, underruns, and overruns and performs no kernel DSP or allocation in the DPC path.
 
-Manual acceptance is pending on Windows 10 x64. PCM cable transport is outside this milestone.
+The cable is deliberately testable without the GrassiBoard app. App-to-cable routing is Milestone 6.
 
-Windows 10 build 19045 testing of v0.5.0 confirmed that the driver, both endpoints, and Windows Audio were healthy, but exposed an installer lifecycle bug. The generated instance ID was `ROOT\GRASSIBOARD_VIRTUAL_AUDIO\0000`, while scripts incorrectly assumed that it matched hardware ID `ROOT\GrassiBoardVirtualAudio`. v0.5.1 identifies the device by its HardwareID property and recovers the installed INF and signer certificate before removal. Milestone 4 remains open until the corrected uninstall/reinstall/uninstall sequence passes.
+## Milestone 5 automated result
+
+Pull request CI [Build](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30713553221) and [Driver Artifact](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30713553216) passed for implementation commit `03907d7`. The WDK compiled the WaveRT driver with warnings as errors, generated and test-signed its package, and uploaded all artifacts. Native CTest included the exact platform-neutral ring policy used by the kernel wrapper and passed wrap-order, pre-roll, silence, stale-data, overrun, and restart cases. Existing native, managed, DSP, package-isolation, and lifecycle tests also passed.
+
+## Milestone 4 manual acceptance
+
+Milestone 4 was accepted on 2026-08-01 on Windows 10 build 19045. The v0.5.1 recovery uninstaller removed the affected v0.5.0 device, exact OEM INF, both endpoints, and signer certificate. A fresh v0.5.1 install reported Device Manager `OK` and detected `2 of 2` endpoints; the final uninstall again removed both endpoints and package. After disabling TESTSIGNING and rebooting, the Test Mode watermark disappeared, no present GrassiBoard PnP device remained, and both `Audiosrv` and `AudioEndpointBuilder` were Running.
+
+Windows 10 testing of v0.5.0 had exposed an installer lifecycle bug: generated instance ID `ROOT\GRASSIBOARD_VIRTUAL_AUDIO\0000` did not resemble hardware ID `ROOT\GrassiBoardVirtualAudio`. v0.5.1 resolved the device by HardwareID and recovered the installed INF and signer before removal.
 
 ## Milestone 4 hotfix automated result
 

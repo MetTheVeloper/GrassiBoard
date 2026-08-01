@@ -290,6 +290,9 @@ private:
     (
         _In_ ULONG ByteDisplacement
     );
+
+    BOOL IsGrassiBoardCableRenderStream() const;
+    BOOL IsGrassiBoardCableCaptureStream() const;
     
     VOID UpdatePosition
     (

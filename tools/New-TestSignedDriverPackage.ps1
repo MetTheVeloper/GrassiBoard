@@ -127,7 +127,8 @@ $requiredFiles = @(
     'manifest.json',
     'scripts\Install-GrassiBoardDriver.ps1',
     'scripts\Uninstall-GrassiBoardDriver.ps1',
-    'scripts\Collect-DriverDiagnostics.ps1'
+    'scripts\Collect-DriverDiagnostics.ps1',
+    'scripts\New-CableTestWave.ps1'
 )
 foreach ($relativePath in $requiredFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $output $relativePath) -PathType Leaf)) {

@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 0.5.1
+  GRASSIBOARD_VERSION: 0.6.0
   DOTNET_SDK_VERSION: 8.0.423
   WDK_NUGET_VERSION: 10.0.26100.6584
   WINDOWS_SDK_VERSION: 10.0.26100.0
@@ -68,7 +68,7 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Path ./artifacts/test-results -Force | Out-Null
-          ctest --preset windows-x64-release --output-junit ./artifacts/test-results/native-tests.xml
+          ctest --preset windows-x64-release --output-junit "$env:GITHUB_WORKSPACE/artifacts/test-results/native-tests.xml"
           Copy-Item `
             ./out/build/windows-x64-release/pitch-test-output `
             ./artifacts/test-results/pitch-samples `

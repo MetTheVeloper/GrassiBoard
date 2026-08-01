@@ -33,6 +33,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AudioModuleHelper.cpp" />
+    <ClCompile Include="cabletransport.cpp" />
     <ClCompile Include="MiniportAudioEngineNode.cpp" />
     <ClCompile Include="MiniportStreamAudioEngineNode.cpp" />
     <ClCompile Include="mintopo.cpp" />

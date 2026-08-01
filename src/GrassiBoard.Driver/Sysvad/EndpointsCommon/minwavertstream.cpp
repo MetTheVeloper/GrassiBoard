@@ -6,6 +6,7 @@
 #include "minwavertstream.h"
 #include "UnittestData.h"
 #include "AudioModuleHelper.h"
+#include "cabletransport.h"
 #define MINWAVERTSTREAM_POOLTAG 'SRWM'
 
 #pragma warning (disable : 4127)
@@ -315,6 +316,15 @@ Return Value:
     }
     RtlCopyMemory(m_pWfExt, pWfEx, sizeof(WAVEFORMATEX) + pWfEx->cbSize);
 
+    if ((IsGrassiBoardCableRenderStream() || IsGrassiBoardCableCaptureStream()) &&
+        (m_pWfExt->Format.nSamplesPerSec != GrassiBoardCableTransport::SampleRate ||
+         m_pWfExt->Format.nChannels != GrassiBoardCableTransport::ChannelCount ||
+         m_pWfExt->Format.wBitsPerSample != GrassiBoardCableTransport::BitsPerSample ||
+         m_pWfExt->Format.nBlockAlign != GrassiBoardCableTransport::BlockAlign))
+    {
+        return STATUS_NO_MATCH;
+    }
+
     m_pbMuted = (PBOOL)ExAllocatePool2(POOL_FLAG_NON_PAGED, m_pWfExt->Format.nChannels * sizeof(BOOL), MINWAVERTSTREAM_POOLTAG);
     if (m_pbMuted == NULL)
     {
@@ -344,7 +354,7 @@ Return Value:
         return ntStatus;
     }
 
-    if (m_bCapture)
+    if (m_bCapture && !IsGrassiBoardCableCaptureStream())
     {
         ReadRegistrySettings();
             DWORD toneFrequency = 0;
@@ -1216,6 +1226,14 @@ NTSTATUS CMiniportWaveRTStream::SetState
             {
                 m_SaveData.WaitAllWorkItems();
             }
+            if (IsGrassiBoardCableRenderStream())
+            {
+                GrassiBoardCableTransport::SetRenderActive(false);
+            }
+            else if (IsGrassiBoardCableCaptureStream())
+            {
+                GrassiBoardCableTransport::SetCaptureActive(false);
+            }
             break;
 
         case KSSTATE_ACQUIRE:
@@ -1307,6 +1325,14 @@ NTSTATUS CMiniportWaveRTStream::SetState
             }
             // This call updates the linear buffer and presentation positions.
             GetPositions(NULL, NULL, NULL);
+            if (IsGrassiBoardCableRenderStream())
+            {
+                GrassiBoardCableTransport::SetRenderActive(false);
+            }
+            else if (IsGrassiBoardCableCaptureStream())
+            {
+                GrassiBoardCableTransport::SetCaptureActive(false);
+            }
             break;
 
         case KSSTATE_RUN:
@@ -1343,6 +1369,15 @@ NTSTATUS CMiniportWaveRTStream::SetState
             }
             ullPerfCounterTemp = KeQueryPerformanceCounter(&m_ullPerformanceCounterFrequency);
             m_ullLastDPCTimeStamp = m_ullDmaTimeStamp = KSCONVERT_PERFORMANCE_TIME(m_ullPerformanceCounterFrequency.QuadPart, ullPerfCounterTemp);
+
+            if (IsGrassiBoardCableRenderStream())
+            {
+                GrassiBoardCableTransport::SetRenderActive(true);
+            }
+            else if (IsGrassiBoardCableCaptureStream())
+            {
+                GrassiBoardCableTransport::SetCaptureActive(true);
+            }
 
             if (m_ulNotificationIntervalMs > 0)
             {
@@ -1469,11 +1504,9 @@ VOID CMiniportWaveRTStream::UpdatePosition
                                         0);
         }
 
-        if (!g_DoNotCreateDataFiles)
-        {
-            // Read from buffer and write to a file.
-            ReadBytes(ByteDisplacement);
-        }
+        // Consume every rendered byte. The GrassiBoard system-render stream
+        // publishes it to the cable even when SysVAD data-file capture is off.
+        ReadBytes(ByteDisplacement);
     }
     
     // Increment the DMA position by the number of bytes displaced since the last
@@ -1502,7 +1535,8 @@ VOID CMiniportWaveRTStream::WriteBytes
 
 Routine Description:
 
-This function writes the audio buffer using a sine wave generator
+This function fills a capture buffer from the virtual cable. Other retained
+SysVAD capture pins continue to use the sample tone generator.
 Arguments:
 
 ByteDisplacement - # of bytes to process.
@@ -1516,7 +1550,14 @@ ByteDisplacement - # of bytes to process.
     while (ByteDisplacement > 0)
     {
         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
+        if (IsGrassiBoardCableCaptureStream())
+        {
+            GrassiBoardCableTransport::Read(m_pDmaBuffer + bufferOffset, runWrite);
+        }
+        else
+        {
             m_ToneGenerator.GenerateSine(m_pDmaBuffer + bufferOffset, runWrite);
+        }
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
     }
@@ -1532,7 +1573,9 @@ VOID CMiniportWaveRTStream::ReadBytes
 
 Routine Description:
 
-This function reads the audio buffer and saves the data in a file.
+This function consumes a render buffer. The GrassiBoard system-render stream
+is published to the virtual cable and optional SysVAD file capture remains
+available for diagnostics.
 
 Arguments:
 
@@ -1547,10 +1590,37 @@ ByteDisplacement - # of bytes to process.
     while (ByteDisplacement > 0)
     {
         ULONG runWrite = min(ByteDisplacement, m_ulDmaBufferSize - bufferOffset);
-        m_SaveData.WriteData(m_pDmaBuffer + bufferOffset, runWrite);
+        if (IsGrassiBoardCableRenderStream())
+        {
+            GrassiBoardCableTransport::Write(m_pDmaBuffer + bufferOffset, runWrite);
+        }
+        if (!g_DoNotCreateDataFiles)
+        {
+            m_SaveData.WriteData(m_pDmaBuffer + bufferOffset, runWrite);
+        }
         bufferOffset = (bufferOffset + runWrite) % m_ulDmaBufferSize;
         ByteDisplacement -= runWrite;
     }
+}
+
+//=============================================================================
+#pragma code_seg()
+BOOL CMiniportWaveRTStream::IsGrassiBoardCableRenderStream() const
+{
+    return !m_bCapture &&
+        m_pMiniport != NULL &&
+        m_pMiniport->m_DeviceType == eSpeakerDevice &&
+        m_pMiniport->IsSystemRenderPin(m_ulPin);
+}
+
+//=============================================================================
+#pragma code_seg()
+BOOL CMiniportWaveRTStream::IsGrassiBoardCableCaptureStream() const
+{
+    return m_bCapture &&
+        m_pMiniport != NULL &&
+        m_pMiniport->m_DeviceType == eMicInDevice &&
+        m_pMiniport->IsSystemCapturePin(m_ulPin);
 }
 
 //=============================================================================
