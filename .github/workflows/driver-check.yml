@@ -67,6 +67,7 @@ jobs:
             -DeviceToolDirectory ./artifacts/driver-tools `
             -OutputDirectory ./artifacts/driver `
             -WdkPackageDirectory "./packages/Microsoft.Windows.WDK.x64.$env:WDK_NUGET_VERSION" `
+            -SdkBuildToolsPackageDirectory "./packages/Microsoft.Windows.SDK.BuildTools.$env:WDK_NUGET_VERSION" `
             -Version $env:GRASSIBOARD_VERSION
           if (Get-ChildItem ./artifacts/driver -Recurse -File | Where-Object { $_.Extension -in '.pfx', '.pvk', '.key' }) {
             throw 'Private signing key material is present in the artifact.'

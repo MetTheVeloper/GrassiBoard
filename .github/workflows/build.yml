@@ -110,6 +110,7 @@ jobs:
             -DeviceToolDirectory ./artifacts/driver-tools `
             -OutputDirectory ./artifacts/driver `
             -WdkPackageDirectory "./packages/Microsoft.Windows.WDK.x64.$env:WDK_NUGET_VERSION" `
+            -SdkBuildToolsPackageDirectory "./packages/Microsoft.Windows.SDK.BuildTools.$env:WDK_NUGET_VERSION" `
             -Version $env:GRASSIBOARD_VERSION
 
       - name: Publish self-contained WPF app

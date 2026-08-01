@@ -4,6 +4,7 @@ param(
     [Parameter(Mandatory = $true)][string]$DeviceToolDirectory,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
     [Parameter(Mandatory = $true)][string]$WdkPackageDirectory,
+    [Parameter(Mandatory = $true)][string]$SdkBuildToolsPackageDirectory,
     [Parameter(Mandatory = $true)][string]$Version
 )
 
@@ -21,10 +22,9 @@ if (-not $sysSource -or -not $toolSource -or -not (Test-Path -LiteralPath $infSo
     throw 'Driver, INF, or device tool build output is missing.'
 }
 
-$kitPackageRoot = Split-Path -Parent ([IO.Path]::GetFullPath($WdkPackageDirectory))
-$signTool = Get-ChildItem -LiteralPath $kitPackageRoot -Filter 'signtool.exe' -Recurse -File |
+$signTool = Get-ChildItem -LiteralPath (Join-Path $SdkBuildToolsPackageDirectory 'bin') -Filter 'signtool.exe' -Recurse -File |
     Where-Object { $_.FullName -match '[\\/]x64[\\/]' } | Select-Object -First 1
-$inf2Cat = Get-ChildItem -LiteralPath $WdkPackageDirectory -Filter 'inf2cat.exe' -Recurse -File |
+$inf2Cat = Get-ChildItem -LiteralPath (Join-Path $WdkPackageDirectory 'c\bin') -Filter 'inf2cat.exe' -Recurse -File |
     Where-Object { $_.FullName -match '[\\/]x86[\\/]' } | Select-Object -First 1
 if (-not $signTool -or -not $inf2Cat) {
     throw 'The restored SDK/WDK NuGet packages do not contain x64 SignTool and x86 Inf2Cat.'
