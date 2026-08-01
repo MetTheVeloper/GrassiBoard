@@ -2,7 +2,7 @@
 
 - Version: `v0.4.0`
 - Milestone: `3 — Formant and Backend/Configuration Comparison`
-- Status: automated validation passed; awaiting manual acceptance
+- Status: accepted by user
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -15,7 +15,13 @@ GitHub Actions Build [run #14](https://github.com/MetTheVeloper/GrassiBoard/acti
 
 Measured latency / single-core CPU / frequency error was `26.67 ms / 1.39% / 3.62%` for Low latency, `53.33 ms / 1.42% / 1.77%` for Balanced, and `150.00 ms / 1.53% / 0.03%` for High quality. The three warm processors summed to an estimated `4.34%` of one runner core. Balanced passed the default policy; Low latency missed its 3% frequency-error limit, while High quality added 96.67 ms over Balanced.
 
-Formant preservation and `+6` shift produced RMS differences of `0.13` and `0.11`. Live automated switching recorded a maximum adjacent-sample step of `0.06` and a longest near-silent run of one sample. Physical-headset listening and target-PC live switching remain pending.
+Formant preservation and `+6` shift produced RMS differences of `0.13` and `0.11`. Live automated switching recorded a maximum adjacent-sample step of `0.06` and a longest near-silent run of one sample.
+
+## Manual acceptance
+
+Milestone 3 was accepted on 2026-08-01 on Windows 10 with a Microsoft LifeChat LX-3000. The user confirmed that every requested test passed, including Formant controls and live switching among all three quality modes. Screenshot evidence showed `v0.4.0`, commit `53539541`, the engine remaining active, and the expected latencies: Low latency `1280 / 26.7 ms`, Balanced `2560 / 53.3 ms`, and High quality `7200 / 150.0 ms`. Device buffers remained at Capture/Render `1056/1056`; observed U/O were `2/0`.
+
+Milestone 4 is unblocked.
 
 ## Previous accepted milestones
 
