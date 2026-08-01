@@ -6,7 +6,7 @@ All notable changes to GrassiBoard are documented in this file.
 
 ### Added
 
-- `IPitchProcessor` abstraction and a first backend based on Signalsmith Stretch 1.3.2 at pinned commit `57b93f4e`.
+- `IPitchProcessor` abstraction and a first backend based on Signalsmith Stretch 1.3.2 at pinned commit `57b93f4e`, with Signalsmith Linear 0.3.1 pinned at `56686735`.
 - Live pitch control from −12 to +12 semitones and fine control from −100 to +100 cents.
 - Twenty-five-millisecond pitch automation smoothing and a ten-millisecond bypass crossfade.
 - Latency-aligned dry bypass so toggling Pitch does not reset the WASAPI streams or jump the monitoring timeline.

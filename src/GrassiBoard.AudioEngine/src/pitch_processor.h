@@ -1,6 +1,6 @@
 #pragma once
 
-#include <signalsmith-stretch.h>
+#include <signalsmith-stretch/signalsmith-stretch.h>
 
 #include <atomic>
 #include <cstdint>

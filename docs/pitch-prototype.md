@@ -2,7 +2,7 @@
 
 ## Backend selection
 
-Milestone 2 uses [Signalsmith Stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch), pinned as a Git submodule at commit `57b93f4e9206a089a45387eaa39bdc9f310d3308` (upstream version 1.3.2). It is licensed under the MIT License; attribution and the complete license text are included in `THIRD-PARTY-NOTICES.txt` and the portable package.
+Milestone 2 uses [Signalsmith Stretch](https://github.com/Signalsmith-Audio/signalsmith-stretch), pinned as a Git submodule at commit `57b93f4e9206a089a45387eaa39bdc9f310d3308` (upstream version 1.3.2). Its [Signalsmith Linear](https://github.com/Signalsmith-Audio/linear) dependency is independently pinned at release `0.3.1`, commit `5668673560146a9cfe38c25315071e3fd68c8317`. Both are licensed under the MIT License; attribution and complete license texts are included in `THIRD-PARTY-NOTICES.txt` and the portable package.
 
 The backend was selected because it supports streaming pitch transposition without changing duration, exposes algorithmic input/output latency, accepts variable block sizes, and can be configured ahead of the real-time loop.
 

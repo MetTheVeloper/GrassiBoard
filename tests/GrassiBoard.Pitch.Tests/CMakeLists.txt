@@ -7,9 +7,7 @@ target_compile_features(GrassiBoard.Pitch.Tests PRIVATE cxx_std_20)
 target_include_directories(GrassiBoard.Pitch.Tests PRIVATE
   ${PROJECT_SOURCE_DIR}/src/GrassiBoard.AudioEngine/src
 )
-target_include_directories(GrassiBoard.Pitch.Tests SYSTEM PRIVATE
-  ${PROJECT_SOURCE_DIR}/third_party/signalsmith-stretch
-)
+target_link_libraries(GrassiBoard.Pitch.Tests PRIVATE signalsmith-stretch)
 target_compile_definitions(GrassiBoard.Pitch.Tests PRIVATE NOMINMAX)
 
 if(MSVC)

@@ -14,9 +14,7 @@ target_include_directories(GrassiBoard.AudioEngine
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
 )
-target_include_directories(GrassiBoard.AudioEngine SYSTEM PRIVATE
-  "${PROJECT_SOURCE_DIR}/third_party/signalsmith-stretch"
-)
+target_link_libraries(GrassiBoard.AudioEngine PRIVATE signalsmith-stretch)
 
 target_compile_definitions(GrassiBoard.AudioEngine PRIVATE GRASSIBOARD_AUDIO_ENGINE_EXPORTS)
 target_compile_definitions(GrassiBoard.AudioEngine PRIVATE _WIN32_WINNT=0x0A00 WIN32_LEAN_AND_MEAN NOMINMAX)
