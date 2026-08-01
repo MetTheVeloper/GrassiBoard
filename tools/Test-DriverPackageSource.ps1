@@ -7,6 +7,8 @@ $ErrorActionPreference = 'Stop'
 $root = (Resolve-Path -LiteralPath $DriverSource).Path
 $inf = Get-Content -LiteralPath (Join-Path $root 'GrassiBoardVirtualAudio.inf') -Raw
 $minipairs = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtualAudio\minipairs.h') -Raw
+$captureWaveTable = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtualAudio\micinwavtable.h') -Raw
+$captureTopologyTable = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtualAudio\micintoptable.h') -Raw
 $endpointProject = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\GrassiBoard.EndpointsCommon.vcxproj') -Raw
 $streamSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\minwavertstream.cpp') -Raw
 $transportSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\cabletransport.cpp') -Raw
@@ -55,6 +57,10 @@ if (-not $minipairs.Contains('GrassiBoardCablePcmFormats') -or
     -not $minipairs.Contains('GrassiBoardRenderFormatsAndModes') -or
     -not $minipairs.Contains('GrassiBoardCaptureFormatsAndModes')) {
     throw 'Render and capture endpoints must advertise the same fixed PCM transport format.'
+}
+if ($captureWaveTable -notmatch '#define\s+MICIN_DEVICE_MAX_CHANNELS\s+2' -or
+    -not $captureTopologyTable.Contains('KSAUDIO_SPEAKER_STEREO')) {
+    throw 'The capture data range and topology jack must agree with the stereo cable format.'
 }
 
 $requiredScriptText = @(
