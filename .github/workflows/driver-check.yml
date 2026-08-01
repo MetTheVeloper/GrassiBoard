@@ -1,0 +1,40 @@
+name: Driver Placeholder Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - src/GrassiBoard.Driver/**
+      - tools/Test-DriverPlaceholder.ps1
+      - Directory.Build.props
+      - .github/workflows/driver-check.yml
+  pull_request:
+    paths:
+      - src/GrassiBoard.Driver/**
+      - tools/Test-DriverPlaceholder.ps1
+      - Directory.Build.props
+      - .github/workflows/driver-check.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-placeholder:
+    runs-on: windows-2022
+    timeout-minutes: 5
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Verify placeholder safety and WDK pin
+        shell: pwsh
+        run: |
+          ./tools/Test-DriverPlaceholder.ps1
+          $props = [xml](Get-Content ./Directory.Build.props -Raw)
+          $wdkVersion = $props.Project.PropertyGroup.WindowsWdkVersion | Select-Object -First 1
+          if ($wdkVersion -ne '10.0.28000.1839') {
+            throw "Unexpected WDK version pin: $wdkVersion"
+          }
+          Write-Host "Future driver WDK package is pinned to $wdkVersion."

@@ -43,6 +43,12 @@
 build/
 Build/
 build-*/
+out/
+artifacts/
+bin/
+obj/
+.vs/
+.dotnet/
 
 # CMake generated files
 CMakeFiles/
@@ -67,3 +73,13 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Local IDE and user settings
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Test results
+TestResults/
+*.trx
