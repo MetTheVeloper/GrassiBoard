@@ -126,7 +126,7 @@ jobs:
           $archivePath = "./artifacts/packages/GrassiBoard-portable-win-x64-$env:GRASSIBOARD_VERSION-$shortSha.zip"
           $archive = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $archivePath))
           try {
-            $names = $archive.Entries.FullName
+            $names = $archive.Entries.FullName | ForEach-Object { $_ -replace '\\', '/' }
             $required = @(
               'GrassiBoard.exe',
               'GrassiBoard.AudioEngine.dll',
