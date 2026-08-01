@@ -766,18 +766,8 @@ NTSTATUS CMiniportWaveRT::GetVolumeChannelCount(_Out_  UINT32 *_pulChannelCount)
 
     DPF_ENTER(("[CMiniportWaveRT::GetVolumeChannelCount]"));
 
-    if (IsSidebandDevice() && m_pSidebandDevice->IsVolumeSupported(m_DeviceType))
-    {
-        ULONG propSize = 0;
-        PKSPROPERTY_DESCRIPTION pPropDesc = (PKSPROPERTY_DESCRIPTION)m_pSidebandDevice->GetVolumeSettings(m_DeviceType, &propSize);
-        ASSERT(propSize >= sizeof(KSPROPERTY_DESCRIPTION) + sizeof(KSPROPERTY_MEMBERSHEADER) + sizeof(KSPROPERTY_STEPPING_LONG));
-        PKSPROPERTY_MEMBERSHEADER pMembers = (PKSPROPERTY_MEMBERSHEADER)(pPropDesc + 1);
-        *_pulChannelCount = pMembers->MembersCount;
-    }
-    else
-    {
-        *_pulChannelCount = m_DeviceMaxChannels;
-    }
+    // No sideband endpoints are compiled into GrassiBoard.
+    *_pulChannelCount = m_DeviceMaxChannels;
      return ntStatus;
 }
 
@@ -789,44 +779,17 @@ NTSTATUS CMiniportWaveRT::GetVolumeSteppings(_Out_writes_bytes_(_ui32DataSize) P
     ASSERT (_pKsPropStepLong);
     DPF_ENTER(("[CMiniportWaveRT::GetVolumeSteppings]"));
 
-    if (IsSidebandDevice() && m_pSidebandDevice->IsVolumeSupported(m_DeviceType))
+    ASSERT(ulChannelCount <= m_DeviceMaxChannels);
+    if (ulChannelCount > m_DeviceMaxChannels)
     {
-        // For Sideband Devices copy values from the Sideband DDI property descriptor
-        ULONG propSize = 0;
-        PKSPROPERTY_DESCRIPTION pPropDesc = (PKSPROPERTY_DESCRIPTION)m_pSidebandDevice->GetVolumeSettings(m_DeviceType, &propSize);
-
-        ASSERT(propSize >= sizeof(KSPROPERTY_DESCRIPTION) + sizeof(KSPROPERTY_MEMBERSHEADER) + sizeof(KSPROPERTY_STEPPING_LONG));
-
-        PKSPROPERTY_MEMBERSHEADER pMembers = (PKSPROPERTY_MEMBERSHEADER)(pPropDesc + 1);
-
-        ASSERT(ulChannelCount <= pMembers->MembersCount);
-
-        if (ulChannelCount > pMembers->MembersCount)
-        {
-            return STATUS_INVALID_PARAMETER;
-        }
-
-        PKSPROPERTY_STEPPING_LONG pRange = (PKSPROPERTY_STEPPING_LONG)(pMembers + 1);
-
-        for (UINT i = 0; i < ulChannelCount; i++)
-        {
-            RtlCopyMemory(&_pKsPropStepLong[i], &pRange[i], sizeof(KSPROPERTY_STEPPING_LONG));
-        }
+        return STATUS_INVALID_PARAMETER;
     }
-    else
-    {
-        ASSERT(ulChannelCount <= m_DeviceMaxChannels);
-        if (ulChannelCount > m_DeviceMaxChannels)
-        {
-            return STATUS_INVALID_PARAMETER;
-        }
 
-        for (UINT i = 0; i < ulChannelCount; i++)
-        {
-            _pKsPropStepLong[i].SteppingDelta = VOLUME_STEPPING_DELTA;
-            _pKsPropStepLong[i].Bounds.SignedMaximum = VOLUME_SIGNED_MAXIMUM;
-            _pKsPropStepLong[i].Bounds.SignedMinimum = VOLUME_SIGNED_MINIMUM;
-        }
+    for (UINT i = 0; i < ulChannelCount; i++)
+    {
+        _pKsPropStepLong[i].SteppingDelta = VOLUME_STEPPING_DELTA;
+        _pKsPropStepLong[i].Bounds.SignedMaximum = VOLUME_SIGNED_MAXIMUM;
+        _pKsPropStepLong[i].Bounds.SignedMinimum = VOLUME_SIGNED_MINIMUM;
     }
     return STATUS_SUCCESS;
 }
@@ -852,21 +815,14 @@ NTSTATUS CMiniportWaveRT::GetChannelVolume(_In_  UINT32 _uiChannel, _Out_ LONG *
 
     NTSTATUS status = STATUS_SUCCESS;
 
-    if (IsSidebandDevice() && m_pSidebandDevice->IsVolumeSupported(m_DeviceType))
+    if (_uiChannel == ALL_CHANNELS_ID)
     {
-        status = m_pSidebandDevice->GetVolume(m_DeviceType, _uiChannel, _pVolume);
+        *_pVolume = m_plVolumeLevel[0];
     }
     else
     {
-        if (_uiChannel == ALL_CHANNELS_ID)
-        {
-            *_pVolume = m_plVolumeLevel[0];
-        }
-        else
-        {
-            ASSERT(_uiChannel <= m_DeviceMaxChannels);
-            *_pVolume = m_plVolumeLevel[_uiChannel];
-        }
+        ASSERT(_uiChannel <= m_DeviceMaxChannels);
+        *_pVolume = m_plVolumeLevel[_uiChannel];
     }
 
     return status;
@@ -877,32 +833,19 @@ NTSTATUS CMiniportWaveRT::SetChannelVolume(_In_  UINT32 _uiChannel, _In_  LONG _
     PAGED_CODE ();
     DPF_ENTER(("[CMiniportWaveRT::SetChannelVolume]"));
 
-    if (IsSidebandDevice() && m_pSidebandDevice->IsVolumeSupported(m_DeviceType))
+    LONG lVolume = VOLUME_NORMALIZE_IN_RANGE(_Volume);
+
+    if (_uiChannel == ALL_CHANNELS_ID)
     {
-        return m_pSidebandDevice->SetVolume(m_DeviceType, _uiChannel, _Volume);
+        for (int i = 0; i < m_DeviceMaxChannels; i++)
+        {
+            m_plVolumeLevel[i] = lVolume;
+        }
     }
     else
     {
-        // Normalize volume only for non-sideband devices.
-        // Volume levels are governed by Sideband provider
-        // e.g. USB, A2DP, HFP, etc.
-
-        // Snap the volume level to our range of steppings.
-        LONG lVolume = VOLUME_NORMALIZE_IN_RANGE(_Volume);
-
-        // Will reach here only if not handled through Sideband
-        if (_uiChannel == ALL_CHANNELS_ID)
-        {
-            for (int i = 0; i < m_DeviceMaxChannels; i++)
-            {
-                m_plVolumeLevel[i] = lVolume;
-            }
-        }
-        else
-        {
-            ASSERT(_uiChannel <= m_DeviceMaxChannels);
-            m_plVolumeLevel[_uiChannel] = lVolume;
-        }
+        ASSERT(_uiChannel <= m_DeviceMaxChannels);
+        m_plVolumeLevel[_uiChannel] = lVolume;
     }
 
     return STATUS_SUCCESS;
@@ -979,18 +922,7 @@ NTSTATUS CMiniportWaveRT::GetMuteChannelCount(_Out_  UINT32 *_pulChannelCount)
 
     DPF_ENTER(("[CMiniportWaveRT::GetMuteChannelCount]"));
 
-    if (IsSidebandDevice() && m_pSidebandDevice->IsMuteSupported(m_DeviceType))
-    {
-        ULONG propSize = 0;
-        PKSPROPERTY_DESCRIPTION pPropDesc = (PKSPROPERTY_DESCRIPTION)m_pSidebandDevice->GetMuteSettings(m_DeviceType, &propSize);
-        ASSERT(propSize >= sizeof(KSPROPERTY_DESCRIPTION) + sizeof(KSPROPERTY_MEMBERSHEADER) + sizeof(KSPROPERTY_STEPPING_LONG));
-        PKSPROPERTY_MEMBERSHEADER pMembers = (PKSPROPERTY_MEMBERSHEADER)(pPropDesc + 1);
-        *_pulChannelCount = pMembers->MembersCount;
-    }
-    else
-    {
-        *_pulChannelCount = m_DeviceMaxChannels;
-    }
+    *_pulChannelCount = m_DeviceMaxChannels;
      return ntStatus;
 }
 #pragma code_seg("PAGE")
@@ -1002,46 +934,18 @@ NTSTATUS CMiniportWaveRT::GetMuteSteppings(_Out_writes_bytes_(_ui32DataSize)  PK
     ASSERT (_pKsPropStepLong);
     DPF_ENTER(("[CMiniportWaveRT::GetMuteSteppings]"));
 
-    if (IsSidebandDevice() && m_pSidebandDevice->IsMuteSupported(m_DeviceType))
+    ASSERT(ulChannelCount <= m_DeviceMaxChannels);
+
+    if (ulChannelCount > m_DeviceMaxChannels)
     {
-        // For Sideband Devices copy values from the Sideband DDI property descriptor
-        ULONG propSize = 0;
-        PKSPROPERTY_DESCRIPTION pPropDesc = (PKSPROPERTY_DESCRIPTION)m_pSidebandDevice->GetMuteSettings(m_DeviceType, &propSize);
-
-        ASSERT(propSize >= sizeof(KSPROPERTY_DESCRIPTION) + sizeof(KSPROPERTY_MEMBERSHEADER) + sizeof(KSPROPERTY_STEPPING_LONG));
-
-        PKSPROPERTY_MEMBERSHEADER pMembers = (PKSPROPERTY_MEMBERSHEADER)(pPropDesc + 1);
-
-        ASSERT(ulChannelCount <= pMembers->MembersCount);
-
-        if (ulChannelCount > pMembers->MembersCount)
-        {
-            return STATUS_INVALID_PARAMETER;
-        }
-
-        PKSPROPERTY_STEPPING_LONG pRange = (PKSPROPERTY_STEPPING_LONG)(pMembers + 1);
-
-        for (UINT i = 0; i < ulChannelCount; i++)
-        {
-            RtlCopyMemory(&_pKsPropStepLong[i], &pRange[i], sizeof(KSPROPERTY_STEPPING_LONG));
-        }
-
+        return STATUS_INVALID_PARAMETER;
     }
-    else
+
+    for (UINT i = 0; i < ulChannelCount; i++)
     {
-        ASSERT(ulChannelCount <= m_DeviceMaxChannels);
-
-        if (ulChannelCount > m_DeviceMaxChannels)
-        {
-            return STATUS_INVALID_PARAMETER;
-        }
-
-        for (UINT i = 0; i < ulChannelCount; i++)
-        {
-            _pKsPropStepLong[i].SteppingDelta = 1;
-            _pKsPropStepLong[i].Bounds.SignedMaximum = TRUE;
-            _pKsPropStepLong[i].Bounds.SignedMinimum = FALSE;
-        }
+        _pKsPropStepLong[i].SteppingDelta = 1;
+        _pKsPropStepLong[i].Bounds.SignedMaximum = TRUE;
+        _pKsPropStepLong[i].Bounds.SignedMinimum = FALSE;
     }
     return STATUS_SUCCESS;
 }
@@ -1052,21 +956,14 @@ NTSTATUS CMiniportWaveRT::GetChannelMute(_In_  UINT32 _uiChannel, _Out_  BOOL *_
     ASSERT (_pbMute);
     DPF_ENTER(("[CMiniportWaveRT::GetChannelMute]"));
 
-    if (IsSidebandDevice() && m_pSidebandDevice->IsMuteSupported(m_DeviceType))
+    if (_uiChannel == ALL_CHANNELS_ID)
     {
-        *_pbMute = m_pSidebandDevice->GetMute(m_DeviceType, _uiChannel);
+        *_pbMute = m_pbMuted[0];
     }
     else
     {
-        if (_uiChannel == ALL_CHANNELS_ID)
-        {
-            *_pbMute = m_pbMuted[0];
-        }
-        else
-        {
-            ASSERT(_uiChannel <= m_DeviceMaxChannels);
-            *_pbMute = m_pbMuted[_uiChannel];
-        }
+        ASSERT(_uiChannel <= m_DeviceMaxChannels);
+        *_pbMute = m_pbMuted[_uiChannel];
     }
 
     return STATUS_SUCCESS;
@@ -1077,12 +974,6 @@ NTSTATUS CMiniportWaveRT::SetChannelMute(_In_  UINT32 _uiChannel, _In_  BOOL _bM
     PAGED_CODE ();
     DPF_ENTER(("[CMiniportWaveRT::SetChannelMute]"));
 
-    if (IsSidebandDevice() && m_pSidebandDevice->IsMuteSupported(m_DeviceType))
-    {
-        return m_pSidebandDevice->SetMute(m_DeviceType, _uiChannel, _bMute);
-    }
-
-    // Will reach here only if not handled through Sideband
     if (_uiChannel == ALL_CHANNELS_ID)
     {
         for (int i=0; i<m_DeviceMaxChannels; i++)
