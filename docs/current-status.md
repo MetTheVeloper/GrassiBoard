@@ -2,10 +2,14 @@
 
 - Version: `v0.2.0`
 - Milestone: `1 — Physical Microphone Passthrough`
-- Status: implementation in progress; awaiting CI and target-PC acceptance
+- Status: CI passed; awaiting target-PC acceptance
 - Target: Windows 10/11 x64
 - Audio processing: capture-to-monitor passthrough only
 - Virtual driver: safe placeholder only; not installable
+
+## CI result
+
+GitHub Actions build [run #7](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30701605192) passed on Windows x64. Native ABI/lifecycle tests, managed BuildInfo tests, WPF publishing, package validation, and all four artifact uploads succeeded. Driver Placeholder Check run #2 also passed.
 
 ## Current acceptance gate
 
