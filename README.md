@@ -4,7 +4,7 @@ GrassiBoard is a Windows x64 voice-processing and soundboard application. Develo
 
 ## Current release
 
-`v0.6.0` is **Milestone 5 — Virtual Cable PCM Transport** while retaining the accepted app/DSP and driver lifecycle:
+`v0.6.1` is **Milestone 5 — Virtual Cable PCM Transport** with the Windows Audio shared-capture compatibility fix, while retaining the accepted app/DSP and driver lifecycle:
 
 - Live pitch and Fine Pitch from Milestone 2
 - Formant preservation and independent formant shift from −12 to +12 semitones
@@ -39,7 +39,7 @@ GitHub Actions builds the self-contained Windows package, comparison WAV files, 
 
 ## Safety
 
-Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. The v0.6.0 driver is test-signed and distributed separately; read `DRIVER-TESTING.md` inside that package before changing TESTSIGNING.
+Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. The v0.6.1 driver is test-signed and distributed separately; read `DRIVER-TESTING.md` inside that package before changing TESTSIGNING.
 
 ## Documentation
 

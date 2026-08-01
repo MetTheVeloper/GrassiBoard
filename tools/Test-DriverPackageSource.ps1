@@ -62,6 +62,9 @@ if ($captureWaveTable -notmatch '#define\s+MICIN_DEVICE_MAX_CHANNELS\s+2' -or
     -not $captureTopologyTable.Contains('KSAUDIO_SPEAKER_STEREO')) {
     throw 'The capture data range and topology jack must agree with the stereo cable format.'
 }
+if ($captureWaveTable -notmatch '#define\s+MICIN_MAX_INPUT_STREAMS\s+5') {
+    throw 'The capture pin must retain enough SysVAD instances for Windows Audio shared-mode negotiation.'
+}
 
 $requiredScriptText = @(
     'function Get-GrassiBoardPnpDevice',

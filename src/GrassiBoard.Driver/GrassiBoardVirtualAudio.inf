@@ -3,7 +3,7 @@ Signature="$Windows NT$"
 Class=MEDIA
 ClassGuid={4D36E96C-E325-11CE-BFC1-08002BE10318}
 Provider=%ProviderName%
-DriverVer=08/01/2026,0.6.0.0
+DriverVer=08/02/2026,0.6.1.0
 CatalogFile=GrassiBoardVirtualAudio.cat
 PnpLockDown=1
 

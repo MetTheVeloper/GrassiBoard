@@ -2,6 +2,13 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.6.1] - 2026-08-02
+
+### Fixed
+
+- Restored the SysVAD capture pin's five-instance capacity so Windows Audio can retain an engine stream while shared-mode clients negotiate and open the virtual microphone.
+- Added a source-contract regression check for capture-instance capacity after Windows 10 Voice Recorder exposed `AUDCLNT_E_UNSUPPORTED_FORMAT` with the one-instance descriptor.
+
 ## [0.6.0] - 2026-08-01
 
 ### Added
