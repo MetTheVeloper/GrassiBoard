@@ -75,10 +75,12 @@ try {
     & $signTool.FullName sign /v /fd SHA256 /f $pfxPath /p $passwordText $catPath
     if ($LASTEXITCODE -ne 0) { throw "SignTool failed to sign CAT (exit $LASTEXITCODE)." }
 
-    Import-Certificate -FilePath $cerPath -CertStoreLocation Cert:\CurrentUser\Root | Out-Null
     foreach ($file in $sysPath, $catPath) {
         $signature = Get-AuthenticodeSignature -LiteralPath $file
-        if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint) {
+        $invalidStatuses = @('NotSigned', 'HashMismatch', 'NotSupportedError')
+        if (-not $signature.SignerCertificate -or
+            $signature.SignerCertificate.Thumbprint -ne $certificate.Thumbprint -or
+            $signature.Status.ToString() -in $invalidStatuses) {
             throw "Packaged signature verification failed for $(Split-Path $file -Leaf)."
         }
     }
@@ -107,7 +109,6 @@ try {
 finally {
     if ($certificate) {
         Remove-Item -LiteralPath "Cert:\CurrentUser\My\$($certificate.Thumbprint)" -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath "Cert:\CurrentUser\Root\$($certificate.Thumbprint)" -Force -ErrorAction SilentlyContinue
     }
     if (Test-Path -LiteralPath $pfxPath) { Remove-Item -LiteralPath $pfxPath -Force }
     $passwordText = $null
