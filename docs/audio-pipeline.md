@@ -1,5 +1,17 @@
 # Audio pipeline
 
-No audio pipeline is active in Milestone 0. The WPF shell only checks that the native DLL can be loaded and that its ABI version is compatible.
+Milestone 1 activates the first user-mode audio path:
 
-The planned pipeline is documented in `GrassiBoard_Project_Plan.md` and begins incrementally with physical microphone passthrough in Milestone 1.
+```text
+Selected physical microphone
+    ↓ WASAPI shared/event-driven capture
+48 kHz mono float
+    ↓ preallocated ring buffer
+48 kHz stereo duplication
+    ↓ WASAPI shared/event-driven render
+Selected headset monitoring output
+```
+
+Windows Audio performs endpoint format conversion and resampling where the physical device mix format differs from the requested internal format.
+
+No pitch, formant, noise processing, mixer, soundboard, virtual output, or kernel driver participates in this version.

@@ -1,22 +1,27 @@
 # Architecture
 
-## Milestone 0 boundary
+## Milestone 1 boundary
 
-The repository establishes three independently buildable layers:
+The repository has three layers:
 
 1. `GrassiBoard.App`: a WPF `net8.0-windows` x64 UI process.
-2. `GrassiBoard.AudioEngine`: a native C++20 x64 DLL exposing a versioned C ABI.
+2. `GrassiBoard.AudioEngine`: a native C++20 x64 DLL exposing C ABI version 2.
 3. `GrassiBoard.Driver`: a non-installable placeholder until Milestone 4.
 
-The app calls the native layer through source-generated P/Invoke. C++/CLI is not used. The only current calls query the ABI and product versions; no audio device is opened.
+The app calls the native layer through source-generated P/Invoke. C++/CLI is not used.
 
-## Planned process boundary
+## Audio ownership
 
-DSP, device I/O, mixing, monitoring, metering, and resampling remain in user mode. The future kernel component is limited to virtual render/capture transport. UI commands will cross the ABI through a non-blocking command queue once real-time processing begins.
+A dedicated native STA worker owns every MMDevice and WASAPI interface from creation through release. Capture and render use shared-mode event callbacks. A single worker waits on capture, render, and stop events, which avoids COM-interface handoff and keeps the audio path free of mutexes.
+
+Microphone samples enter a preallocated mono float ring buffer. The render side removes them and duplicates the mono sample into stereo headset output. Device-format conversion and resampling to the fixed internal 48 kHz float formats are requested from the Windows shared audio engine.
+
+The real-time loop performs no heap allocation, logging, file I/O, exception propagation, or blocking lock acquisition. Statistics cross to WPF through atomics; device enumeration and JSON serialization occur only while the engine is stopped.
 
 ## Version contract
 
-- Product version: `0.1.0`
-- Native ABI version: `1`
+- Product version: `0.2.0`
+- Native ABI version: `2`
 - Architecture: `x64`
-- Processing implementation: not present in Milestone 0
+- Processing format: `48,000 Hz`, 32-bit float, mono capture and stereo monitoring
+- DSP processing: none in Milestone 1

@@ -5,7 +5,7 @@ namespace GrassiBoard.Shared;
 
 public sealed record BuildInfo
 {
-    public static readonly string CurrentVersion = "0.1.0";
+    public static readonly string CurrentVersion = "0.2.0";
 
     [JsonPropertyName("Version")]
     public string Version { get; init; } = CurrentVersion;

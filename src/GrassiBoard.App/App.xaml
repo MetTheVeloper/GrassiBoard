@@ -8,5 +8,26 @@
         <SolidColorBrush x:Key="TextBrush" Color="#F2F5F8" />
         <SolidColorBrush x:Key="MutedTextBrush" Color="#91A0B3" />
         <SolidColorBrush x:Key="AccentBrush" Color="#75E6B5" />
+        <SolidColorBrush x:Key="DangerBrush" Color="#FF7A90" />
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="#07110D" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="18,10" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style TargetType="ComboBox">
+            <Setter Property="Foreground" Value="#101820" />
+            <Setter Property="Background" Value="#F2F5F8" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style TargetType="ProgressBar">
+            <Setter Property="Height" Value="10" />
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Background" Value="#263342" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
     </Application.Resources>
 </Application>

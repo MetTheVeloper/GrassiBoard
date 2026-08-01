@@ -1,24 +1,22 @@
 # Current status
 
-- Version: `v0.1.0`
-- Milestone: `0 — Repository and base CI`
-- Status: accepted by user
+- Version: `v0.2.0`
+- Milestone: `1 — Physical Microphone Passthrough`
+- Status: implementation in progress; awaiting CI and target-PC acceptance
 - Target: Windows 10/11 x64
-- Audio processing: not implemented
+- Audio processing: capture-to-monitor passthrough only
 - Virtual driver: safe placeholder only; not installable
 
-## CI result
+## Current acceptance gate
 
-GitHub Actions build [run #4](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30699952322) passed on Windows x64. Native and managed smoke tests passed, the portable package contract was validated, and all four required artifact groups were uploaded.
+Milestone 2 must not begin until the v0.2.0 workflow succeeds and the user confirms on the target PC that:
 
-## Manual acceptance
+- the USB headset microphone and monitor endpoint are selectable;
+- Start and Stop work repeatedly without a crash;
+- input and output meters move while speaking;
+- microphone audio is audible through the selected headset;
+- the UI remains responsive and dropout counters are reported.
 
-Milestone 0 was accepted on 2026-08-01 with the following target-PC result:
+## Previous accepted milestone
 
-- Windows version: Windows 10
-- App opened: Yes
-- Version and commit correct: Yes (`v0.1.0`, `d23f75eb`)
-- Native engine loaded: Yes (`API 1`, engine `v0.1.0`)
-- Screenshot evidence: supplied by the user
-
-Milestone 1 is now unblocked but has not been started.
+Milestone 0 (`v0.1.0`, commit `d23f75eb`) was accepted on Windows 10 on 2026-08-01. The app opened, displayed the correct version/commit, and loaded native API 1 successfully.

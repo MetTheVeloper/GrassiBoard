@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(GrassiBoard VERSION 0.1.0 LANGUAGES CXX)
+project(GrassiBoard VERSION 0.2.0 LANGUAGES CXX)
 
 include(CTest)
 add_subdirectory(src/GrassiBoard.AudioEngine)

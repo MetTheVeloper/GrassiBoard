@@ -10,7 +10,7 @@ $forbidden = Get-ChildItem -LiteralPath $resolvedSource -Recurse -File |
     Where-Object { $_.Extension -in '.inf', '.cat', '.sys', '.cer', '.pfx' }
 
 if ($forbidden) {
-    throw "Milestone 0 driver placeholder contains installable or sensitive driver files: $($forbidden.FullName -join ', ')"
+    throw "The driver placeholder contains installable or sensitive driver files: $($forbidden.FullName -join ', ')"
 }
 
 $marker = Join-Path $resolvedSource 'README-NOT-A-DRIVER.txt'

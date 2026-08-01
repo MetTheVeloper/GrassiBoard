@@ -1,6 +1,6 @@
 using GrassiBoard.Shared;
 
-if (BuildInfo.CurrentVersion != "0.1.0")
+if (BuildInfo.CurrentVersion != "0.2.0")
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -9,7 +9,7 @@ if (BuildInfo.CurrentVersion != "0.1.0")
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "0.1.0",
+      "Version": "0.2.0",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -18,7 +18,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "0.1.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "0.2.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;

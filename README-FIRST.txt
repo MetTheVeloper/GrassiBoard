@@ -1,10 +1,14 @@
-GrassiBoard v0.1.0 — Milestone 0
+GrassiBoard v0.2.0 — Milestone 1
 
-1. Extract the entire ZIP into a new folder.
-2. Run GrassiBoard.exe.
-3. Confirm that the window shows v0.1.0 and the current commit.
-4. Confirm that Native Audio Engine says "Loaded · API 1 · v0.1.0".
-5. Close the app normally.
+SAFETY: Use headphones, lower their volume first, and do not select speakers.
 
-This build does not process audio and does not install a driver.
-Do not attempt to install the driver-placeholder folder; it is documentation only.
+1. Extract the entire ZIP into a new folder and run GrassiBoard.exe.
+2. Select the USB headset microphone under INPUT MICROPHONE.
+3. Select the same headset under MONITOR OUTPUT.
+4. Click Start engine, speak briefly, and confirm both meters move.
+5. Confirm your live microphone is audible in the headset.
+6. Click Stop engine, start it again, and confirm the UI remains responsive.
+7. Record buffer values and U/O/D dropout counters before stopping.
+
+This build does not change pitch and does not install a driver.
+The driver-placeholder folder is documentation only and must not be installed.

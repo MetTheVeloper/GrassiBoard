@@ -1,4 +1,4 @@
-GrassiBoard Driver Placeholder — Milestone 0 (v0.1.0)
+GrassiBoard Driver Placeholder — Milestone 1 (v0.2.0)
 
 This package is intentionally NOT a Windows driver and cannot be installed.
 It contains no INF, CAT, SYS, certificate, service, or kernel-mode code.
