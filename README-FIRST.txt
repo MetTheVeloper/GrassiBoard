@@ -1,4 +1,4 @@
-GrassiBoard v0.6.0 — Milestone 5 virtual cable transport
+GrassiBoard v0.6.1 — Milestone 5 virtual cable transport capture compatibility fix
 
 SAFETY: Use headphones and lower their volume before starting the engine.
 

@@ -27,7 +27,11 @@ Abstract:
 //
 // Max # of pin instances.
 //
-#define MICIN_MAX_INPUT_STREAMS             1
+// Keep the SysVAD capture-pin capacity. Windows Audio can retain an engine
+// instance while another client negotiates or opens the endpoint; limiting
+// this pin to one instance makes IAudioClient::GetMixFormat fail with
+// AUDCLNT_E_UNSUPPORTED_FORMAT for otherwise valid shared-mode clients.
+#define MICIN_MAX_INPUT_STREAMS             5
 
 //=============================================================================
 static 

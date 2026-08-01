@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v0.6.0`
+- Version: `v0.6.1`
 - Milestone: `5 — Virtual Cable PCM Transport`
-- Status: implementation and PR CI passed; awaiting manual cable acceptance on Windows 10
+- Status: v0.6.0 manual capture negotiation failed on Windows 10; v0.6.1 compatibility fix is awaiting CI and retest
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -16,6 +16,10 @@ The driver is a minimal extraction of Microsoft's SysVAD/WaveRT code pinned to c
 The two system streams now advertise one shared 48 kHz, 16-bit, stereo PCM device format. A preallocated 250 ms SPSC ring transports consumed render frames to capture. Capture uses a 10 ms pre-roll, zero-fills underruns, and invalidates queued frames whenever render or capture pauses/stops so old audio cannot repeat. The transport counts fill, underruns, and overruns and performs no kernel DSP or allocation in the DPC path.
 
 The cable is deliberately testable without the GrassiBoard app. App-to-cable routing is Milestone 6.
+
+## Milestone 5 Windows 10 capture finding
+
+Manual testing on Windows 10 build 19045 found that the v0.6.0 endpoint was present and Device Manager reported `OK`, but Voice Recorder could not open it. A direct WASAPI probe reproduced `AUDCLNT_E_UNSUPPORTED_FORMAT` from `IAudioClient::GetMixFormat`, while the endpoint's persisted 48 kHz, 16-bit, stereo format was valid. The capture pin had been reduced from SysVAD's five instances to one; this left no capacity when Windows Audio retained an engine instance during client negotiation. v0.6.1 restores the reference capacity and adds a regression contract check.
 
 ## Milestone 5 automated result
 

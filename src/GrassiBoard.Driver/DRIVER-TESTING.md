@@ -1,4 +1,4 @@
-# GrassiBoard v0.6.0 test driver
+# GrassiBoard v0.6.1 test driver
 
 This package is a test-signed Milestone 5 driver for Windows 10/11 x64. It creates:
 
