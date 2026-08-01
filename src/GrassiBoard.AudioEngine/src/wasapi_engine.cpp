@@ -206,6 +206,30 @@ gb_result WasapiEngine::Stop()
     return GB_OK;
 }
 
+void WasapiEngine::SetPitchSemitones(const float semitones) noexcept
+{
+    pitch_semitones_.store(std::clamp(semitones, -12.0F, 12.0F), std::memory_order_release);
+    UpdatePitchTarget();
+}
+
+void WasapiEngine::SetPitchCents(const float cents) noexcept
+{
+    pitch_cents_.store(std::clamp(cents, -100.0F, 100.0F), std::memory_order_release);
+    UpdatePitchTarget();
+}
+
+void WasapiEngine::SetPitchBypass(const bool bypass) noexcept
+{
+    pitch_processor_.SetBypass(bypass);
+}
+
+void WasapiEngine::UpdatePitchTarget() noexcept
+{
+    const float semitones = pitch_semitones_.load(std::memory_order_acquire);
+    const float cents = pitch_cents_.load(std::memory_order_acquire);
+    pitch_processor_.SetPitchSemitones(semitones + cents / 100.0F);
+}
+
 void WasapiEngine::GetStatistics(gb_audio_statistics& statistics) const noexcept
 {
     statistics = {};
@@ -215,6 +239,7 @@ void WasapiEngine::GetStatistics(gb_audio_statistics& statistics) const noexcept
     statistics.capture_buffer_frames = capture_buffer_frames_.load(std::memory_order_relaxed);
     statistics.render_buffer_frames = render_buffer_frames_.load(std::memory_order_relaxed);
     statistics.ring_buffer_fill_frames = ring_buffer_fill_frames_.load(std::memory_order_relaxed);
+    statistics.pitch_latency_samples = pitch_latency_samples_.load(std::memory_order_relaxed);
     statistics.captured_frames = captured_frames_.load(std::memory_order_relaxed);
     statistics.rendered_frames = rendered_frames_.load(std::memory_order_relaxed);
     statistics.underrun_count = underrun_count_.load(std::memory_order_relaxed);
@@ -265,6 +290,7 @@ void WasapiEngine::ResetStatistics() noexcept
     capture_buffer_frames_.store(0U, std::memory_order_relaxed);
     render_buffer_frames_.store(0U, std::memory_order_relaxed);
     ring_buffer_fill_frames_.store(0U, std::memory_order_relaxed);
+    pitch_latency_samples_.store(0U, std::memory_order_relaxed);
     captured_frames_.store(0U, std::memory_order_relaxed);
     rendered_frames_.store(0U, std::memory_order_relaxed);
     underrun_count_.store(0U, std::memory_order_relaxed);
@@ -349,6 +375,24 @@ void WasapiEngine::Worker() noexcept
         capture_buffer_frames_.store(captureFrames, std::memory_order_relaxed);
         render_buffer_frames_.store(renderFrames, std::memory_order_relaxed);
 
+        try {
+            pitch_input_buffer_.resize(captureFrames);
+            pitch_output_buffer_.resize(captureFrames);
+            if (!pitch_processor_.Prepare(kSampleRate, kCaptureChannels, captureFrames)) {
+                result = E_FAIL;
+            }
+            else {
+                pitch_latency_samples_.store(
+                    pitch_processor_.GetLatencySamples(), std::memory_order_relaxed);
+            }
+        }
+        catch (...) {
+            result = E_OUTOFMEMORY;
+        }
+    }
+
+    if (SUCCEEDED(result)) {
+
         BYTE* initialBuffer = nullptr;
         result = renderService->GetBuffer(renderFrames, &initialBuffer);
         if (SUCCEEDED(result)) {
@@ -407,6 +451,11 @@ void WasapiEngine::Worker() noexcept
                 if (FAILED(result)) {
                     break;
                 }
+                if (packetFrames > pitch_input_buffer_.size() || packetFrames > pitch_output_buffer_.size()) {
+                    captureService->ReleaseBuffer(packetFrames);
+                    result = E_BOUNDS;
+                    break;
+                }
 
                 if ((flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0U) {
                     discontinuity_count_.fetch_add(1U, std::memory_order_relaxed);
@@ -419,9 +468,15 @@ void WasapiEngine::Worker() noexcept
                 bool overrun = false;
                 for (UINT32 frame = 0; frame < packetFrames; ++frame) {
                     const float sample = silent ? 0.0F : SafeSample(samples[frame]);
+                    pitch_input_buffer_[frame] = sample;
                     peak = std::max(peak, std::abs(sample));
                     squareSum += static_cast<double>(sample) * static_cast<double>(sample);
-                    if (!ring_buffer_.Push(sample)) {
+                }
+
+                pitch_processor_.Process(
+                    pitch_input_buffer_.data(), pitch_output_buffer_.data(), packetFrames);
+                for (UINT32 frame = 0; frame < packetFrames; ++frame) {
+                    if (!ring_buffer_.Push(SafeSample(pitch_output_buffer_[frame]))) {
                         overrun = true;
                     }
                 }

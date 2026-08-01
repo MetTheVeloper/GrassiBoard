@@ -11,7 +11,7 @@ namespace GrassiBoard;
 
 public partial class MainWindow : Window
 {
-    private const uint ExpectedNativeApiVersion = 2;
+    private const uint ExpectedNativeApiVersion = 3;
     private readonly DispatcherTimer _meterTimer;
     private nint _engine;
     private bool _running;
@@ -53,6 +53,7 @@ public partial class MainWindow : Window
             }
 
             SetNativeStatus($"Ready · API {apiVersion} · v{nativeVersion}", true);
+            ApplyPitchSettings();
             RefreshDevices();
             _meterTimer.Start();
         }
@@ -101,7 +102,7 @@ public partial class MainWindow : Window
                 }
 
                 _running = true;
-                SetNativeStatus("Running · 48 kHz · microphone passthrough", true);
+                SetNativeStatus("Running · 48 kHz · Pitch", true);
             }
             else
             {
@@ -123,6 +124,47 @@ public partial class MainWindow : Window
                 UpdateControlState();
             }
         }
+    }
+
+    private void PitchSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (PitchValueText is null)
+        {
+            return;
+        }
+        PitchValueText.Text = $"{e.NewValue:+0;-0;0} semitones";
+        if (_engine != nint.Zero)
+        {
+            NativeMethods.SetPitchSemitones(_engine, (float)e.NewValue);
+        }
+    }
+
+    private void FinePitchSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (FinePitchValueText is null)
+        {
+            return;
+        }
+        FinePitchValueText.Text = $"{e.NewValue:+0;-0;0} cents";
+        if (_engine != nint.Zero)
+        {
+            NativeMethods.SetPitchCents(_engine, (float)e.NewValue);
+        }
+    }
+
+    private void PitchBypassCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_engine != nint.Zero)
+        {
+            NativeMethods.SetPitchBypass(_engine, PitchBypassCheck.IsChecked == true ? 1U : 0U);
+        }
+    }
+
+    private void ApplyPitchSettings()
+    {
+        NativeMethods.SetPitchSemitones(_engine, (float)PitchSlider.Value);
+        NativeMethods.SetPitchCents(_engine, (float)FinePitchSlider.Value);
+        NativeMethods.SetPitchBypass(_engine, PitchBypassCheck.IsChecked == true ? 1U : 0U);
     }
 
     private void RefreshDevices()
@@ -202,6 +244,8 @@ public partial class MainWindow : Window
         OutputDbText.Text = FormatDb(statistics.OutputPeak);
         BufferText.Text = $"Capture {statistics.CaptureBufferFrames} · Render {statistics.RenderBufferFrames}";
         RingFillText.Text = $"{statistics.RingBufferFillFrames} frames";
+        double latencyMilliseconds = statistics.PitchLatencySamples * 1000.0 / statistics.SampleRate;
+        PitchLatencyText.Text = $"{statistics.PitchLatencySamples} · {latencyMilliseconds:0.0} ms";
         DropoutText.Text = $"U {statistics.UnderrunCount} · O {statistics.OverrunCount} · D {statistics.DiscontinuityCount}";
 
         if (_running && statistics.Running == 0)
@@ -314,7 +358,7 @@ public partial class MainWindow : Window
         public uint CaptureBufferFrames;
         public uint RenderBufferFrames;
         public uint RingBufferFillFrames;
-        public uint Reserved;
+        public uint PitchLatencySamples;
         public ulong CapturedFrames;
         public ulong RenderedFrames;
         public ulong UnderrunCount;
@@ -353,6 +397,15 @@ public partial class MainWindow : Window
 
         [LibraryImport(LibraryName, EntryPoint = "gb_engine_stop")]
         internal static partial NativeResult EngineStop(nint engine);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_set_pitch_semitones")]
+        internal static partial NativeResult SetPitchSemitones(nint engine, float semitones);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_set_pitch_cents")]
+        internal static partial NativeResult SetPitchCents(nint engine, float cents);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_set_pitch_bypass")]
+        internal static partial NativeResult SetPitchBypass(nint engine, uint bypass);
 
         [LibraryImport(LibraryName, EntryPoint = "gb_get_audio_statistics")]
         internal static partial NativeResult GetAudioStatistics(nint engine, out AudioStatistics statistics);

@@ -20,6 +20,14 @@ Stop the engine immediately. Use headphones instead of speakers and lower the Wi
 
 Report the Capture/Render buffer frames, Ring Fill, and U/O/D counters shown after speaking for at least 30 seconds. Also include the exact USB headset model and whether other audio software was running.
 
+## Pitch sounds unchanged
+
+Confirm Bypass is unchecked and set Pitch to at least `-3` or `+3`. Fine Pitch is deliberately subtle and is limited to one semitone in either direction.
+
+## Pitch delay or artifacts
+
+Pitch shifting introduces reported algorithmic latency in addition to endpoint buffering. Include the Pitch Latency value, selected pitch/fine values, and whether the issue also occurs at `0` semitones when reporting artifacts.
+
 ## Driver questions
 
-There is no installable driver in v0.2.0. The `driver-placeholder` directory is informational and must not be installed.
+There is no installable driver in v0.3.0. The `driver-placeholder` directory is informational and must not be installed.

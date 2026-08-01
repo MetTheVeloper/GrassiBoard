@@ -1,6 +1,7 @@
 #pragma once
 
 #include "grassiboard/audio_engine.h"
+#include "pitch_processor.h"
 
 #include <Windows.h>
 
@@ -41,6 +42,9 @@ public:
 
     gb_result Start(const std::string& inputDeviceId, const std::string& monitorDeviceId);
     gb_result Stop();
+    void SetPitchSemitones(float semitones) noexcept;
+    void SetPitchCents(float cents) noexcept;
+    void SetPitchBypass(bool bypass) noexcept;
     void GetStatistics(gb_audio_statistics& statistics) const noexcept;
     std::string GetLastError() const;
 
@@ -60,6 +64,12 @@ private:
     gb_result start_result_ = GB_ERROR_INTERNAL;
 
     FloatRingBuffer ring_buffer_;
+    SignalsmithPitchProcessor pitch_processor_;
+    std::vector<float> pitch_input_buffer_;
+    std::vector<float> pitch_output_buffer_;
+    std::atomic<float> pitch_semitones_{0.0F};
+    std::atomic<float> pitch_cents_{0.0F};
+    std::atomic<std::uint32_t> pitch_latency_samples_{0};
     std::atomic<bool> running_{false};
     std::atomic<HRESULT> last_hresult_{S_OK};
     std::atomic<std::uint32_t> capture_buffer_frames_{0};
@@ -74,6 +84,8 @@ private:
     std::atomic<float> input_rms_{0.0F};
     std::atomic<float> output_peak_{0.0F};
     std::atomic<float> output_rms_{0.0F};
+
+    void UpdatePitchTarget() noexcept;
 };
 
 }

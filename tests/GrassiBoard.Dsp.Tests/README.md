@@ -1,3 +1,3 @@
 # DSP tests
 
-DSP tests begin when the first DSP component is introduced. Milestone 1 performs transport only and contains no DSP.
+The first DSP coverage lives in `tests/GrassiBoard.Pitch.Tests`, which validates the Milestone 2 pitch adapter and generates comparison WAV files. This directory remains reserved for shared DSP tests introduced by later processing modules.

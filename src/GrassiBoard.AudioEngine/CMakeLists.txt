@@ -3,6 +3,8 @@ add_library(GrassiBoard.AudioEngine SHARED
   src/audio_engine.cpp
   src/device_enumerator.cpp
   src/device_enumerator.h
+  src/pitch_processor.cpp
+  src/pitch_processor.h
   src/wasapi_engine.cpp
   src/wasapi_engine.h
 )
@@ -11,6 +13,9 @@ target_compile_features(GrassiBoard.AudioEngine PUBLIC cxx_std_20)
 target_include_directories(GrassiBoard.AudioEngine
   PUBLIC
     "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+)
+target_include_directories(GrassiBoard.AudioEngine SYSTEM PRIVATE
+  "${PROJECT_SOURCE_DIR}/third_party/signalsmith-stretch"
 )
 
 target_compile_definitions(GrassiBoard.AudioEngine PRIVATE GRASSIBOARD_AUDIO_ENGINE_EXPORTS)
@@ -25,7 +30,7 @@ endif()
 
 set_target_properties(GrassiBoard.AudioEngine PROPERTIES
   OUTPUT_NAME "GrassiBoard.AudioEngine"
-  VERSION "0.2.0"
+  VERSION "0.3.0"
 )
 
 install(TARGETS GrassiBoard.AudioEngine

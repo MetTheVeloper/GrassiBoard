@@ -1,3 +1,3 @@
 # Test assets
 
-Audio fixtures will be added with provenance and license metadata when offline audio-file tests begin. Milestone 1 uses a physical microphone only and stores no audio.
+Milestone 2 synthesizes its 220 Hz reference signal at test time, so no third-party audio fixture is stored in the repository. Generated comparison WAV files are CI outputs and carry no external audio copyright.

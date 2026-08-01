@@ -18,7 +18,7 @@ param(
     [string]$WdkVersion = '10.0.28000.1839',
     [string]$SdkVersion = '10.0.26100.0',
     [string]$DotNetVersion = '8.0.423',
-    [string]$PitchBackendVersion = 'not-implemented'
+    [string]$PitchBackendVersion = 'signalsmith-stretch-1.3.2+57b93f4e'
 )
 
 $ErrorActionPreference = 'Stop'

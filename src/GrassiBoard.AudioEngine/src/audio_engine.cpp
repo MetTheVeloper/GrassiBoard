@@ -3,13 +3,14 @@
 #include "device_enumerator.h"
 #include "wasapi_engine.h"
 
+#include <cmath>
 #include <cstring>
 #include <new>
 #include <string>
 
 namespace {
-constexpr std::uint32_t kApiVersion = 2;
-constexpr char kEngineVersion[] = "0.2.0";
+constexpr std::uint32_t kApiVersion = 3;
+constexpr char kEngineVersion[] = "0.3.0";
 
 gb_result WriteUtf8Result(
     const std::string& value,
@@ -140,6 +141,33 @@ gb_result GB_CALL gb_engine_stop(const gb_engine_handle engine) noexcept
     catch (...) {
         return GB_ERROR_INTERNAL;
     }
+}
+
+gb_result GB_CALL gb_set_pitch_semitones(const gb_engine_handle engine, const float semitones) noexcept
+{
+    if (engine == nullptr || !std::isfinite(semitones)) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchSemitones(semitones);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_set_pitch_cents(const gb_engine_handle engine, const float cents) noexcept
+{
+    if (engine == nullptr || !std::isfinite(cents)) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchCents(cents);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_set_pitch_bypass(const gb_engine_handle engine, const std::uint32_t bypass) noexcept
+{
+    if (engine == nullptr || bypass > 1U) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchBypass(bypass != 0U);
+    return GB_OK;
 }
 
 gb_result GB_CALL gb_get_audio_statistics(

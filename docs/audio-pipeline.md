@@ -1,17 +1,20 @@
 # Audio pipeline
 
-Milestone 1 activates the first user-mode audio path:
+Milestone 2 activates the first real-time DSP path:
 
 ```text
 Selected physical microphone
-    ↓ WASAPI shared/event-driven capture
+    -> WASAPI shared/event-driven capture
 48 kHz mono float
-    ↓ preallocated ring buffer
-48 kHz stereo duplication
-    ↓ WASAPI shared/event-driven render
+    -> Signalsmith pitch processor or latency-aligned Bypass
+    -> preallocated mono ring buffer
+    -> stereo duplication
+    -> WASAPI shared/event-driven render
 Selected headset monitoring output
 ```
 
-Windows Audio performs endpoint format conversion and resampling where the physical device mix format differs from the requested internal format.
+Pitch and Fine Pitch targets are updated without restarting the stream. The processor applies 25 ms parameter smoothing, while Bypass uses a 10 ms crossfade between latency-aligned dry and wet signals. The UI reports the algorithmic pitch latency in samples and milliseconds separately from endpoint buffer and dropout diagnostics.
 
-No pitch, formant, noise processing, mixer, soundboard, virtual output, or kernel driver participates in this version.
+Windows Audio performs endpoint-format conversion and resampling where the physical device mix format differs from the requested internal format.
+
+Formant processing, selectable quality modes, noise processing, mixer, soundboard, virtual output, and kernel driver do not participate in this version.

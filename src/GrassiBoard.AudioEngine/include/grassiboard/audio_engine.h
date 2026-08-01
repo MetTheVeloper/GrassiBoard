@@ -38,7 +38,7 @@ struct gb_audio_statistics {
     std::uint32_t capture_buffer_frames;
     std::uint32_t render_buffer_frames;
     std::uint32_t ring_buffer_fill_frames;
-    std::uint32_t reserved;
+    std::uint32_t pitch_latency_samples;
     std::uint64_t captured_frames;
     std::uint64_t rendered_frames;
     std::uint64_t underrun_count;
@@ -74,6 +74,9 @@ GB_API gb_result GB_CALL gb_engine_start(
     const char* input_device_id_utf8,
     const char* monitor_device_id_utf8) noexcept;
 GB_API gb_result GB_CALL gb_engine_stop(gb_engine_handle engine) noexcept;
+GB_API gb_result GB_CALL gb_set_pitch_semitones(gb_engine_handle engine, float semitones) noexcept;
+GB_API gb_result GB_CALL gb_set_pitch_cents(gb_engine_handle engine, float cents) noexcept;
+GB_API gb_result GB_CALL gb_set_pitch_bypass(gb_engine_handle engine, std::uint32_t bypass) noexcept;
 GB_API gb_result GB_CALL gb_get_audio_statistics(
     gb_engine_handle engine,
     gb_audio_statistics* statistics) noexcept;

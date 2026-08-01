@@ -5,7 +5,7 @@ namespace GrassiBoard.Shared;
 
 public sealed record BuildInfo
 {
-    public static readonly string CurrentVersion = "0.2.0";
+    public static readonly string CurrentVersion = "0.3.0";
 
     [JsonPropertyName("Version")]
     public string Version { get; init; } = CurrentVersion;
@@ -35,7 +35,7 @@ public sealed record BuildInfo
     public string DotNetVersion { get; init; } = "8.0.423";
 
     [JsonPropertyName("PitchBackendVersion")]
-    public string PitchBackendVersion { get; init; } = "not-implemented";
+    public string PitchBackendVersion { get; init; } = "signalsmith-stretch-1.3.2+57b93f4e";
 
     public string ShortCommit => CommitSha.Length > 8 ? CommitSha[..8] : CommitSha;
 

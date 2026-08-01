@@ -1,7 +1,13 @@
 # Third-party licenses
 
-Milestone 1 has no third-party DSP dependency. The portable package contains components supplied by Microsoft as part of the self-contained .NET 8 Windows publish and the Microsoft Visual C++ runtime linkage selected by the build toolchain.
+## Signalsmith Stretch
+
+- Source: `third_party/signalsmith-stretch`
+- Upstream: https://github.com/Signalsmith-Audio/signalsmith-stretch
+- Pinned commit: `57b93f4e9206a089a45387eaa39bdc9f310d3308`
+- Reported library version: `1.3.2`
+- License: MIT
+
+The required MIT notice is included in `THIRD-PARTY-NOTICES.txt` and in the portable package.
 
 The project source is licensed under the Apache License 2.0; see `LICENSE`.
-
-Future DSP and driver-source dependencies must be added here with their exact version, source URL, license, and required notices before they are packaged.

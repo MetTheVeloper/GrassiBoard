@@ -38,6 +38,7 @@ Copy-Item -Path (Join-Path $DriverDirectory '*') -Destination $portableDriverSta
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\CHANGELOG.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README-FIRST.txt') -Destination $portableStage -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\THIRD-PARTY-NOTICES.txt') -Destination $portableStage -Force
 
 Get-ChildItem -Path $PublishDirectory, $NativeDirectory -Filter '*.pdb' -Recurse -ErrorAction SilentlyContinue |
     Copy-Item -Destination $symbolsStage -Force

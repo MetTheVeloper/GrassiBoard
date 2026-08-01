@@ -2,6 +2,22 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.3.0] - 2026-08-01
+
+### Added
+
+- `IPitchProcessor` abstraction and a first backend based on Signalsmith Stretch 1.3.2 at pinned commit `57b93f4e`.
+- Live pitch control from −12 to +12 semitones and fine control from −100 to +100 cents.
+- Twenty-five-millisecond pitch automation smoothing and a ten-millisecond bypass crossfade.
+- Latency-aligned dry bypass so toggling Pitch does not reset the WASAPI streams or jump the monitoring timeline.
+- Runtime reporting of algorithmic pitch latency in samples and milliseconds.
+- Offline WAV generation and measured-frequency tests for −12, −6, −3, 0, +3, +6, and +12 semitones.
+- Fixed-length, finite-sample, peak, bypass, variable-block, and rapid-automation pitch tests.
+
+### Not implemented
+
+- Formant preservation/shift, multiple quality modes in the UI, backend comparison, soundboard playback, and the virtual audio driver.
+
 ## [0.2.0] - 2026-08-01
 
 ### Added

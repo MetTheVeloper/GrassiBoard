@@ -1,14 +1,15 @@
-GrassiBoard v0.2.0 — Milestone 1
+GrassiBoard v0.3.0 — Milestone 2
 
-SAFETY: Use headphones, lower their volume first, and do not select speakers.
+SAFETY: Use headphones and lower their volume before starting the engine.
 
-1. Extract the entire ZIP into a new folder and run GrassiBoard.exe.
-2. Select the USB headset microphone under INPUT MICROPHONE.
-3. Select the same headset under MONITOR OUTPUT.
-4. Click Start engine, speak briefly, and confirm both meters move.
-5. Confirm your live microphone is audible in the headset.
-6. Click Stop engine, start it again, and confirm the UI remains responsive.
-7. Record buffer values and U/O/D dropout counters before stopping.
+1. Extract the entire ZIP and run GrassiBoard.exe.
+2. Select the Microsoft LifeChat microphone and headset output.
+3. Start the engine while Bypass pitch is checked; confirm clean monitoring.
+4. Uncheck Bypass pitch and test −3, −6, −12, +3, +6, and +12 semitones.
+5. Confirm speaking speed stays the same while vocal pitch changes.
+6. Move Pitch rapidly while speaking; listen for clicks, pops, cuts, or UI stalls.
+7. Test Fine Pitch at −100, −50, +50, and +100 cents.
+8. Toggle Bypass repeatedly and confirm the stream does not stop or reset.
+9. Record Pitch Latency, buffer values, and U/O/D counters.
 
-This build does not change pitch and does not install a driver.
-The driver-placeholder folder is documentation only and must not be installed.
+This build does not process formants and does not install a driver.

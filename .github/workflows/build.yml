@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 0.2.0
+  GRASSIBOARD_VERSION: 0.3.0
   DOTNET_SDK_VERSION: 8.0.423
   WDK_NUGET_VERSION: 10.0.28000.1839
   WINDOWS_SDK_VERSION: 10.0.26100.0
@@ -28,6 +28,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
+          submodules: recursive
 
       - name: Install pinned .NET SDK
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
@@ -62,6 +63,11 @@ jobs:
         run: |
           New-Item -ItemType Directory -Path ./artifacts/test-results -Force | Out-Null
           ctest --preset windows-x64-release --output-junit ./artifacts/test-results/native-tests.xml
+          Copy-Item `
+            ./out/build/windows-x64-release/pitch-test-output `
+            ./artifacts/test-results/pitch-samples `
+            -Recurse `
+            -Force
 
       - name: Run managed smoke tests
         shell: pwsh
@@ -133,6 +139,7 @@ jobs:
               'BuildInfo.json',
               'CHANGELOG.md',
               'README-FIRST.txt',
+              'THIRD-PARTY-NOTICES.txt',
               'driver-placeholder/README-NOT-A-DRIVER.txt'
             )
             foreach ($item in $required) {

@@ -4,23 +4,24 @@ GrassiBoard is a Windows x64 voice-processing and soundboard application. Develo
 
 ## Current release
 
-`v0.2.0` implements **Milestone 1 — Physical Microphone Passthrough**:
+`v0.3.0` implements **Milestone 2 — Pitch Shift Prototype**:
 
-- WPF device selectors and non-blocking Start/Stop controls
-- MMDevice enumeration for active capture and playback endpoints
-- Native C++20 shared/event-driven WASAPI engine
-- 48 kHz float microphone capture and stereo headset monitoring
-- Preallocated ring buffer with underrun, overrun, and discontinuity counters
-- Live input/output meters and buffer diagnostics
-- Native C ABI version 2 consumed through P/Invoke
+- Physical USB microphone capture and headset monitoring from v0.2.0
+- `IPitchProcessor` abstraction with a pinned Signalsmith Stretch backend
+- Live pitch from −12 to +12 semitones and fine pitch from −100 to +100 cents
+- Smoothed pitch automation without changing stream speed
+- Latency-aligned, crossfaded bypass
+- Algorithmic latency reporting in samples and milliseconds
+- Offline WAV sample outputs and frequency/length/finite/peak/automation tests
 
-Pitch, formant processing, soundboard playback, and the virtual audio driver are not implemented yet.
+Formant processing, backend comparison, soundboard playback, and the virtual audio driver are not implemented yet.
 
 ## Build
 
-Prerequisites for local native builds are Visual Studio 2022 with the Desktop development with C++ workload and .NET SDK `8.0.423`.
+Prerequisites are Visual Studio 2022 with the Desktop development with C++ workload, Git submodules, and .NET SDK `8.0.423`.
 
 ```powershell
+git submodule update --init --recursive
 cmake --preset windows-x64-release
 cmake --build --preset windows-x64-release
 ctest --preset windows-x64-release
@@ -28,12 +29,12 @@ dotnet run --project tests/GrassiBoard.App.SmokeTests/GrassiBoard.App.SmokeTests
 dotnet build src/GrassiBoard.App/GrassiBoard.App.csproj -c Release -p:Platform=x64
 ```
 
-GitHub Actions builds the downloadable, self-contained Windows package on every push to `main`.
+GitHub Actions builds the self-contained Windows package and pitch test samples on every push to `main`.
 
 ## Safety
 
-Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. Milestone 1 still contains no installable driver; driver development is deferred until Milestone 4.
+Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. Milestone 2 contains no installable driver.
 
 ## License
 
-See [LICENSE](LICENSE) and [LICENSES.md](LICENSES.md).
+See [LICENSE](LICENSE), [LICENSES.md](LICENSES.md), and [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
