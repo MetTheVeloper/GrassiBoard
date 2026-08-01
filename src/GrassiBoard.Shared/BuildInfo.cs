@@ -26,7 +26,7 @@ public sealed record BuildInfo
     public string TargetArchitecture { get; init; } = "x64";
 
     [JsonPropertyName("WdkVersion")]
-    public string WdkVersion { get; init; } = "10.0.28000.1839";
+    public string WdkVersion { get; init; } = "10.0.26100.6584";
 
     [JsonPropertyName("SdkVersion")]
     public string SdkVersion { get; init; } = "10.0.26100.0";

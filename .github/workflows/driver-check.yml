@@ -28,7 +28,7 @@ permissions:
 
 env:
   GRASSIBOARD_VERSION: 0.5.0
-  WDK_NUGET_VERSION: 10.0.28000.1839
+  WDK_NUGET_VERSION: 10.0.26100.6584
 
 jobs:
   build-driver:
