@@ -2,7 +2,7 @@
 
 - Version: `v0.5.1`
 - Milestone: `4 — Virtual Driver Skeleton`
-- Status: lifecycle hotfix in progress; awaiting automated and manual uninstall acceptance
+- Status: lifecycle hotfix automated acceptance passed; awaiting manual uninstall/reinstall/uninstall acceptance
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -18,6 +18,12 @@ CI builds the driver and native root-device helper from pinned WDK/SDK NuGet pac
 Manual acceptance is pending on Windows 10 x64. PCM cable transport is outside this milestone.
 
 Windows 10 build 19045 testing of v0.5.0 confirmed that the driver, both endpoints, and Windows Audio were healthy, but exposed an installer lifecycle bug. The generated instance ID was `ROOT\GRASSIBOARD_VIRTUAL_AUDIO\0000`, while scripts incorrectly assumed that it matched hardware ID `ROOT\GrassiBoardVirtualAudio`. v0.5.1 identifies the device by its HardwareID property and recovers the installed INF and signer certificate before removal. Milestone 4 remains open until the corrected uninstall/reinstall/uninstall sequence passes.
+
+## Milestone 4 hotfix automated result
+
+GitHub Actions [Build](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30711936461) and [Driver Artifact](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30711936484) passed for commit `227779b6`. The lifecycle regression fixture reproduced hardware ID `ROOT\GrassiBoardVirtualAudio` with generated instance ID `ROOT\GRASSIBOARD_VIRTUAL_AUDIO\0000`, then verified root-device discovery, actual-instance-to-OEM-INF mapping, and two healthy endpoints.
+
+The downloaded v0.5.1 driver artifact contained 14 valid manifest entries, no private key material, the corrected lifecycle scripts, and SYS/CAT signatures whose signer thumbprints matched the packaged public certificate. Full native, managed, driver, packaging, and artifact-isolation checks also passed.
 
 ## Milestone 4 automated result
 
