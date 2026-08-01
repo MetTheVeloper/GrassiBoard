@@ -2,7 +2,7 @@
 
 - Version: `v0.2.0`
 - Milestone: `1 — Physical Microphone Passthrough`
-- Status: CI passed; awaiting target-PC acceptance
+- Status: accepted by user
 - Target: Windows 10/11 x64
 - Audio processing: capture-to-monitor passthrough only
 - Virtual driver: safe placeholder only; not installable
@@ -11,15 +11,20 @@
 
 GitHub Actions build [run #7](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30701605192) passed on Windows x64. Native ABI/lifecycle tests, managed BuildInfo tests, WPF publishing, package validation, and all four artifact uploads succeeded. Driver Placeholder Check run #2 also passed.
 
-## Current acceptance gate
+## Manual acceptance
 
-Milestone 2 must not begin until the v0.2.0 workflow succeeds and the user confirms on the target PC that:
+Milestone 1 was accepted on 2026-08-01 with the following target-PC result:
 
-- the USB headset microphone and monitor endpoint are selectable;
-- Start and Stop work repeatedly without a crash;
-- input and output meters move while speaking;
-- microphone audio is audible through the selected headset;
-- the UI remains responsive and dropout counters are reported.
+- Windows version: Windows 10
+- USB headset: Microsoft LifeChat LX-3000
+- Input and monitor endpoints visible: Yes
+- Engine started and microphone monitoring was audible: Yes
+- Input and output meters moved: Yes
+- Repeated Start/Stop: Yes
+- Observed diagnostics: Capture `1056`, Render `1056`, Ring Fill `480`, U/O/D `2/0/1`
+- Screenshot evidence: supplied by the user
+
+Milestone 2 is unblocked.
 
 ## Previous accepted milestone
 
