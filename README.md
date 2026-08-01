@@ -4,7 +4,7 @@ GrassiBoard is a Windows x64 voice-processing and soundboard application. Develo
 
 ## Current release
 
-`v0.5.1` is the **Milestone 4 — Virtual driver skeleton** lifecycle hotfix while retaining the accepted Milestone 3 app and DSP:
+`v0.6.0` is **Milestone 5 — Virtual Cable PCM Transport** while retaining the accepted app/DSP and driver lifecycle:
 
 - Live pitch and Fine Pitch from Milestone 2
 - Formant preservation and independent formant shift from −12 to +12 semitones
@@ -16,8 +16,11 @@ GrassiBoard is a Windows x64 voice-processing and soundboard application. Develo
 - Balanced default selected by an explicit benchmark policy
 - A separate test-signed x64 driver package with `GrassiBoard Virtual Cable Input` and `GrassiBoard Virtual Microphone`
 - Controlled install, removal, TESTSIGNING, and diagnostic scripts
+- Real PCM transport from the virtual render endpoint to the virtual microphone
+- Fixed 48 kHz / 16-bit / stereo transport with pre-roll, silence, stale-data flushing, and underrun/overrun accounting
+- A deterministic WAV generator and automated transport-policy regression tests
 
-The driver endpoints do not transport PCM between each other yet; that begins in Milestone 5. Soundboard playback is also not implemented yet.
+The cable can be tested without opening GrassiBoard. Sending the processed app output to the virtual cable begins in Milestone 6; Soundboard playback is not implemented yet.
 
 ## Build
 
@@ -36,7 +39,7 @@ GitHub Actions builds the self-contained Windows package, comparison WAV files, 
 
 ## Safety
 
-Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. The v0.5.1 driver is test-signed and distributed separately; read `DRIVER-TESTING.md` inside that package before changing TESTSIGNING.
+Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. The v0.6.0 driver is test-signed and distributed separately; read `DRIVER-TESTING.md` inside that package before changing TESTSIGNING.
 
 ## Documentation
 

@@ -2,6 +2,21 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.6.0] - 2026-08-01
+
+### Added
+
+- A lock-free, preallocated PCM ring connecting the WaveRT system-render stream to the system-capture stream.
+- A shared `48 kHz`, 16-bit, stereo device format for both cable endpoints; Windows Audio performs client conversion outside the transport.
+- Ten-millisecond capture pre-roll, silence on underrun or inactive render, and generation-based flushing across pause/stop/restart.
+- Explicit underrun, overrun, and fill accounting in the kernel transport.
+- Deterministic transport-policy tests covering wrap order, pre-roll, underrun silence, no stale repetition, overrun, and restart flushing.
+- A packaged PowerShell generator for a fixed 440/660/880 Hz cable acceptance WAV.
+
+### Scope
+
+- Milestone 5 validates the cable independently of the GrassiBoard app. Routing the processed app output into the cable remains Milestone 6.
+
 ## [0.5.1] - 2026-08-01
 
 ### Fixed

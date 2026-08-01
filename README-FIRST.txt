@@ -1,4 +1,4 @@
-GrassiBoard v0.5.1 — Milestone 4 hotfix
+GrassiBoard v0.6.0 — Milestone 5 virtual cable transport
 
 SAFETY: Use headphones and lower their volume before starting the engine.
 
@@ -15,3 +15,4 @@ SAFETY: Use headphones and lower their volume before starting the engine.
 
 Balanced is the benchmark-selected default. The portable ZIP never installs a driver.
 The separately downloaded driver ZIP contains DRIVER-TESTING.md and the explicit test-signing workflow.
+The cable transport is tested independently of the app by following that driver guide.

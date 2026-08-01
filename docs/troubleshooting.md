@@ -38,7 +38,13 @@ Report the source and destination modes, the latency shown after the switch, whe
 
 ## Driver questions
 
-The v0.5.1 driver is in a separate test-signed ZIP. Read `DRIVER-TESTING.md` before changing TESTSIGNING. If installation or removal fails, run `scripts/Collect-DriverDiagnostics.ps1` before making further changes. The scripts do not disable Secure Boot, suspend BitLocker, or reboot automatically.
+The v0.6.0 driver is in a separate test-signed ZIP. Read `DRIVER-TESTING.md` before changing TESTSIGNING. If installation or removal fails, run `scripts/Collect-DriverDiagnostics.ps1` before making further changes. The scripts do not disable Secure Boot, suspend BitLocker, or reboot automatically.
+
+## Virtual cable is silent
+
+Confirm the player is routed to `GrassiBoard Virtual Cable Input`, the recorder is using `GrassiBoard Virtual Microphone`, and both endpoint Advanced formats show 2-channel, 16-bit, 48000 Hz. Start the recorder before playback so capture can pre-roll. Milestone 5 does not route the GrassiBoard app into the cable; use `scripts/New-CableTestWave.ps1` and a media player for this test.
+
+If the first 10 ms is silent, that is expected pre-roll. A silent tail after playback is also expected. Repeated tones after playback, noise instead of silence, an Audio service crash, or a recorder hang is a failure; collect diagnostics before uninstalling.
 
 Browser-downloaded PowerShell scripts can be blocked by `RemoteSigned`. After verifying that the ZIP came from the GrassiBoard release, run `Get-ChildItem -Filter *.ps1 -File | Unblock-File` only inside its `scripts` directory. Do not permanently set the machine execution policy to `Unrestricted` or `Bypass`.
 
