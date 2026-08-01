@@ -2,7 +2,7 @@
 
 - Version: `v0.3.0`
 - Milestone: `2 — Pitch Shift Prototype`
-- Status: implementation and automated validation in progress
+- Status: automated validation passed; awaiting manual acceptance
 - Target: Windows 10/11 x64
 - Audio processing: live pitch shift with Fine Pitch, smoothing, latency-aligned Bypass, and latency reporting
 - Pitch backend: Signalsmith Stretch 1.3.2, commit `57b93f4e9206a089a45387eaa39bdc9f310d3308`
@@ -12,7 +12,11 @@
 
 The automated suite synthesizes a 220 Hz reference signal, exercises `-12`, `-6`, `-3`, `0`, `+3`, `+6`, and `+12` semitone settings with irregular block sizes, estimates the resulting frequencies, verifies finite/bounded output, checks sample counts, tests exact latency-aligned Bypass, and stress-tests rapid parameter automation. It also writes comparison WAV files and a JSON latency report to the test-results artifact.
 
-Physical-headset listening and live-control acceptance remain pending until the `v0.3.0` prerelease is built.
+GitHub Actions Build [run #11](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30702768812) passed on Windows x64. Native compilation with warnings treated as errors, all CTest and managed tests, WPF publishing, package-contract validation, and all four artifact uploads succeeded.
+
+The generated report measured algorithmic latency at `2560` samples (`53.33 ms` at 48 kHz). Measured outputs were `110.45`, `155.65`, `189.04`, `220.38`, `265.07`, `312.85`, and `442.81 Hz` for the seven pitch targets; every result passed the configured tolerance.
+
+Physical-headset listening, perceived speed, artifact, live-control, and repeated-Bypass acceptance remain pending for the `v0.3.0` prerelease.
 
 ## Previous accepted milestones
 
