@@ -68,7 +68,7 @@
     <ResourceCompile Include="Sysvad\GrassiBoardVirtualAudio\GrassiBoardVirtualAudio.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="GrassiBoardVirtualAudio.inf" />
+    <None Include="GrassiBoardVirtualAudio.inf" />
     <FilesToPackage Include="$(TargetPath)" Condition="'$(ConfigurationType)'=='Driver'" />
   </ItemGroup>
   <ItemGroup>
