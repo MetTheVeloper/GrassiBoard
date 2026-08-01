@@ -2,7 +2,7 @@
 
 - Version: `v0.5.0`
 - Milestone: `4 — Virtual Driver Skeleton`
-- Status: implementation in progress; awaiting automated and manual acceptance
+- Status: automated acceptance passed; awaiting manual Windows acceptance
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -16,6 +16,12 @@ The driver is a minimal extraction of Microsoft's SysVAD/WaveRT code pinned to c
 CI builds the driver and native root-device helper from pinned WDK/SDK NuGet packages. An ephemeral certificate signs the SYS and generated CAT; only the public CER is packaged. Installation, removal, TESTSIGNING changes, and diagnostics are explicit scripts. No script changes Secure Boot or BitLocker and no script reboots automatically.
 
 Manual acceptance is pending on Windows 10 x64. PCM cable transport is outside this milestone.
+
+## Milestone 4 automated result
+
+GitHub Actions [Build run #24](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30709327790) and [Driver Artifact run #12](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30709327823) passed for commit `6a9ed916`. The native and managed regression suites, `/W4 /WX` driver build, root-device helper build, INF signability check, CAT generation, ephemeral test signing, portable-package isolation, and all artifact uploads succeeded.
+
+The independently downloaded driver artifact contained the expected 14 manifest entries. Every SHA-256 entry matched, the SYS and CAT signer thumbprints matched the packaged public certificate, and no PFX, PVK, PEM, or private key was present. The packaged driver ZIP SHA-256 was `d430c8903a7e70932366d70d74b7a570948d35903f4e18a3e73e5105ef9f78f4`.
 
 ## Milestone 3 automated result
 
