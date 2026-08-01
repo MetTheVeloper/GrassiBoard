@@ -1,3 +1,3 @@
 # DSP tests
 
-The first DSP coverage lives in `tests/GrassiBoard.Pitch.Tests`, which validates the Milestone 2 pitch adapter and generates comparison WAV files. This directory remains reserved for shared DSP tests introduced by later processing modules.
+Pitch and Formant coverage lives in `tests/GrassiBoard.Pitch.Tests`, including three-configuration benchmarks and live-switch output generation. This directory remains reserved for shared DSP tests introduced by later processing modules.

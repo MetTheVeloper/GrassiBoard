@@ -28,6 +28,14 @@ Confirm Bypass is unchecked and set Pitch to at least `-3` or `+3`. Fine Pitch i
 
 Pitch shifting introduces reported algorithmic latency in addition to endpoint buffering. Include the Pitch Latency value, selected pitch/fine values, and whether the issue also occurs at `0` semitones when reporting artifacts.
 
+## Formant change is difficult to hear
+
+Disable Bypass, set Pitch to `+7` or `-7`, keep Formant Shift at `0`, and toggle Preserve formants while speaking continuously. Then enable preservation and compare Formant Shift `-6` with `+6`.
+
+## Quality mode switch issue
+
+Report the source and destination modes, the latency shown after the switch, whether Engine Status ever stopped, and the U/O/D counters. All three processors are prepared before Start; a mode change should not restart WASAPI.
+
 ## Driver questions
 
-There is no installable driver in v0.3.0. The `driver-placeholder` directory is informational and must not be installed.
+There is no installable driver in v0.4.0. The `driver-placeholder` directory is informational and must not be installed.

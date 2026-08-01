@@ -1,26 +1,28 @@
 # Test plan
 
-## Automated Milestone 2 checks
+## Automated Milestone 3 checks
 
-- Configure and build the native x64 Release DLL with warnings treated as errors.
-- Verify native ABI version 3, engine version, lifecycle, idle statistics, pitch setters, and exported ping function with CTest.
-- Run offline pitch tests at seven semitone targets using irregular block sizes.
-- Verify output duration, finite/bounded samples, approximate output frequency, latency-aligned Bypass, and stability during rapid parameter changes.
-- Generate comparison WAV files and a machine-readable pitch/latency report.
-- Parse and validate v0.3.0 BuildInfo with the managed smoke-test executable.
-- Build and self-contained-publish the WPF x64 application.
-- Build and validate the explicitly non-installable driver placeholder.
-- Verify package contents and create portable, driver-placeholder, symbols, and test-result ZIP files.
+- Build the native x64 Release DLL with warnings treated as errors and validate native ABI version 4.
+- Retain Milestone 2 frequency, sample-count, finite/peak, variable-block, Bypass, and automation coverage.
+- Generate voice-like source audio with deterministic harmonic/formant envelopes.
+- Verify measurable output differences for preservation on/off and a +6-semitone Formant shift.
+- Exercise live Low latency, High quality, and Balanced transitions without resetting the processor.
+- Reject non-finite/excessive output, severe sample discontinuities, or long silent gaps during live switching.
+- Benchmark all three configurations for algorithmic latency, processing time, estimated single-core percentage, and pitch-frequency error.
+- Enforce the explicit Balanced default-selection policy.
+- Generate input, pitch, Formant, and live-switch WAV files plus JSON reports.
+- Run managed BuildInfo tests, publish WPF, validate the non-installable driver placeholder, package, and verify four artifacts.
 
-GitHub-hosted runners cannot validate audible quality, perceived speech speed, severe clicks/pops on a physical USB headset, or real endpoint timing. Those checks are manual.
+Runner timing is comparative evidence, not a promise of target-PC CPU usage. Audible Formant character, perceived quality, and physical endpoint stability remain manual checks.
 
 ## Manual acceptance
 
-1. Select the USB headset microphone and matching headset output.
-2. Lower headset volume, leave Bypass enabled, start the engine, and confirm clean monitoring.
-3. Disable Bypass and test `-12`, `-6`, `-3`, `+3`, `+6`, and `+12` semitones while speaking continuously.
-4. Confirm pitch changes immediately while speech speed remains stable.
-5. Move Pitch and Fine Pitch controls rapidly and listen for severe clicks, pops, cuts, or instability.
-6. Toggle Bypass repeatedly without stopping the engine and confirm the dry signal remains clean.
-7. Record Pitch Latency, endpoint buffer sizes, Ring Fill, and U/O/D counters after at least 30 seconds.
-8. Stop the engine and close the application normally.
+1. Start with headphones at low volume, Balanced mode, preservation enabled, and Pitch Bypass enabled.
+2. Confirm clean Bypass, then disable it and set Pitch to `+7`.
+3. Toggle Preserve formants and confirm an audible vocal-character difference.
+4. Test Formant Shift at `-6`, `0`, and `+6`.
+5. Speak continuously while switching among Low latency, Balanced, and High quality.
+6. Confirm the stream never stops or resets; compare delay and sound quality.
+7. Move Pitch/Formant quickly and listen for severe clicks, pops, cuts, or UI stalls.
+8. Record each mode's Pitch Latency plus Capture/Render, Ring Fill, and U/O/D after at least 30 seconds.
+9. Toggle Bypass repeatedly and repeat Start/Stop three times.

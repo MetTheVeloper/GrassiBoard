@@ -1,32 +1,35 @@
 # Architecture
 
-## Milestone 2 boundary
+## Milestone 3 boundary
 
 The repository has three layers:
 
 1. `GrassiBoard.App`: a WPF `net8.0-windows` x64 UI process.
-2. `GrassiBoard.AudioEngine`: a native C++20 x64 DLL exposing C ABI version 3.
+2. `GrassiBoard.AudioEngine`: a native C++20 x64 DLL exposing C ABI version 4.
 3. `GrassiBoard.Driver`: a non-installable placeholder until Milestone 4.
 
 The app calls the native layer through source-generated P/Invoke. C++/CLI is not used.
 
 ## Audio ownership
 
-A dedicated native STA worker owns every MMDevice and WASAPI interface from creation through release. Capture and render use shared-mode event callbacks. A single worker waits on capture, render, and stop events, which avoids COM-interface handoff and keeps the audio path free of mutexes.
+A dedicated native STA worker owns every MMDevice and WASAPI interface from creation through release. Capture and render use shared-mode event callbacks. A single worker waits on capture, render, and stop events, avoiding COM-interface handoff and mutexes in the audio path.
 
-Microphone samples are converted to the fixed 48 kHz mono processing format, passed through a preallocated `IPitchProcessor`, and written to a preallocated mono float ring buffer. The render side removes them and duplicates the mono sample into stereo headset output. Windows Audio performs endpoint-format conversion and resampling where needed.
+Microphone samples are converted to 48 kHz mono float, processed, and written to a preallocated mono ring buffer. Render duplicates the processed mono signal to stereo. Windows Audio performs endpoint-format conversion and resampling where needed.
 
-The real-time loop performs no logging, file I/O, exception propagation, or blocking lock acquisition. Audio buffers and pitch-backend working memory are prepared before streaming starts. Statistics and live pitch targets cross threads through atomics; device enumeration and JSON serialization occur only while the engine is stopped.
+## Live DSP ownership
 
-## Pitch backend
+`LivePitchProcessor` owns three `SignalsmithPitchProcessor` instances configured as Low latency, Balanced, and High quality. All three are configured, allocated, and reset before WASAPI starts. They remain warm from the same input timeline, allowing a 20 ms crossfade to another mode without stopping or resetting the stream. This trades additional CPU for deterministic live switching; the aggregate cost is measured by CI.
 
-Milestone 2 uses Signalsmith Stretch 1.3.2 at pinned commit `57b93f4e9206a089a45387eaa39bdc9f310d3308`. The native adapter implements `IPitchProcessor`, smooths live pitch changes over 25 ms, keeps dry and wet paths latency-aligned, and crossfades Bypass over 10 ms. Formant controls and selectable quality modes remain outside this milestone.
+Pitch, Fine Pitch, Formant Shift, preservation, Bypass, and requested quality mode cross threads through atomics. Pitch/Formant/preservation targets are smoothed over 25 ms. Each mode owns its latency-aligned dry delay, and Bypass crossfades over 10 ms.
+
+The real-time loop performs no logging, file I/O, exception propagation, blocking lock acquisition, or first-use allocation.
 
 ## Version contract
 
-- Product version: `0.3.0`
-- Native ABI version: `3`
+- Product version: `0.4.0`
+- Native ABI version: `4`
 - Architecture: `x64`
 - Processing format: `48,000 Hz`, 32-bit float, mono processing and stereo monitoring
-- Pitch range: `-12` to `+12` semitones plus `-100` to `+100` cents fine adjustment
-- Default state: Bypass enabled
+- Pitch range: `-12` to `+12` semitones plus `-100` to `+100` cents
+- Formant shift range: `-12` to `+12` semitones
+- Default mode: Balanced, preservation enabled, Bypass enabled

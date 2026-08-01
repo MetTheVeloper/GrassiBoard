@@ -223,6 +223,21 @@ void WasapiEngine::SetPitchBypass(const bool bypass) noexcept
     pitch_processor_.SetBypass(bypass);
 }
 
+void WasapiEngine::SetFormantSemitones(const float semitones) noexcept
+{
+    pitch_processor_.SetFormantSemitones(semitones);
+}
+
+void WasapiEngine::SetFormantPreservation(const bool preserve) noexcept
+{
+    pitch_processor_.SetFormantPreservation(preserve);
+}
+
+void WasapiEngine::SetPitchQuality(const PitchQualityMode mode) noexcept
+{
+    pitch_processor_.SetQualityMode(mode);
+}
+
 void WasapiEngine::UpdatePitchTarget() noexcept
 {
     const float semitones = pitch_semitones_.load(std::memory_order_acquire);
@@ -239,7 +254,7 @@ void WasapiEngine::GetStatistics(gb_audio_statistics& statistics) const noexcept
     statistics.capture_buffer_frames = capture_buffer_frames_.load(std::memory_order_relaxed);
     statistics.render_buffer_frames = render_buffer_frames_.load(std::memory_order_relaxed);
     statistics.ring_buffer_fill_frames = ring_buffer_fill_frames_.load(std::memory_order_relaxed);
-    statistics.pitch_latency_samples = pitch_latency_samples_.load(std::memory_order_relaxed);
+    statistics.pitch_latency_samples = pitch_processor_.GetLatencySamples();
     statistics.captured_frames = captured_frames_.load(std::memory_order_relaxed);
     statistics.rendered_frames = rendered_frames_.load(std::memory_order_relaxed);
     statistics.underrun_count = underrun_count_.load(std::memory_order_relaxed);
@@ -290,7 +305,6 @@ void WasapiEngine::ResetStatistics() noexcept
     capture_buffer_frames_.store(0U, std::memory_order_relaxed);
     render_buffer_frames_.store(0U, std::memory_order_relaxed);
     ring_buffer_fill_frames_.store(0U, std::memory_order_relaxed);
-    pitch_latency_samples_.store(0U, std::memory_order_relaxed);
     captured_frames_.store(0U, std::memory_order_relaxed);
     rendered_frames_.store(0U, std::memory_order_relaxed);
     underrun_count_.store(0U, std::memory_order_relaxed);
@@ -380,10 +394,6 @@ void WasapiEngine::Worker() noexcept
             pitch_output_buffer_.resize(captureFrames);
             if (!pitch_processor_.Prepare(kSampleRate, kCaptureChannels, captureFrames)) {
                 result = E_FAIL;
-            }
-            else {
-                pitch_latency_samples_.store(
-                    pitch_processor_.GetLatencySamples(), std::memory_order_relaxed);
             }
         }
         catch (...) {

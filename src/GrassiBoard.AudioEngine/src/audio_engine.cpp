@@ -9,8 +9,8 @@
 #include <string>
 
 namespace {
-constexpr std::uint32_t kApiVersion = 3;
-constexpr char kEngineVersion[] = "0.3.0";
+constexpr std::uint32_t kApiVersion = 4;
+constexpr char kEngineVersion[] = "0.4.0";
 
 gb_result WriteUtf8Result(
     const std::string& value,
@@ -167,6 +167,38 @@ gb_result GB_CALL gb_set_pitch_bypass(const gb_engine_handle engine, const std::
         return GB_ERROR_INVALID_ARGUMENT;
     }
     static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchBypass(bypass != 0U);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_set_formant_semitones(const gb_engine_handle engine, const float semitones) noexcept
+{
+    if (engine == nullptr || !std::isfinite(semitones)) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetFormantSemitones(semitones);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_set_formant_preservation(
+    const gb_engine_handle engine,
+    const std::uint32_t preserve) noexcept
+{
+    if (engine == nullptr || preserve > 1U) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetFormantPreservation(preserve != 0U);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_set_pitch_quality(
+    const gb_engine_handle engine,
+    const std::uint32_t quality_mode) noexcept
+{
+    if (engine == nullptr || quality_mode > static_cast<std::uint32_t>(grassiboard::PitchQualityMode::HighQuality)) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchQuality(
+        static_cast<grassiboard::PitchQualityMode>(quality_mode));
     return GB_OK;
 }
 

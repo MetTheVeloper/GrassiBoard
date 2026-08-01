@@ -2,6 +2,26 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.4.0] - 2026-08-01
+
+### Added
+
+- Formant preservation and independent formant shift from −12 to +12 semitones.
+- Low latency, Balanced, and High quality Signalsmith configurations.
+- Pre-warmed live processors and a 20 ms quality-mode crossfade that does not restart WASAPI.
+- Smoothed preservation and Formant automation.
+- Per-configuration CPU, algorithmic-latency, and frequency-accuracy benchmarks.
+- Voice-like comparison WAVs for preservation, Formant shift, and live configuration changes.
+- Native ABI version 4 with Formant and quality-mode controls.
+
+### Default selection
+
+- Balanced remains the default when its measured frequency error is at most 3%, its measured single-core cost is at most 25%, and its latency remains below High quality. Exact CI results are recorded in `docs/pitch-benchmark.md`.
+
+### Not implemented
+
+- Additional pitch backends, soundboard playback, noise processing, and the virtual audio driver.
+
 ## [0.3.0] - 2026-08-01
 
 ### Added

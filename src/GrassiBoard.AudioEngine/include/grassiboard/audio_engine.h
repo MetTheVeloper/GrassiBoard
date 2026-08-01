@@ -77,6 +77,9 @@ GB_API gb_result GB_CALL gb_engine_stop(gb_engine_handle engine) noexcept;
 GB_API gb_result GB_CALL gb_set_pitch_semitones(gb_engine_handle engine, float semitones) noexcept;
 GB_API gb_result GB_CALL gb_set_pitch_cents(gb_engine_handle engine, float cents) noexcept;
 GB_API gb_result GB_CALL gb_set_pitch_bypass(gb_engine_handle engine, std::uint32_t bypass) noexcept;
+GB_API gb_result GB_CALL gb_set_formant_semitones(gb_engine_handle engine, float semitones) noexcept;
+GB_API gb_result GB_CALL gb_set_formant_preservation(gb_engine_handle engine, std::uint32_t preserve) noexcept;
+GB_API gb_result GB_CALL gb_set_pitch_quality(gb_engine_handle engine, std::uint32_t quality_mode) noexcept;
 GB_API gb_result GB_CALL gb_get_audio_statistics(
     gb_engine_handle engine,
     gb_audio_statistics* statistics) noexcept;

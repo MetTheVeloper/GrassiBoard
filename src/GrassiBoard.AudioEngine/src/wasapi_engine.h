@@ -45,6 +45,9 @@ public:
     void SetPitchSemitones(float semitones) noexcept;
     void SetPitchCents(float cents) noexcept;
     void SetPitchBypass(bool bypass) noexcept;
+    void SetFormantSemitones(float semitones) noexcept;
+    void SetFormantPreservation(bool preserve) noexcept;
+    void SetPitchQuality(PitchQualityMode mode) noexcept;
     void GetStatistics(gb_audio_statistics& statistics) const noexcept;
     std::string GetLastError() const;
 
@@ -64,12 +67,11 @@ private:
     gb_result start_result_ = GB_ERROR_INTERNAL;
 
     FloatRingBuffer ring_buffer_;
-    SignalsmithPitchProcessor pitch_processor_;
+    LivePitchProcessor pitch_processor_;
     std::vector<float> pitch_input_buffer_;
     std::vector<float> pitch_output_buffer_;
     std::atomic<float> pitch_semitones_{0.0F};
     std::atomic<float> pitch_cents_{0.0F};
-    std::atomic<std::uint32_t> pitch_latency_samples_{0};
     std::atomic<bool> running_{false};
     std::atomic<HRESULT> last_hresult_{S_OK};
     std::atomic<std::uint32_t> capture_buffer_frames_{0};

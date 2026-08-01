@@ -11,7 +11,7 @@ namespace GrassiBoard;
 
 public partial class MainWindow : Window
 {
-    private const uint ExpectedNativeApiVersion = 3;
+    private const uint ExpectedNativeApiVersion = 4;
     private readonly DispatcherTimer _meterTimer;
     private nint _engine;
     private bool _running;
@@ -102,7 +102,7 @@ public partial class MainWindow : Window
                 }
 
                 _running = true;
-                SetNativeStatus("Running · 48 kHz · Pitch", true);
+                SetNativeStatus($"Running · 48 kHz · {SelectedQualityName()}", true);
             }
             else
             {
@@ -160,11 +160,61 @@ public partial class MainWindow : Window
         }
     }
 
+    private void FormantSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (FormantValueText is null)
+        {
+            return;
+        }
+        FormantValueText.Text = $"{e.NewValue:+0.0;-0.0;0} semitones";
+        if (_engine != nint.Zero)
+        {
+            NativeMethods.SetFormantSemitones(_engine, (float)e.NewValue);
+        }
+    }
+
+    private void FormantPreservationCheck_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_engine != nint.Zero)
+        {
+            NativeMethods.SetFormantPreservation(
+                _engine, FormantPreservationCheck.IsChecked == true ? 1U : 0U);
+        }
+    }
+
+    private void PitchQualityCombo_SelectionChanged(
+        object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_engine != nint.Zero && PitchQualityCombo.SelectedIndex >= 0)
+        {
+            NativeMethods.SetPitchQuality(_engine, (uint)PitchQualityCombo.SelectedIndex);
+            if (_running)
+            {
+                SetNativeStatus($"Running · 48 kHz · {SelectedQualityName()}", true);
+            }
+        }
+    }
+
+    private string SelectedQualityName()
+    {
+        return PitchQualityCombo.SelectedIndex switch
+        {
+            0 => "Low latency",
+            2 => "High quality",
+            _ => "Balanced"
+        };
+    }
+
     private void ApplyPitchSettings()
     {
         NativeMethods.SetPitchSemitones(_engine, (float)PitchSlider.Value);
         NativeMethods.SetPitchCents(_engine, (float)FinePitchSlider.Value);
         NativeMethods.SetPitchBypass(_engine, PitchBypassCheck.IsChecked == true ? 1U : 0U);
+        NativeMethods.SetFormantSemitones(_engine, (float)FormantSlider.Value);
+        NativeMethods.SetFormantPreservation(
+            _engine, FormantPreservationCheck.IsChecked == true ? 1U : 0U);
+        NativeMethods.SetPitchQuality(_engine, (uint)Math.Max(PitchQualityCombo.SelectedIndex, 0));
     }
 
     private void RefreshDevices()
@@ -406,6 +456,15 @@ public partial class MainWindow : Window
 
         [LibraryImport(LibraryName, EntryPoint = "gb_set_pitch_bypass")]
         internal static partial NativeResult SetPitchBypass(nint engine, uint bypass);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_set_formant_semitones")]
+        internal static partial NativeResult SetFormantSemitones(nint engine, float semitones);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_set_formant_preservation")]
+        internal static partial NativeResult SetFormantPreservation(nint engine, uint preserve);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_set_pitch_quality")]
+        internal static partial NativeResult SetPitchQuality(nint engine, uint qualityMode);
 
         [LibraryImport(LibraryName, EntryPoint = "gb_get_audio_statistics")]
         internal static partial NativeResult GetAudioStatistics(nint engine, out AudioStatistics statistics);

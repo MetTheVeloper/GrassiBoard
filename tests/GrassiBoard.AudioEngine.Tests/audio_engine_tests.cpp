@@ -7,12 +7,12 @@
 
 int main()
 {
-    if (gb_get_api_version() != 3U) {
+    if (gb_get_api_version() != 4U) {
         std::cerr << "Unexpected native API version.\n";
         return 1;
     }
 
-    if (std::strcmp(gb_get_version(), "0.3.0") != 0) {
+    if (std::strcmp(gb_get_version(), "0.4.0") != 0) {
         std::cerr << "Unexpected native engine version.\n";
         return 2;
     }
@@ -24,7 +24,7 @@ int main()
     }
 
     gb_engine_handle engine = nullptr;
-    if (gb_engine_create(3U, &engine) != GB_OK || engine == nullptr) {
+    if (gb_engine_create(4U, &engine) != GB_OK || engine == nullptr) {
         std::cerr << "Engine creation failed.\n";
         return 4;
     }
@@ -43,7 +43,13 @@ int main()
         gb_set_pitch_cents(engine, -25.0F) != GB_OK ||
         gb_set_pitch_bypass(engine, 0U) != GB_OK ||
         gb_set_pitch_bypass(engine, 2U) != GB_ERROR_INVALID_ARGUMENT ||
-        gb_set_pitch_semitones(engine, std::numeric_limits<float>::quiet_NaN()) != GB_ERROR_INVALID_ARGUMENT) {
+        gb_set_pitch_semitones(engine, std::numeric_limits<float>::quiet_NaN()) != GB_ERROR_INVALID_ARGUMENT ||
+        gb_set_formant_semitones(engine, 3.0F) != GB_OK ||
+        gb_set_formant_preservation(engine, 1U) != GB_OK ||
+        gb_set_formant_preservation(engine, 2U) != GB_ERROR_INVALID_ARGUMENT ||
+        gb_set_pitch_quality(engine, 0U) != GB_OK ||
+        gb_set_pitch_quality(engine, 2U) != GB_OK ||
+        gb_set_pitch_quality(engine, 3U) != GB_ERROR_INVALID_ARGUMENT) {
         std::cerr << "Pitch parameter contract failed.\n";
         gb_engine_destroy(engine);
         return 6;

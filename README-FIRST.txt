@@ -1,15 +1,16 @@
-GrassiBoard v0.3.0 — Milestone 2
+GrassiBoard v0.4.0 — Milestone 3
 
 SAFETY: Use headphones and lower their volume before starting the engine.
 
 1. Extract the entire ZIP and run GrassiBoard.exe.
 2. Select the Microsoft LifeChat microphone and headset output.
-3. Start the engine while Bypass pitch is checked; confirm clean monitoring.
-4. Uncheck Bypass pitch and test −3, −6, −12, +3, +6, and +12 semitones.
-5. Confirm speaking speed stays the same while vocal pitch changes.
-6. Move Pitch rapidly while speaking; listen for clicks, pops, cuts, or UI stalls.
-7. Test Fine Pitch at −100, −50, +50, and +100 cents.
-8. Toggle Bypass repeatedly and confirm the stream does not stop or reset.
-9. Record Pitch Latency, buffer values, and U/O/D counters.
+3. Start in Balanced mode with Bypass pitch checked; confirm clean monitoring.
+4. Uncheck Bypass and set Pitch to +7, then toggle Preserve formants while speaking.
+5. Confirm that preservation on/off has an audible vocal-character difference.
+6. Test Formant Shift at −6, 0, and +6 semitones with preservation enabled.
+7. Switch live between Low latency, Balanced, and High quality while speaking continuously.
+8. Confirm the stream does not stop and compare latency and sound quality between modes.
+9. Move Pitch and Formant controls rapidly and listen for severe clicks, pops, or cuts.
+10. Toggle Bypass repeatedly, repeat Start/Stop three times, and record latency plus U/O/D counters.
 
-This build does not process formants and does not install a driver.
+Balanced is the benchmark-selected default. This build does not install a driver.

@@ -4,17 +4,18 @@ GrassiBoard is a Windows x64 voice-processing and soundboard application. Develo
 
 ## Current release
 
-`v0.3.0` implements **Milestone 2 — Pitch Shift Prototype**:
+`v0.4.0` implements **Milestone 3 — Formant and quality comparison**:
 
-- Physical USB microphone capture and headset monitoring from v0.2.0
-- `IPitchProcessor` abstraction with a pinned Signalsmith Stretch backend
-- Live pitch from −12 to +12 semitones and fine pitch from −100 to +100 cents
-- Smoothed pitch automation without changing stream speed
-- Latency-aligned, crossfaded bypass
-- Algorithmic latency reporting in samples and milliseconds
-- Offline WAV sample outputs and frequency/length/finite/peak/automation tests
+- Live pitch and Fine Pitch from Milestone 2
+- Formant preservation and independent formant shift from −12 to +12 semitones
+- Low latency, Balanced, and High quality Signalsmith configurations
+- Live 20 ms crossfades between already-prepared configurations without restarting WASAPI
+- Smoothed Formant and preservation changes
+- Per-mode CPU, latency, and pitch-frequency benchmarks
+- Offline voice-like WAV outputs for preservation, formant shift, and live mode switching
+- Balanced default selected by an explicit benchmark policy
 
-Formant processing, backend comparison, soundboard playback, and the virtual audio driver are not implemented yet.
+Soundboard playback and the virtual audio driver are not implemented yet.
 
 ## Build
 
@@ -29,11 +30,15 @@ dotnet run --project tests/GrassiBoard.App.SmokeTests/GrassiBoard.App.SmokeTests
 dotnet build src/GrassiBoard.App/GrassiBoard.App.csproj -c Release -p:Platform=x64
 ```
 
-GitHub Actions builds the self-contained Windows package and pitch test samples on every push to `main`.
+GitHub Actions builds the self-contained Windows package, comparison WAV files, and benchmark report on every push to `main`.
 
 ## Safety
 
-Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. Milestone 2 contains no installable driver.
+Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. Milestone 3 contains no installable driver.
+
+## Documentation
+
+See [pitch prototype](docs/pitch-prototype.md), [pitch benchmark](docs/pitch-benchmark.md), and [test plan](docs/test-plan.md).
 
 ## License
 
