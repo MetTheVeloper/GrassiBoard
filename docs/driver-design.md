@@ -1,6 +1,6 @@
 # Driver design
 
-Milestone 4 contains a minimal WaveRT skeleton derived from Microsoft's official SysVAD sample at pinned commit `ef7c3074748ab05726c3a9161d3256118efd76e2`. Only the common miniport implementation, one speaker path, and one microphone path are compiled.
+Milestone 4 contains a minimal Windows desktop WaveRT skeleton derived from Microsoft's official SysVAD sample at pinned commit `ef7c3074748ab05726c3a9161d3256118efd76e2`. Only the common miniport implementation, one speaker path, and one microphone path are compiled.
 
 The root device uses hardware ID `ROOT\GrassiBoardVirtualAudio`, service/binary name `GrassiBoardVirtualAudio`, and GrassiBoard-specific product and endpoint-name GUIDs. It exposes exactly two interfaces: render `GrassiBoard Virtual Cable Input` and capture `GrassiBoard Virtual Microphone`.
 
