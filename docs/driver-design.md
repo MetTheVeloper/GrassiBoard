@@ -1,5 +1,9 @@
 # Driver design
 
-Milestone 3 still contains an MSBuild utility placeholder, not a Windows driver. CI explicitly rejects `.inf`, `.cat`, `.sys`, certificate, and PFX files inside the placeholder source directory.
+Milestone 4 contains a minimal WaveRT skeleton derived from Microsoft's official SysVAD sample at pinned commit `ef7c3074748ab05726c3a9161d3256118efd76e2`. Only the common miniport implementation, one speaker path, and one microphone path are compiled.
 
-The first driver skeleton is deferred to Milestone 4. It will be derived from the official SysVAD/WaveRT design, use stable project-specific identifiers, and keep every DSP operation in user mode.
+The root device uses hardware ID `ROOT\GrassiBoardVirtualAudio`, service/binary name `GrassiBoardVirtualAudio`, and GrassiBoard-specific product and endpoint-name GUIDs. It exposes exactly two interfaces: render `GrassiBoard Virtual Cable Input` and capture `GrassiBoard Virtual Microphone`.
+
+The two endpoints are deliberately independent in this milestone. Render-to-capture PCM transport begins in Milestone 5. DSP remains in user mode.
+
+CI creates a short-lived code-signing certificate, signs the SYS and generated CAT, exports only the public CER, verifies the signatures, and destroys the PFX/private key before upload. Installation requires an explicit administrator-controlled TESTSIGNING/reboot flow. Install and removal scripts never change Secure Boot, BitLocker, or reboot automatically.

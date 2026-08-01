@@ -1,6 +1,6 @@
 # Test plan
 
-## Automated Milestone 3 checks
+## Automated Milestone 4 checks
 
 - Build the native x64 Release DLL with warnings treated as errors and validate native ABI version 4.
 - Retain Milestone 2 frequency, sample-count, finite/peak, variable-block, Bypass, and automation coverage.
@@ -11,18 +11,22 @@
 - Benchmark all three configurations for algorithmic latency, processing time, estimated single-core percentage, and pitch-frequency error.
 - Enforce the explicit Balanced default-selection policy.
 - Generate input, pitch, Formant, and live-switch WAV files plus JSON reports.
-- Run managed BuildInfo tests, publish WPF, validate the non-installable driver placeholder, package, and verify four artifacts.
+- Retain all accepted Milestone 3 native and managed tests.
+- Build the x64 kernel driver and statically linked SetupAPI device helper with pinned WDK/SDK NuGet packages.
+- Validate the unique hardware ID, exact endpoint names, one-render/one-capture registration, and pinned SysVAD provenance.
+- Generate the INF catalog, sign SYS and CAT with an ephemeral test certificate, verify both signatures, and reject private-key material from the artifact.
+- Publish the portable app and test-signed driver as separate packages; reject driver/certificate material from the portable ZIP.
 
 Runner timing is comparative evidence, not a promise of target-PC CPU usage. Audible Formant character, perceived quality, and physical endpoint stability remain manual checks.
 
-## Manual acceptance
+## Manual Milestone 4 acceptance
 
-1. Start with headphones at low volume, Balanced mode, preservation enabled, and Pitch Bypass enabled.
-2. Confirm clean Bypass, then disable it and set Pitch to `+7`.
-3. Toggle Preserve formants and confirm an audible vocal-character difference.
-4. Test Formant Shift at `-6`, `0`, and `+6`.
-5. Speak continuously while switching among Low latency, Balanced, and High quality.
-6. Confirm the stream never stops or resets; compare delay and sound quality.
-7. Move Pitch/Formant quickly and listen for severe clicks, pops, cuts, or UI stalls.
-8. Record each mode's Pitch Latency plus Capture/Render, Ring Fill, and U/O/D after at least 30 seconds.
-9. Toggle Bypass repeatedly and repeat Start/Stop three times.
+1. Save the BitLocker recovery key, enable TESTSIGNING with the packaged script, and reboot manually.
+2. Install the driver from an elevated PowerShell window.
+3. Confirm `GrassiBoard Virtual Cable Input` and `GrassiBoard Virtual Microphone` both appear.
+4. Confirm `GrassiBoard Virtual Audio` has no warning/error in Device Manager.
+5. Confirm Windows Audio and Windows Audio Endpoint Builder remain Running.
+6. Remove the driver with the packaged script and confirm both endpoints disappear.
+7. Disable TESTSIGNING and reboot manually.
+
+PCM transport between the two endpoints is not an acceptance requirement until Milestone 5.

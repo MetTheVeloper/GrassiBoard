@@ -26,6 +26,16 @@ SOFTWARE.
 
 -------------------------------------------------------------------------------
 
+Microsoft Windows Driver Samples — SysVAD extraction
+https://github.com/microsoft/Windows-driver-samples
+Pinned commit: ef7c3074748ab05726c3a9161d3256118efd76e2
+Upstream path: audio/sysvad
+
+Licensed under the Microsoft Public License. The complete license text is stored
+at src/GrassiBoard.Driver/THIRD-PARTY-MS-PL.txt and included with the driver ZIP.
+
+-------------------------------------------------------------------------------
+
 Signalsmith Linear
 https://github.com/Signalsmith-Audio/linear
 Pinned release: 0.3.1

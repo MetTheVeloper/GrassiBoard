@@ -4,7 +4,7 @@ GrassiBoard is a Windows x64 voice-processing and soundboard application. Develo
 
 ## Current release
 
-`v0.4.0` implements **Milestone 3 — Formant and quality comparison**:
+`v0.5.0` implements **Milestone 4 — Virtual driver skeleton** while retaining the accepted Milestone 3 app and DSP:
 
 - Live pitch and Fine Pitch from Milestone 2
 - Formant preservation and independent formant shift from −12 to +12 semitones
@@ -14,12 +14,14 @@ GrassiBoard is a Windows x64 voice-processing and soundboard application. Develo
 - Per-mode CPU, latency, and pitch-frequency benchmarks
 - Offline voice-like WAV outputs for preservation, formant shift, and live mode switching
 - Balanced default selected by an explicit benchmark policy
+- A separate test-signed x64 driver package with `GrassiBoard Virtual Cable Input` and `GrassiBoard Virtual Microphone`
+- Controlled install, removal, TESTSIGNING, and diagnostic scripts
 
-Soundboard playback and the virtual audio driver are not implemented yet.
+The driver endpoints do not transport PCM between each other yet; that begins in Milestone 5. Soundboard playback is also not implemented yet.
 
 ## Build
 
-Prerequisites are Visual Studio 2022 with the Desktop development with C++ workload, Git submodules, and .NET SDK `8.0.423`.
+Prerequisites are Visual Studio 2022 with Desktop development with C++, Git submodules, .NET SDK `8.0.423`, and NuGet CLI. The kernel build restores pinned WDK/SDK NuGet packages from `packages.config`.
 
 ```powershell
 git submodule update --init --recursive
@@ -34,11 +36,11 @@ GitHub Actions builds the self-contained Windows package, comparison WAV files, 
 
 ## Safety
 
-Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. Milestone 3 contains no installable driver.
+Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. The v0.5.0 driver is test-signed and distributed separately; read `DRIVER-TESTING.md` inside that package before changing TESTSIGNING.
 
 ## Documentation
 
-See [pitch prototype](docs/pitch-prototype.md), [pitch benchmark](docs/pitch-benchmark.md), and [test plan](docs/test-plan.md).
+See [driver design](docs/driver-design.md), [pitch benchmark](docs/pitch-benchmark.md), and [test plan](docs/test-plan.md).
 
 ## License
 

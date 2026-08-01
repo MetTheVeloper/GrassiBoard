@@ -20,3 +20,13 @@ The required MIT notice is included in `THIRD-PARTY-NOTICES.txt` and in the port
 Signalsmith Linear is the pinned FFT/STFT dependency used by Signalsmith Stretch. Its complete MIT notice is included in `THIRD-PARTY-NOTICES.txt`.
 
 The project source is licensed under the Apache License 2.0; see `LICENSE`.
+
+## Microsoft Windows Driver Samples (SysVAD extraction)
+
+- Source: `src/GrassiBoard.Driver/Sysvad`
+- Upstream: https://github.com/microsoft/Windows-driver-samples
+- Pinned commit: `ef7c3074748ab05726c3a9161d3256118efd76e2`
+- Upstream path: `audio/sysvad`
+- License: Microsoft Public License
+
+The complete license is stored at `src/GrassiBoard.Driver/THIRD-PARTY-MS-PL.txt` and included in the driver package.

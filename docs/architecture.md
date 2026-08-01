@@ -1,12 +1,14 @@
 # Architecture
 
-## Milestone 3 boundary
+## Milestone 4 boundary
 
 The repository has three layers:
 
 1. `GrassiBoard.App`: a WPF `net8.0-windows` x64 UI process.
 2. `GrassiBoard.AudioEngine`: a native C++20 x64 DLL exposing C ABI version 4.
-3. `GrassiBoard.Driver`: a non-installable placeholder until Milestone 4.
+3. `GrassiBoard.Driver`: a minimal, test-signed SysVAD/WaveRT skeleton with one render and one capture endpoint.
+
+`GrassiBoard.DeviceTool` is a statically linked SetupAPI helper used only by the elevated install/removal scripts to create and remove the unique root-enumerated device. The portable app and driver package remain separate artifacts.
 
 The app calls the native layer through source-generated P/Invoke. C++/CLI is not used.
 
@@ -26,7 +28,7 @@ The real-time loop performs no logging, file I/O, exception propagation, blockin
 
 ## Version contract
 
-- Product version: `0.4.0`
+- Product version: `0.5.0`
 - Native ABI version: `4`
 - Architecture: `x64`
 - Processing format: `48,000 Hz`, 32-bit float, mono processing and stereo monitoring

@@ -2,6 +2,23 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.5.0] - 2026-08-01
+
+### Added
+
+- Minimal x64 SysVAD/WaveRT driver skeleton with one render endpoint named `GrassiBoard Virtual Cable Input` and one capture endpoint named `GrassiBoard Virtual Microphone`.
+- Project-specific product GUID, endpoint-name GUIDs, hardware ID `ROOT\GrassiBoardVirtualAudio`, service, binary, INF, and catalog identity.
+- Native SetupAPI helper for controlled root-device creation, status inspection, and removal.
+- Administrator scripts for explicit TESTSIGNING enable/disable, certificate trust, install, uninstall, and read-only diagnostics.
+- CI-only ephemeral test certificate generation, SYS/CAT signing, signature verification, SHA-256 manifest, and driver artifact upload.
+- Pinned Microsoft SysVAD provenance and Microsoft Public License notice.
+
+### Safety and scope
+
+- The portable app and test driver are separate packages. No private signing key is retained or uploaded.
+- Scripts never disable Secure Boot, suspend BitLocker, reboot Windows, or silently disable TESTSIGNING.
+- PCM transport between render and capture is intentionally deferred to Milestone 5.
+
 ## [0.4.0] - 2026-08-01
 
 ### Added

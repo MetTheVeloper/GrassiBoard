@@ -6,7 +6,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrassiBoard.App", "src\Gras
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrassiBoard.Shared", "src\GrassiBoard.Shared\GrassiBoard.Shared.csproj", "{30A573D8-1D88-4867-BB42-2042F3324211}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GrassiBoard.Driver", "src\GrassiBoard.Driver\GrassiBoard.Driver.vcxproj", "{C2599DE8-E3A1-42B2-BC27-95EB781644A9}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GrassiBoard.Driver", "src\GrassiBoard.Driver\GrassiBoard.Driver.vcxproj", "{DB87292F-5ECE-42C2-B55B-594274F3CBF9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GrassiBoard.DeviceTool", "src\GrassiBoard.DeviceTool\GrassiBoard.DeviceTool.vcxproj", "{73E9189E-F850-4AC3-ACFF-59AB3936473E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrassiBoard.App.SmokeTests", "tests\GrassiBoard.App.SmokeTests\GrassiBoard.App.SmokeTests.csproj", "{E51A53D7-6F65-470B-8028-CDE88B39EBEF}"
 EndProject
@@ -24,10 +26,14 @@ Global
 		{30A573D8-1D88-4867-BB42-2042F3324211}.Debug|x64.Build.0 = Debug|Any CPU
 		{30A573D8-1D88-4867-BB42-2042F3324211}.Release|x64.ActiveCfg = Release|Any CPU
 		{30A573D8-1D88-4867-BB42-2042F3324211}.Release|x64.Build.0 = Release|Any CPU
-		{C2599DE8-E3A1-42B2-BC27-95EB781644A9}.Debug|x64.ActiveCfg = Debug|x64
-		{C2599DE8-E3A1-42B2-BC27-95EB781644A9}.Debug|x64.Build.0 = Debug|x64
-		{C2599DE8-E3A1-42B2-BC27-95EB781644A9}.Release|x64.ActiveCfg = Release|x64
-		{C2599DE8-E3A1-42B2-BC27-95EB781644A9}.Release|x64.Build.0 = Release|x64
+		{DB87292F-5ECE-42C2-B55B-594274F3CBF9}.Debug|x64.ActiveCfg = Debug|x64
+		{DB87292F-5ECE-42C2-B55B-594274F3CBF9}.Debug|x64.Build.0 = Debug|x64
+		{DB87292F-5ECE-42C2-B55B-594274F3CBF9}.Release|x64.ActiveCfg = Release|x64
+		{DB87292F-5ECE-42C2-B55B-594274F3CBF9}.Release|x64.Build.0 = Release|x64
+		{73E9189E-F850-4AC3-ACFF-59AB3936473E}.Debug|x64.ActiveCfg = Debug|x64
+		{73E9189E-F850-4AC3-ACFF-59AB3936473E}.Debug|x64.Build.0 = Debug|x64
+		{73E9189E-F850-4AC3-ACFF-59AB3936473E}.Release|x64.ActiveCfg = Release|x64
+		{73E9189E-F850-4AC3-ACFF-59AB3936473E}.Release|x64.Build.0 = Release|x64
 		{E51A53D7-6F65-470B-8028-CDE88B39EBEF}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{E51A53D7-6F65-470B-8028-CDE88B39EBEF}.Debug|x64.Build.0 = Debug|Any CPU
 		{E51A53D7-6F65-470B-8028-CDE88B39EBEF}.Release|x64.ActiveCfg = Release|Any CPU

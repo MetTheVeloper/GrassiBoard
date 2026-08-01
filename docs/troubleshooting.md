@@ -38,4 +38,4 @@ Report the source and destination modes, the latency shown after the switch, whe
 
 ## Driver questions
 
-There is no installable driver in v0.4.0. The `driver-placeholder` directory is informational and must not be installed.
+The v0.5.0 driver is in a separate test-signed ZIP. Read `DRIVER-TESTING.md` before changing TESTSIGNING. If installation or removal fails, run `scripts/Collect-DriverDiagnostics.ps1` before making further changes. The scripts do not disable Secure Boot, suspend BitLocker, or reboot automatically.

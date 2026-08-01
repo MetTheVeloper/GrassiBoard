@@ -1,10 +1,10 @@
 <Project>
   <PropertyGroup>
-    <Version>0.4.0</Version>
-    <AssemblyVersion>0.4.0.0</AssemblyVersion>
-    <FileVersion>0.4.0.0</FileVersion>
-    <InformationalVersion Condition="'$(SourceRevisionId)' == ''">0.4.0+local</InformationalVersion>
-    <InformationalVersion Condition="'$(SourceRevisionId)' != ''">0.4.0+$(SourceRevisionId)</InformationalVersion>
+    <Version>0.5.0</Version>
+    <AssemblyVersion>0.5.0.0</AssemblyVersion>
+    <FileVersion>0.5.0.0</FileVersion>
+    <InformationalVersion Condition="'$(SourceRevisionId)' == ''">0.5.0+local</InformationalVersion>
+    <InformationalVersion Condition="'$(SourceRevisionId)' != ''">0.5.0+$(SourceRevisionId)</InformationalVersion>
     <Company>GrassiBoard</Company>
     <Product>GrassiBoard</Product>
     <Copyright>Copyright © GrassiBoard contributors</Copyright>
@@ -24,4 +24,7 @@
     <WindowsWdkVersion>10.0.28000.1839</WindowsWdkVersion>
     <WindowsSdkVersion>10.0.26100.0</WindowsSdkVersion>
   </PropertyGroup>
+  <Import Project="packages\Microsoft.Windows.WDK.x64.10.0.28000.1839\build\native\Microsoft.Windows.WDK.x64.props" Condition="Exists('packages\Microsoft.Windows.WDK.x64.10.0.28000.1839\build\native\Microsoft.Windows.WDK.x64.props') and '$(Platform)' == 'x64'" />
+  <Import Project="packages\Microsoft.Windows.SDK.CPP.x64.10.0.28000.1839\build\native\Microsoft.Windows.SDK.cpp.x64.props" Condition="Exists('packages\Microsoft.Windows.SDK.CPP.x64.10.0.28000.1839\build\native\Microsoft.Windows.SDK.cpp.x64.props') and '$(Platform)' == 'x64'" />
+  <Import Project="packages\Microsoft.Windows.SDK.CPP.10.0.28000.1839\build\native\Microsoft.Windows.SDK.cpp.props" Condition="Exists('packages\Microsoft.Windows.SDK.CPP.10.0.28000.1839\build\native\Microsoft.Windows.SDK.cpp.props')" />
 </Project>

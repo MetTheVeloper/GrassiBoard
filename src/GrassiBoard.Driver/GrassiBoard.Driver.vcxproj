@@ -1,41 +1,80 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
-    <ProjectConfiguration Include="Debug|x64">
-      <Configuration>Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|x64">
-      <Configuration>Release</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64"><Configuration>Release</Configuration><Platform>x64</Platform></ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
-    <ProjectGuid>{C2599DE8-E3A1-42B2-BC27-95EB781644A9}</ProjectGuid>
-    <Keyword>Win32Proj</Keyword>
-    <RootNamespace>GrassiBoardDriver</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectGuid>{DB87292F-5ECE-42C2-B55B-594274F3CBF9}</ProjectGuid>
+    <RootNamespace>GrassiBoardVirtualAudio</RootNamespace>
+    <KMDF_VERSION_MAJOR>1</KMDF_VERSION_MAJOR>
+    <KMDF_VERSION_MINOR>15</KMDF_VERSION_MINOR>
+    <SupportsPackaging>false</SupportsPackaging>
+    <SampleGuid>{09E79351-8674-4A4D-AB56-355E8F5136BD}</SampleGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
-    <ConfigurationType>Utility</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+    <DriverTargetPlatform>Universal</DriverTargetPlatform>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>true</UseDebugLibraries>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
-    <ConfigurationType>Utility</ConfigurationType>
-    <PlatformToolset>v143</PlatformToolset>
+  <PropertyGroup Label="Configuration" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ConfigurationType>Driver</ConfigurationType>
+    <DriverType>KMDF</DriverType>
+    <DriverTargetPlatform>Universal</DriverTargetPlatform>
+    <PlatformToolset>WindowsKernelModeDriver10.0</PlatformToolset>
+    <TargetVersion>Windows10</TargetVersion>
+    <UseDebugLibraries>false</UseDebugLibraries>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
-    <OutDir>$(SolutionDir)artifacts\driver\</OutDir>
+    <TargetName>GrassiBoardVirtualAudio</TargetName>
+    <OutDir>$(SolutionDir)artifacts\driver-build\</OutDir>
+    <IntDir>$(SolutionDir)out\driver\$(ProjectName)\$(Configuration)\</IntDir>
+    <SignMode>Off</SignMode>
+    <Inf2CatUseLocalTime>true</Inf2CatUseLocalTime>
   </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(ProjectDir)Sysvad;$(ProjectDir)Sysvad\EndpointsCommon;$(ProjectDir)Sysvad\GrassiBoardVirtualAudio</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);_WIN32;UNICODE;_UNICODE;PC_IMPLEMENTATION;_USE_WAVERT_;_USE_IPortClsRuntimePower;_NEW_DELETE_OPERATORS_;DEBUG_LEVEL=DEBUGLVL_TERSE</PreprocessorDefinitions>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <ExceptionHandling>false</ExceptionHandling>
+    </ClCompile>
+    <ResourceCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(DDK_INC_PATH);$(ProjectDir)Sysvad</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);_WIN32;UNICODE;_UNICODE;PC_IMPLEMENTATION</PreprocessorDefinitions>
+    </ResourceCompile>
+    <Link>
+      <AdditionalDependencies>%(AdditionalDependencies);$(DDK_LIB_PATH)\portcls.lib;$(DDK_LIB_PATH)\stdunk.lib;$(DDK_LIB_PATH)\libcntpr.lib</AdditionalDependencies>
+    </Link>
+    <DriverSign><FileDigestAlgorithm>sha256</FileDigestAlgorithm></DriverSign>
+  </ItemDefinitionGroup>
   <ItemGroup>
-    <None Include="README-NOT-A-DRIVER.txt" />
+    <ClCompile Include="Sysvad\adapter.cpp" />
+    <ClCompile Include="Sysvad\basetopo.cpp" />
+    <ClCompile Include="Sysvad\common.cpp" />
+    <ClCompile Include="Sysvad\hw.cpp" />
+    <ClCompile Include="Sysvad\kshelper.cpp" />
+    <ClCompile Include="Sysvad\savedata.cpp" />
+    <ClCompile Include="Sysvad\ToneGenerator.cpp" />
+    <ClCompile Include="Sysvad\GrassiBoardVirtualAudio\micintopo.cpp" />
+    <ResourceCompile Include="Sysvad\GrassiBoardVirtualAudio\GrassiBoardVirtualAudio.rc" />
   </ItemGroup>
-  <Target Name="WriteDriverPlaceholder" AfterTargets="Build">
-    <MakeDir Directories="$(OutDir)" />
-    <Copy SourceFiles="$(MSBuildProjectDirectory)\README-NOT-A-DRIVER.txt" DestinationFolder="$(OutDir)" />
-  </Target>
+  <ItemGroup>
+    <Inf Include="GrassiBoardVirtualAudio.inf" />
+    <FilesToPackage Include="$(TargetPath)" Condition="'$(ConfigurationType)'=='Driver'" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="Sysvad\EndpointsCommon\GrassiBoard.EndpointsCommon.vcxproj">
+      <Project>{B6EA6974-F051-48A6-B3EB-403A0DF36BAC}</Project>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

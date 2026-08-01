@@ -1,13 +1,21 @@
 # Current status
 
-- Version: `v0.4.0`
-- Milestone: `3 — Formant and Backend/Configuration Comparison`
-- Status: accepted by user
+- Version: `v0.5.0`
+- Milestone: `4 — Virtual Driver Skeleton`
+- Status: implementation in progress; awaiting automated and manual acceptance
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
 - Backend: Signalsmith Stretch 1.3.2 + Signalsmith Linear 0.3.1, both pinned
-- Virtual driver: safe placeholder only; not installable
+- Virtual driver: one test-signed render endpoint and one capture endpoint; PCM transport intentionally disabled until Milestone 5
+
+## Milestone 4 implementation
+
+The driver is a minimal extraction of Microsoft's SysVAD/WaveRT code pinned to commit `ef7c3074748ab05726c3a9161d3256118efd76e2`. It uses hardware ID `ROOT\GrassiBoardVirtualAudio` and exposes `GrassiBoard Virtual Cable Input` plus `GrassiBoard Virtual Microphone`.
+
+CI builds the driver and native root-device helper from pinned WDK/SDK NuGet packages. An ephemeral certificate signs the SYS and generated CAT; only the public CER is packaged. Installation, removal, TESTSIGNING changes, and diagnostics are explicit scripts. No script changes Secure Boot or BitLocker and no script reboots automatically.
+
+Manual acceptance is pending on Windows 10 x64. PCM cable transport is outside this milestone.
 
 ## Milestone 3 automated result
 
@@ -21,7 +29,7 @@ Formant preservation and `+6` shift produced RMS differences of `0.13` and `0.11
 
 Milestone 3 was accepted on 2026-08-01 on Windows 10 with a Microsoft LifeChat LX-3000. The user confirmed that every requested test passed, including Formant controls and live switching among all three quality modes. Screenshot evidence showed `v0.4.0`, commit `53539541`, the engine remaining active, and the expected latencies: Low latency `1280 / 26.7 ms`, Balanced `2560 / 53.3 ms`, and High quality `7200 / 150.0 ms`. Device buffers remained at Capture/Render `1056/1056`; observed U/O were `2/0`.
 
-Milestone 4 is unblocked.
+Milestone 3 acceptance unblocked Milestone 4.
 
 ## Previous accepted milestones
 

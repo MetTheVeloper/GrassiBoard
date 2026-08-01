@@ -6,6 +6,7 @@ param(
     [Parameter(Mandatory = $true)][string]$NativeDirectory,
     [Parameter(Mandatory = $true)][string]$DriverDirectory,
     [Parameter(Mandatory = $true)][string]$TestResultsDirectory,
+    [string]$DriverBuildDirectory,
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\artifacts\packages')
 )
 
@@ -32,9 +33,6 @@ New-Item -ItemType Directory -Path $portableStage, $driverStage, $symbolsStage, 
 Copy-Item -Path (Join-Path $PublishDirectory '*') -Destination $portableStage -Recurse -Force
 Copy-Item -Path (Join-Path $NativeDirectory 'GrassiBoard.AudioEngine.dll') -Destination $portableStage -Force
 Copy-Item -Path (Join-Path $DriverDirectory '*') -Destination $driverStage -Recurse -Force
-$portableDriverStage = Join-Path $portableStage 'driver-placeholder'
-New-Item -ItemType Directory -Path $portableDriverStage -Force | Out-Null
-Copy-Item -Path (Join-Path $DriverDirectory '*') -Destination $portableDriverStage -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\CHANGELOG.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README-FIRST.txt') -Destination $portableStage -Force
@@ -42,6 +40,10 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\THIRD-PARTY-NOTICES.txt') -D
 
 Get-ChildItem -Path $PublishDirectory, $NativeDirectory -Filter '*.pdb' -Recurse -ErrorAction SilentlyContinue |
     Copy-Item -Destination $symbolsStage -Force
+if ($DriverBuildDirectory -and (Test-Path -LiteralPath $DriverBuildDirectory)) {
+    Get-ChildItem -LiteralPath $DriverBuildDirectory -Filter '*.pdb' -Recurse -ErrorAction SilentlyContinue |
+        Copy-Item -Destination $symbolsStage -Force
+}
 Copy-Item -Path (Join-Path $TestResultsDirectory '*') -Destination $testsStage -Recurse -Force
 
 $packages = [ordered]@{

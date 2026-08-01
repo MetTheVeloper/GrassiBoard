@@ -1,4 +1,4 @@
-GrassiBoard v0.4.0 — Milestone 3
+GrassiBoard v0.5.0 — Milestone 4
 
 SAFETY: Use headphones and lower their volume before starting the engine.
 
@@ -13,4 +13,5 @@ SAFETY: Use headphones and lower their volume before starting the engine.
 9. Move Pitch and Formant controls rapidly and listen for severe clicks, pops, or cuts.
 10. Toggle Bypass repeatedly, repeat Start/Stop three times, and record latency plus U/O/D counters.
 
-Balanced is the benchmark-selected default. This build does not install a driver.
+Balanced is the benchmark-selected default. The portable ZIP never installs a driver.
+The separately downloaded driver ZIP contains DRIVER-TESTING.md and the explicit test-signing workflow.

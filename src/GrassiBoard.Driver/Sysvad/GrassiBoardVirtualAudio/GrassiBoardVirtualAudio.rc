@@ -1,0 +1,11 @@
+#include <windows.h>
+#include <ntverp.h>
+
+#define VER_FILETYPE VFT_DRV
+#define VER_FILESUBTYPE VFT2_DRV_SOUND
+#define VER_FILEDESCRIPTION_STR "GrassiBoard Virtual Audio Driver"
+#define VER_INTERNALNAME_STR "GrassiBoardVirtualAudio.sys"
+#define VER_ORIGINALFILENAME_STR "GrassiBoardVirtualAudio.sys"
+#define VER_LEGALCOPYRIGHT_STR "Copyright (C) GrassiBoard contributors and Microsoft Corporation"
+
+#include "common.ver"
