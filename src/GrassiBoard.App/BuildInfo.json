@@ -1,0 +1,12 @@
+{
+  "Version": "0.1.0",
+  "CommitSha": "local",
+  "BuildDate": "local",
+  "WorkflowRunNumber": "local",
+  "Configuration": "Debug",
+  "TargetArchitecture": "x64",
+  "WdkVersion": "10.0.28000.1839",
+  "SdkVersion": "10.0.26100.0",
+  "DotNetVersion": "8.0.423",
+  "PitchBackendVersion": "not-implemented"
+}

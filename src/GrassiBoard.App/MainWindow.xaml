@@ -1,0 +1,73 @@
+<Window x:Class="GrassiBoard.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="GrassiBoard" Height="520" Width="880"
+        MinHeight="480" MinWidth="760"
+        WindowStartupLocation="CenterScreen"
+        Background="{StaticResource PageBrush}"
+        Foreground="{StaticResource TextBrush}">
+    <Grid Margin="32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="28" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="GRASSIBOARD" FontSize="12" FontWeight="SemiBold"
+                       Foreground="{StaticResource AccentBrush}" />
+            <TextBlock Text="Audio workspace is ready" FontSize="30" FontWeight="SemiBold"
+                       Margin="0,8,0,0" />
+            <TextBlock Text="Milestone 0 validates the Windows shell, native ABI, packaging and CI."
+                       Foreground="{StaticResource MutedTextBrush}" Margin="0,8,0,0" />
+        </StackPanel>
+
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" CornerRadius="12" Padding="24">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="18" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="18" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <TextBlock Text="VERSION" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
+                    <TextBlock x:Name="VersionText" Text="0.1.0" FontSize="22" Margin="0,4,0,0" />
+                </StackPanel>
+                <StackPanel Grid.Column="1">
+                    <TextBlock Text="COMMIT" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
+                    <TextBlock x:Name="CommitText" Text="local" FontFamily="Consolas" FontSize="18" Margin="0,7,0,0" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="2">
+                    <TextBlock Text="NATIVE AUDIO ENGINE" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                        <Ellipse x:Name="NativeStatusDot" Width="10" Height="10" Fill="#91A0B3" Margin="0,5,10,0" />
+                        <TextBlock x:Name="NativeStatusText" Text="Checking DLL…" FontSize="16" />
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Row="2" Grid.Column="1">
+                    <TextBlock Text="DRIVER" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
+                    <TextBlock Text="Placeholder — not installed" FontSize="16" Margin="0,8,0,0" />
+                </StackPanel>
+
+                <Border Grid.Row="4" Grid.ColumnSpan="2" Background="#0F151D" CornerRadius="8" Padding="16">
+                    <TextBlock TextWrapping="Wrap" Foreground="{StaticResource MutedTextBrush}">
+                        Audio capture and processing are intentionally disabled in this milestone.
+                        The next milestone will begin only after this build is confirmed on the target PC.
+                    </TextBlock>
+                </Border>
+            </Grid>
+        </Border>
+
+        <TextBlock Grid.Row="3" Text="x64 · Windows 10/11 · .NET 8" HorizontalAlignment="Right"
+                   Foreground="{StaticResource MutedTextBrush}" Margin="0,20,0,0" />
+    </Grid>
+</Window>
