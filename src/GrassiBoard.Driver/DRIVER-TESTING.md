@@ -1,4 +1,4 @@
-# GrassiBoard v0.6.1 test driver
+# GrassiBoard v0.6.2 test driver
 
 This package is a test-signed Milestone 5 driver for Windows 10/11 x64. It creates:
 
@@ -8,6 +8,11 @@ This package is a test-signed Milestone 5 driver for Windows 10/11 x64. It creat
 PCM played to the render endpoint is delivered by a kernel ring to the capture endpoint.
 The cable uses a fixed 48 kHz, 16-bit, stereo device format and can be tested without
 opening the GrassiBoard app.
+
+The virtual render endpoint remains event-driven. The virtual microphone uses
+timer-driven WaveRT for Windows 10 build 19045 compatibility; ETW diagnostics on
+v0.6.1 showed that its event-driven capture graph failed during Audio Engine policy
+construction before a client stream could open.
 
 ## Before testing
 

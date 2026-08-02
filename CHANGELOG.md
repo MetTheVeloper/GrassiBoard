@@ -2,12 +2,24 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.6.2] - 2026-08-02
+
+### Fixed
+
+- Removed the event-driven opt-in from the capture endpoint after Windows 10 build 19045 repeatedly failed to construct its Audio Engine graph with `0x80070490` (`Element not found`), surfaced to clients as `AUDCLNT_E_UNSUPPORTED_FORMAT`.
+- Kept the render endpoint event-driven and retained the fixed PCM ring transport; only capture scheduling falls back to the timer-driven WaveRT path.
+- Added a source-contract check that prevents the incompatible capture opt-in from returning.
+
+### Diagnostics
+
+- Added direct KS, WASAPI, and focused ETW probes. They verified that exact capture pin creation succeeds while shared Audio Engine activation fails, separating the valid kernel format contract from the Windows service failure.
+
 ## [0.6.1] - 2026-08-02
 
 ### Fixed
 
-- Restored the SysVAD capture pin's five-instance capacity so Windows Audio can retain an engine stream while shared-mode clients negotiate and open the virtual microphone.
-- Added a source-contract regression check for capture-instance capacity after Windows 10 Voice Recorder exposed `AUDCLNT_E_UNSUPPORTED_FORMAT` with the one-instance descriptor.
+- Restored the SysVAD capture pin's reference five-instance capacity during the initial Windows 10 compatibility investigation.
+- Added a source-contract check that preserves that reference capacity. Later ETW diagnostics showed that instance capacity was not the cause of the Voice Recorder failure.
 
 ## [0.6.0] - 2026-08-01
 
