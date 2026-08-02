@@ -2,6 +2,19 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.6.5] - 2026-08-02
+
+### Fixed
+
+- Seeded the capture endpoint's missing Audio Engine mix-format and 10 ms engine-period policy values on Windows 10.
+- Kept the device format at 48 kHz/16-bit mono while using the normal 48 kHz/32-bit-float mono shared-engine mix format.
+
+### Investigation
+
+- All three v0.6.4 variants failed identically, proving that OEM format registration, the custom mode table, and the GrassiBoard ring-backed capture path were not the source of the failure.
+- Direct comparison on the affected machine showed the working GrassiBoard render endpoint, LifeChat capture endpoint, and AMM virtual capture endpoint all contained Audio Engine properties `{E4870E26-3CC5-4CD2-BA46-CA0A9A70ED04},0` and `,1`; only the broken GrassiBoard capture endpoint omitted both.
+- Extended the WASAPI probe to report the presence of those two properties before attempting `GetMixFormat` and shared initialization.
+
 ## [0.6.4] - 2026-08-02
 
 ### Diagnostics

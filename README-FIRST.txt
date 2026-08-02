@@ -1,4 +1,4 @@
-GrassiBoard v0.6.4 — Milestone 5 Windows 10 capture diagnostic matrix
+GrassiBoard v0.6.5 — Milestone 5 Windows 10 capture engine-policy fix
 
 SAFETY: Use headphones and lower their volume before starting the engine.
 

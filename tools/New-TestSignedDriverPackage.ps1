@@ -6,7 +6,7 @@ param(
     [Parameter(Mandatory = $true)][string]$WdkPackageDirectory,
     [Parameter(Mandatory = $true)][string]$SdkBuildToolsPackageDirectory,
     [Parameter(Mandatory = $true)][string]$Version,
-    [ValidateSet('standard', 'oem-format', 'reference-modes', 'reference-capture')]
+    [ValidateSet('standard', 'oem-format', 'reference-modes', 'reference-capture', 'engine-policy')]
     [string]$CaptureVariant = 'standard',
     [string]$DriverVersion
 )
@@ -56,6 +56,7 @@ if ($DriverVersion) {
 Copy-Item -LiteralPath $toolSource.FullName -Destination $toolPath -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\DRIVER-TESTING.md') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\CAPTURE-MATRIX-TESTING.md') -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\CAPTURE-ENGINE-POLICY-TESTING.md') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\UPSTREAM.md') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\THIRD-PARTY-MS-PL.txt') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\scripts') -Destination $output -Recurse -Force
@@ -67,6 +68,7 @@ Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\script
         'oem-format' { 'Explicit capture PKEY_AudioEngine_OEMFormat' }
         'reference-modes' { 'OEM format plus official SysVAD MicIn format/mode tables' }
         'reference-capture' { 'OEM format and official modes plus official SysVAD tone capture path' }
+        'engine-policy' { 'Explicit Windows 10 capture mix-format and engine-period policy values' }
         default { 'Standard product build' }
     }
 } | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'capture-variant.json') -Encoding utf8
@@ -154,6 +156,7 @@ $requiredFiles = @(
     'GrassiBoard.DeviceTool.exe',
     'DRIVER-TESTING.md',
     'CAPTURE-MATRIX-TESTING.md',
+    'CAPTURE-ENGINE-POLICY-TESTING.md',
     'capture-variant.json',
     'manifest.json',
     'scripts\Install-GrassiBoardDriver.ps1',

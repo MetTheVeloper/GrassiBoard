@@ -270,10 +270,13 @@ foreach ($endpoint in Get-ChildItem $captureRoot) {
     $friendlyName = $properties.'{a45c254e-df1c-4efd-8020-67d146a850e0},2'
     $deviceName = $properties.'{b3f8fa53-0004-438e-9003-51a46e139bfc},6'
     if ($friendlyName -like $EndpointName -or $deviceName -like $EndpointName) {
+        $propertyNames = @($properties.PSObject.Properties.Name)
         $matches += [pscustomobject]@{
             FriendlyName = $friendlyName
             DeviceName = $deviceName
             EndpointId = "{0.0.1.00000000}.$($endpoint.PSChildName)"
+            EngineMixFormatPresent = $propertyNames -contains '{e4870e26-3cc5-4cd2-ba46-ca0a9a70ed04},0'
+            EnginePeriodPresent = $propertyNames -contains '{e4870e26-3cc5-4cd2-ba46-ca0a9a70ed04},1'
         }
     }
 }
@@ -292,6 +295,8 @@ foreach ($match in $matches) {
         DeviceName = $match.DeviceName
         EndpointId = $result.EndpointId
         EndpointState = $result.EndpointState
+        EngineMixFormatPresent = $match.EngineMixFormatPresent
+        EnginePeriodPresent = $match.EnginePeriodPresent
         Activate = Format-HResult $result.ActivateResult
         EndpointVolumeActivate = Format-HResult $result.EndpointVolumeActivateResult
         EndpointVolumeChannelCountResult = Format-HResult $result.EndpointVolumeChannelCountResult

@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v0.6.4`
+- Version: `v0.6.5`
 - Milestone: `5 — Virtual Cable PCM Transport`
-- Status: v0.6.0 through v0.6.3 capture activation failed on Windows 10; v0.6.4 three-variant diagnostic matrix is awaiting CI and sequential manual testing
+- Status: v0.6.0 through all three v0.6.4 diagnostic variants failed capture activation on Windows 10; v0.6.5 seeds the two missing capture Audio Engine policy values and awaits manual verification
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -24,6 +24,17 @@ Manual testing on Windows 10 build 19045 found that the v0.6.0 through v0.6.2 en
 A focused ETW trace exposed the underlying Audio Engine result as `0x80070490` (`Element not found`) during per-endpoint policy construction; Windows then mapped it to `AUDCLNT_E_UNSUPPORTED_FORMAT`. The unchanged v0.6.2 result disproved event-driven scheduling as the cause, just as v0.6.1 disproved the earlier stream-instance hypothesis. v0.6.3 restores event-driven capture and removes the remaining material divergence from Microsoft's working external MicIn reference: the capture endpoint is mono again, with a matching mono topology jack and default formats. The stereo render input is downmixed before entering the mono ring.
 
 Manual v0.6.3 testing produced the same failure and disproved the mono-channel-contract hypothesis. Direct endpoint-volume and meter calls nevertheless succeed, including channel count, volume range, master level, mute, and peak queries. v0.6.4 therefore packages three cumulative variants in one CI run: explicit OEM format, official MicIn mode tables, and finally the official tone-capture stream without GrassiBoard ring participation.
+
+All three v0.6.4 variants failed identically. The final variant used the untouched
+SysVAD tone-capture path and official mode table, proving that the PCM ring and custom
+capture stream were not involved. On the affected machine, the working GrassiBoard
+render endpoint and the working LifeChat and AMM capture endpoints all contained the
+Audio Engine mix-format and period policy properties under property-set GUID
+`E4870E26-3CC5-4CD2-BA46-CA0A9A70ED04`. The broken GrassiBoard capture endpoint was
+the only one missing property IDs `0` and `1`, matching the ETW `ERROR_NOT_FOUND`.
+v0.6.5 seeds a 48 kHz/32-bit-float mono engine mix format and the standard 10 ms
+period on the capture topology interface while retaining its 48 kHz/16-bit mono device
+format.
 
 ## Milestone 5 automated result
 
