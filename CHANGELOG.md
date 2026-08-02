@@ -2,6 +2,18 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.6.4] - 2026-08-02
+
+### Diagnostics
+
+- Added a three-package capture matrix that tests explicit OEM format registration, the official SysVAD MicIn mode table, and the untouched SysVAD tone-capture path cumulatively.
+- Assigned distinct driver versions `0.6.4.1`, `0.6.4.2`, and `0.6.4.3`, embedded a machine-readable variant marker, and documented a sequential uninstall/install/probe workflow.
+- Extended the WASAPI probe to verify endpoint-volume and meter channel/range calls. Those controls succeed on v0.6.3 even while Audio Engine mix-format construction fails.
+
+### Investigation
+
+- Manual Windows 10 testing showed v0.6.3 still fails `GetMixFormat` and shared initialization with `0x88890008`, disproving the mono-channel-contract hypothesis.
+
 ## [0.6.3] - 2026-08-02
 
 ### Fixed

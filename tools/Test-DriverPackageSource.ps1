@@ -10,6 +10,7 @@ $minipairs = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtua
 $captureWaveTable = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtualAudio\micinwavtable.h') -Raw
 $captureTopologyTable = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtualAudio\micintoptable.h') -Raw
 $transportHeader = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\cabletransport.h') -Raw
+$driverProject = Get-Content -LiteralPath (Join-Path $root 'GrassiBoard.Driver.vcxproj') -Raw
 $endpointProject = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\GrassiBoard.EndpointsCommon.vcxproj') -Raw
 $streamSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\minwavertstream.cpp') -Raw
 $transportSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\cabletransport.cpp') -Raw
@@ -91,6 +92,17 @@ if (-not $renderTopologySection.Contains('PKEY_AudioEndpoint_Supports_EventDrive
 }
 if (-not $captureTopologySection.Contains('PKEY_AudioEndpoint_Supports_EventDriven_Mode')) {
     throw 'The capture endpoint must preserve the reference SysVAD event-driven WaveRT contract.'
+}
+if (-not $captureTopologySection.Contains('PKEY_AudioEngine_OEMFormat') -or
+    -not $inf.Contains('PKEY_AudioEngine_OEMFormat="{E4870E26-3CC5-4CD2-BA46-CA0A9A70ED04},3"')) {
+    throw 'The capture diagnostic baseline must explicitly register its mono OEM format.'
+}
+if (-not $minipairs.Contains('GRASSIBOARD_CAPTURE_REFERENCE_MODES') -or
+    -not $minipairs.Contains('MicInPinDeviceFormatsAndModes') -or
+    -not $streamSource.Contains('GRASSIBOARD_CAPTURE_REFERENCE_TONE') -or
+    -not $driverProject.Contains('GrassiBoardCaptureVariant') -or
+    -not $endpointProject.Contains('GrassiBoardCaptureVariant')) {
+    throw 'The capture diagnostic matrix must independently select OEM format, reference modes, and reference tone capture.'
 }
 
 $requiredScriptText = @(

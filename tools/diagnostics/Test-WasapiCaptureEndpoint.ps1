@@ -75,6 +75,38 @@ namespace GrassiBoard.Diagnostics
         int GetService(ref Guid interfaceId, [MarshalAs(UnmanagedType.IUnknown)] out object service);
     }
 
+    [ComImport, Guid("5CDF2C82-841E-4546-9722-0CF74078229A"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IAudioEndpointVolume
+    {
+        [PreserveSig] int RegisterControlChangeNotify(IntPtr notify);
+        [PreserveSig] int UnregisterControlChangeNotify(IntPtr notify);
+        [PreserveSig] int GetChannelCount(out uint channels);
+        [PreserveSig] int SetMasterVolumeLevel(float levelDb, IntPtr eventContext);
+        [PreserveSig] int SetMasterVolumeLevelScalar(float level, IntPtr eventContext);
+        [PreserveSig] int GetMasterVolumeLevel(out float levelDb);
+        [PreserveSig] int GetMasterVolumeLevelScalar(out float level);
+        [PreserveSig] int SetChannelVolumeLevel(uint channel, float levelDb, IntPtr eventContext);
+        [PreserveSig] int SetChannelVolumeLevelScalar(uint channel, float level, IntPtr eventContext);
+        [PreserveSig] int GetChannelVolumeLevel(uint channel, out float levelDb);
+        [PreserveSig] int GetChannelVolumeLevelScalar(uint channel, out float level);
+        [PreserveSig] int SetMute([MarshalAs(UnmanagedType.Bool)] bool mute, IntPtr eventContext);
+        [PreserveSig] int GetMute([MarshalAs(UnmanagedType.Bool)] out bool mute);
+        [PreserveSig] int GetVolumeStepInfo(out uint step, out uint stepCount);
+        [PreserveSig] int VolumeStepUp(IntPtr eventContext);
+        [PreserveSig] int VolumeStepDown(IntPtr eventContext);
+        [PreserveSig] int QueryHardwareSupport(out uint mask);
+        [PreserveSig] int GetVolumeRange(out float minimumDb, out float maximumDb, out float incrementDb);
+    }
+
+    [ComImport, Guid("C02216F6-8C67-4B5B-9D00-D008E73E0064"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    internal interface IAudioMeterInformation
+    {
+        [PreserveSig] int GetPeakValue(out float peak);
+        [PreserveSig] int GetMeteringChannelCount(out uint channels);
+        [PreserveSig] int GetChannelsPeakValues(uint channelCount, [Out] float[] peaks);
+        [PreserveSig] int QueryHardwareSupport(out uint mask);
+    }
+
     [StructLayout(LayoutKind.Sequential, Pack = 2)]
     internal struct WaveFormatExtensible
     {
@@ -96,7 +128,19 @@ namespace GrassiBoard.Diagnostics
         public uint EndpointState;
         public int ActivateResult;
         public int EndpointVolumeActivateResult;
+        public int EndpointVolumeChannelCountResult;
+        public uint EndpointVolumeChannelCount;
+        public int EndpointVolumeRangeResult;
+        public string EndpointVolumeRange;
+        public int EndpointVolumeMasterResult;
+        public float EndpointVolumeMasterDb;
+        public int EndpointVolumeMuteResult;
+        public bool EndpointVolumeMuted;
         public int MeterActivateResult;
+        public int MeterChannelCountResult;
+        public uint MeterChannelCount;
+        public int MeterPeakResult;
+        public float MeterPeak;
         public int GetMixFormatResult;
         public string MixFormat;
         public int ExactSharedSupportResult;
@@ -141,9 +185,27 @@ namespace GrassiBoard.Diagnostics
             object endpointVolume;
             Guid endpointVolumeId = new Guid("5CDF2C82-841E-4546-9722-0CF74078229A");
             result.EndpointVolumeActivateResult = device.Activate(ref endpointVolumeId, ClsctxAll, IntPtr.Zero, out endpointVolume);
+            if (result.EndpointVolumeActivateResult >= 0)
+            {
+                IAudioEndpointVolume volume = (IAudioEndpointVolume)endpointVolume;
+                result.EndpointVolumeChannelCountResult = volume.GetChannelCount(out result.EndpointVolumeChannelCount);
+                float minimumDb;
+                float maximumDb;
+                float incrementDb;
+                result.EndpointVolumeRangeResult = volume.GetVolumeRange(out minimumDb, out maximumDb, out incrementDb);
+                result.EndpointVolumeRange = string.Format("min={0} max={1} step={2}", minimumDb, maximumDb, incrementDb);
+                result.EndpointVolumeMasterResult = volume.GetMasterVolumeLevel(out result.EndpointVolumeMasterDb);
+                result.EndpointVolumeMuteResult = volume.GetMute(out result.EndpointVolumeMuted);
+            }
             object meter;
             Guid meterId = new Guid("C02216F6-8C67-4B5B-9D00-D008E73E0064");
             result.MeterActivateResult = device.Activate(ref meterId, ClsctxAll, IntPtr.Zero, out meter);
+            if (result.MeterActivateResult >= 0)
+            {
+                IAudioMeterInformation meterInformation = (IAudioMeterInformation)meter;
+                result.MeterChannelCountResult = meterInformation.GetMeteringChannelCount(out result.MeterChannelCount);
+                result.MeterPeakResult = meterInformation.GetPeakValue(out result.MeterPeak);
+            }
 
             IAudioClient client = (IAudioClient)instance;
             IntPtr mix = IntPtr.Zero;
@@ -232,7 +294,19 @@ foreach ($match in $matches) {
         EndpointState = $result.EndpointState
         Activate = Format-HResult $result.ActivateResult
         EndpointVolumeActivate = Format-HResult $result.EndpointVolumeActivateResult
+        EndpointVolumeChannelCountResult = Format-HResult $result.EndpointVolumeChannelCountResult
+        EndpointVolumeChannelCount = $result.EndpointVolumeChannelCount
+        EndpointVolumeRangeResult = Format-HResult $result.EndpointVolumeRangeResult
+        EndpointVolumeRange = $result.EndpointVolumeRange
+        EndpointVolumeMasterResult = Format-HResult $result.EndpointVolumeMasterResult
+        EndpointVolumeMasterDb = $result.EndpointVolumeMasterDb
+        EndpointVolumeMuteResult = Format-HResult $result.EndpointVolumeMuteResult
+        EndpointVolumeMuted = $result.EndpointVolumeMuted
         MeterActivate = Format-HResult $result.MeterActivateResult
+        MeterChannelCountResult = Format-HResult $result.MeterChannelCountResult
+        MeterChannelCount = $result.MeterChannelCount
+        MeterPeakResult = Format-HResult $result.MeterPeakResult
+        MeterPeak = $result.MeterPeak
         GetMixFormat = Format-HResult $result.GetMixFormatResult
         MixFormat = $result.MixFormat
         ExactSharedSupport = Format-HResult $result.ExactSharedSupportResult

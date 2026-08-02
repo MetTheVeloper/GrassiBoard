@@ -1,4 +1,4 @@
-GrassiBoard v0.6.3 — Milestone 5 Windows 10 reference-MicIn compatibility candidate
+GrassiBoard v0.6.4 — Milestone 5 Windows 10 capture diagnostic matrix
 
 SAFETY: Use headphones and lower their volume before starting the engine.
 

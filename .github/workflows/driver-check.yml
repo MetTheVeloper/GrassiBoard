@@ -31,14 +31,27 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 0.6.3
+  GRASSIBOARD_VERSION: 0.6.4
   WDK_NUGET_VERSION: 10.0.26100.6584
 
 jobs:
   build-driver:
-    name: Windows x64 test-signed driver
+    name: Capture matrix (${{ matrix.capture_variant }})
     runs-on: windows-2022
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - capture_variant: oem-format
+            build_variant: Cable
+            driver_version: 0.6.4.1
+          - capture_variant: reference-modes
+            build_variant: ReferenceModes
+            driver_version: 0.6.4.2
+          - capture_variant: reference-capture
+            build_variant: ReferenceCapture
+            driver_version: 0.6.4.3
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -63,7 +76,7 @@ jobs:
         run: |
           $solutionDirectory = "$env:GITHUB_WORKSPACE\"
           msbuild ./src/GrassiBoard.DeviceTool/GrassiBoard.DeviceTool.vcxproj /m /p:Configuration=Release /p:Platform=x64 "/p:SolutionDir=$solutionDirectory"
-          msbuild ./src/GrassiBoard.Driver/GrassiBoard.Driver.vcxproj /m /p:Configuration=Release /p:Platform=x64 "/p:SolutionDir=$solutionDirectory"
+          msbuild ./src/GrassiBoard.Driver/GrassiBoard.Driver.vcxproj /m /p:Configuration=Release /p:Platform=x64 "/p:SolutionDir=$solutionDirectory" "/p:GrassiBoardCaptureVariant=${{ matrix.build_variant }}"
 
       - name: Sign and verify package with ephemeral certificate
         shell: pwsh
@@ -74,7 +87,9 @@ jobs:
             -OutputDirectory ./artifacts/driver `
             -WdkPackageDirectory "./packages/Microsoft.Windows.WDK.x64.$env:WDK_NUGET_VERSION" `
             -SdkBuildToolsPackageDirectory "./packages/Microsoft.Windows.SDK.BuildTools.$env:WDK_NUGET_VERSION" `
-            -Version $env:GRASSIBOARD_VERSION
+            -Version "$env:GRASSIBOARD_VERSION-${{ matrix.capture_variant }}" `
+            -CaptureVariant "${{ matrix.capture_variant }}" `
+            -DriverVersion "${{ matrix.driver_version }}"
           if (Get-ChildItem ./artifacts/driver -Recurse -File | Where-Object { $_.Extension -in '.pfx', '.pvk', '.key' }) {
             throw 'Private signing key material is present in the artifact.'
           }
@@ -82,7 +97,7 @@ jobs:
       - name: Upload driver artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: GrassiBoard-driver-x64-${{ env.GRASSIBOARD_VERSION }}-${{ github.run_number }}
+          name: GrassiBoard-capture-matrix-${{ matrix.capture_variant }}-${{ env.GRASSIBOARD_VERSION }}-${{ github.run_number }}
           path: artifacts/driver/**
           if-no-files-found: error
           retention-days: 30
