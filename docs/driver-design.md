@@ -1,4 +1,6 @@
-# Driver design
+# Experimental driver design
+
+> Historical research only: this test-signed driver is retired from product builds as of v0.7.0 because its capture endpoint did not satisfy the Windows 10 WASAPI contract. GrassiBoard now targets an independently installed external virtual cable.
 
 Milestone 5 builds on the minimal Windows desktop WaveRT driver derived from Microsoft's official SysVAD sample at pinned commit `ef7c3074748ab05726c3a9161d3256118efd76e2`. Only the common miniport implementation, one speaker path, and one microphone path are compiled.
 

@@ -88,6 +88,27 @@ std::wstring GetFriendlyName(IMMDevice* const device)
     return name;
 }
 
+std::wstring GetContainerId(IMMDevice* const device)
+{
+    ComPtr<IPropertyStore> properties;
+    if (FAILED(device->OpenPropertyStore(STGM_READ, &properties))) {
+        return {};
+    }
+
+    PROPVARIANT value;
+    PropVariantInit(&value);
+    const HRESULT result = properties->GetValue(PKEY_Device_ContainerId, &value);
+    std::wstring containerId;
+    if (SUCCEEDED(result) && value.vt == VT_CLSID && value.puuid != nullptr) {
+        wchar_t buffer[39]{};
+        if (StringFromGUID2(*value.puuid, buffer, static_cast<int>(_countof(buffer))) > 0) {
+            containerId = buffer;
+        }
+    }
+    PropVariantClear(&value);
+    return containerId;
+}
+
 std::wstring GetDefaultDeviceId(IMMDeviceEnumerator* const enumerator, const EDataFlow flow)
 {
     ComPtr<IMMDevice> device;
@@ -172,12 +193,14 @@ gb_result EnumerateAudioDevicesJson(const EDataFlow flow, std::string& json)
             continue;
         }
         const std::wstring name = GetFriendlyName(device.Get());
+        const std::wstring containerId = GetContainerId(device.Get());
         if (!first) {
             stream << ',';
         }
         first = false;
         stream << "{\"id\":\"" << JsonEscape(WideToUtf8(id))
                << "\",\"name\":\"" << JsonEscape(WideToUtf8(name))
+               << "\",\"containerId\":\"" << JsonEscape(WideToUtf8(containerId))
                << "\",\"isDefault\":" << (id == defaultId ? "true" : "false") << '}';
     }
     stream << ']';

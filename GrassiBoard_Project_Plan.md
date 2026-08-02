@@ -1089,58 +1089,58 @@ Driver Verifier فقط در Milestoneهای پایانی و با هشدار وا
 
 در این Milestone هنوز انتقال کامل صدا الزامی نیست.
 
+نتیجهٔ بازنگری ۲۰۲۶-۰۸-۰۳: چرخهٔ نصب/حذف پذیرفته شد، اما معیار پذیرش برای یک محصول صوتی کافی نبود؛ قابلیت بازشدن Capture Endpoint توسط WASAPI نیز باید همان‌جا سنجیده می‌شد.
+
 پس از تست متوقف شو.
 
 ---
 
-## Milestone 5 — Virtual Cable PCM Transport
+## Milestone 5 — Virtual Audio Routing Feasibility
 
-نسخه: `v0.6.0`
+نسخه‌های آزمایشی: `v0.6.0` تا `v0.6.5`
 
 وظایف:
 
-- ایجاد Ring Buffer انتقال PCM
-- دریافت PCM از Render Endpoint
-- تحویل PCM به Capture Endpoint
-- مدیریت Clock و Position
-- مدیریت Silence
-- مدیریت Overrun و Underrun
-- تست با یک فایل WAV ثابت
-- عدم وابستگی به GrassiBoard App برای تست کابل
+- ارزیابی درایور اختصاصی SysVAD/WaveRT روی Windows 10
+- تفکیک نصب سالم از WASAPI Endpoint Conformance
+- تست مستقیم `GetMixFormat`، `IsFormatSupported` و `InitializeShared`
+- ثبت trace و ساخت diagnostic variants
+- تصمیم معماری میان درایور اختصاصی و کابل خارجی
 
-معیار پذیرش:
+نتیجه:
 
-1. یک فایل صوتی به `GrassiBoard Virtual Cable Input` پخش شود.
-2. همان صدا از `GrassiBoard Virtual Microphone` قابل ضبط باشد.
-3. قطع Playback باعث Silence شود.
-4. صدای قدیمی Loop نشود.
-5. Windows Audio Service کرش نکند.
-6. کیفیت فایل ضبط‌شده قابل قبول باشد.
+- Driver lifecycle پاس شد.
+- Capture Endpoint در Windows 10 توسط WASAPI باز نشد.
+- مسیر اختصاصی از Product Build کنار گذاشته شد و سورس آن فقط برای تحقیق نگه داشته شد.
+- کابل خارجی به‌عنوان transport محصول انتخاب شد.
 
 پس از تست متوقف شو.
 
 ---
 
-## Milestone 6 — اتصال Audio Engine به Virtual Microphone
+## Milestone 6 — اتصال Audio Engine به External Virtual Cable
 
 نسخه: `v0.7.0`
 
 وظایف:
 
-- خروجی موتور به Virtual Cable Input ارسال شود.
-- Pitch روی Virtual Microphone شنیده شود.
-- Monitoring جداگانه باقی بماند.
-- انتخاب Virtual Output در UI
-- تشخیص خودکار Driver
-- نمایش Driver Status
+- خروجی موتور به Playback Endpoint کابل خارجی ارسال شود.
+- Pitch روی Recording Endpoint همان کابل شنیده شود.
+- انتخاب Cable Output در UI
+- تشخیص خودکار جفت Render/Capture بر اساس Container ID
+- fallback محافظه‌کارانه برای کابل‌هایی با نام‌های هم‌خانواده
+- نمایش نام دقیق میکروفون مقصد
+- عدم انتخاب خودکار درایور آزمایشی قدیمی GrassiBoard
 - تست در Windows Voice Recorder و OBS
 
 معیار پذیرش:
 
 - صدای پردازش‌شده در Voice Recorder ضبط شود.
-- Pitch در خروجی Virtual Mic وجود داشته باشد.
-- مانیتورینگ باعث Loop نشود.
-- اپ مقصد بتواند Virtual Mic را باز کند.
+- Pitch در خروجی Recording Endpoint کابل وجود داشته باشد.
+- اپ مقصد بتواند کابل را به‌عنوان میکروفون باز کند.
+- Start/Stop باعث از دست رفتن endpoint یا توقف Windows Audio نشود.
+
+Monitoring جداگانه هدفون پس از پذیرش این مسیر اضافه می‌شود و شرط پذیرش v0.7.0 نیست.
 
 پس از تست متوقف شو.
 

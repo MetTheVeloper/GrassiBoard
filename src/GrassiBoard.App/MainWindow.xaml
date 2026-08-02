@@ -29,13 +29,13 @@
                 <StackPanel>
                     <TextBlock Text="GRASSIBOARD" FontSize="12" FontWeight="SemiBold"
                                Foreground="{StaticResource AccentBrush}" />
-                    <TextBlock Text="Pitch and formant workspace" FontSize="30" FontWeight="SemiBold"
+                    <TextBlock Text="Voice routing workspace" FontSize="30" FontWeight="SemiBold"
                                Margin="0,8,0,0" />
-                    <TextBlock Text="Milestone 5 · Virtual cable PCM transport validation"
+                    <TextBlock Text="External virtual cable · processed microphone routing"
                                Foreground="{StaticResource MutedTextBrush}" Margin="0,7,0,0" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                    <TextBlock x:Name="VersionText" Text="v0.6.5" FontSize="18" HorizontalAlignment="Right" />
+                    <TextBlock x:Name="VersionText" Text="v0.7.0" FontSize="18" HorizontalAlignment="Right" />
                     <TextBlock x:Name="CommitText" Text="local" FontFamily="Consolas" FontSize="13"
                                Foreground="{StaticResource MutedTextBrush}" Margin="0,5,0,0"
                                HorizontalAlignment="Right" />
@@ -58,12 +58,13 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Text="INPUT MICROPHONE" FontSize="11" Foreground="{StaticResource MutedTextBrush}" />
-                    <TextBlock Grid.Column="2" Text="MONITOR OUTPUT" FontSize="11"
+                    <TextBlock Grid.Column="2" Text="SEND TO VIRTUAL CABLE INPUT" FontSize="11"
                                Foreground="{StaticResource MutedTextBrush}" />
                     <ComboBox x:Name="InputDeviceCombo" Grid.Row="2" MinWidth="300"
                               DisplayMemberPath="Name" SelectedValuePath="Id" />
-                    <ComboBox x:Name="MonitorDeviceCombo" Grid.Row="2" Grid.Column="2" MinWidth="300"
-                              DisplayMemberPath="Name" SelectedValuePath="Id" />
+                    <ComboBox x:Name="CableOutputCombo" Grid.Row="2" Grid.Column="2" MinWidth="300"
+                              DisplayMemberPath="Name" SelectedValuePath="Id"
+                              SelectionChanged="CableOutputCombo_SelectionChanged" />
                     <StackPanel Grid.Row="2" Grid.Column="4" Orientation="Horizontal">
                         <Button x:Name="RefreshButton" Content="Refresh" Click="RefreshButton_Click"
                                 Background="#D7E1EC" Margin="0,0,10,0" />
@@ -73,12 +74,15 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Row="4" Background="#211A12" BorderBrush="#735E35" BorderThickness="1"
+            <Border Grid.Row="4" Background="#111B1A" BorderBrush="#315F58" BorderThickness="1"
                     CornerRadius="9" Padding="14">
-                <TextBlock Foreground="#F4D899" TextWrapping="Wrap">
-                    Start with a low headset volume. Live microphone monitoring can be loud and may create feedback
-                    if speakers are used instead of headphones.
-                </TextBlock>
+                <StackPanel>
+                    <TextBlock x:Name="CableRouteText" Foreground="#75E6B5" FontWeight="SemiBold"
+                               Text="Looking for an external virtual cable…" TextWrapping="Wrap" />
+                    <TextBlock x:Name="CableRouteHintText" Foreground="{StaticResource MutedTextBrush}"
+                               Text="Select the paired recording endpoint as the microphone in the target app."
+                               TextWrapping="Wrap" Margin="0,7,0,0" />
+                </StackPanel>
             </Border>
 
             <Grid Grid.Row="6">
@@ -187,12 +191,12 @@
                 <Border Grid.Column="2" Background="{StaticResource PanelBrush}" CornerRadius="12" Padding="22">
                     <StackPanel>
                         <Grid>
-                            <TextBlock Text="MONITOR OUTPUT" FontSize="12" FontWeight="SemiBold" />
+                            <TextBlock Text="CABLE SEND" FontSize="12" FontWeight="SemiBold" />
                             <TextBlock x:Name="OutputDbText" Text="−∞ dBFS" HorizontalAlignment="Right"
                                        Foreground="{StaticResource MutedTextBrush}" FontFamily="Consolas" />
                         </Grid>
                         <ProgressBar x:Name="OutputMeter" Minimum="0" Maximum="100" Margin="0,16,0,0" />
-                        <TextBlock Text="Peak level written to the selected headset"
+                        <TextBlock Text="Peak level written to the selected virtual cable input"
                                    Foreground="{StaticResource MutedTextBrush}" Margin="0,12,0,0" />
                     </StackPanel>
                 </Border>

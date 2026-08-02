@@ -2,6 +2,23 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.7.0] - 2026-08-03
+
+### Added
+
+- Route the accepted live voice engine directly to any installed external virtual cable playback endpoint.
+- Pair render and capture endpoints by Windows Container ID with a conservative vendor-neutral name fallback.
+- Display the exact cable recording endpoint that target applications should select as their microphone.
+- Prefer a detected external cable while keeping the physical microphone as the source.
+- Add automated VB-CABLE, AMM, physical-headset, and retired-GrassiBoard endpoint matching fixtures.
+- Add an external-cable setup and manual acceptance guide.
+
+### Changed
+
+- Retire the custom test-signed SysVAD driver from product builds and releases after the Windows 10 WASAPI capture investigation.
+- Publish only the portable app, symbols, and test results; experimental driver source remains available for research.
+- Rename the former monitor output as the explicit virtual-cable send destination.
+
 ## [0.6.5] - 2026-08-02
 
 ### Fixed
