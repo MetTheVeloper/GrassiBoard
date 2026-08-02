@@ -1,13 +1,13 @@
-# GrassiBoard v0.6.4 diagnostic driver
+# GrassiBoard v0.6.5 capture engine-policy driver
 
 This package is a test-signed Milestone 5 driver for Windows 10/11 x64. It creates:
 
 - `GrassiBoard Virtual Cable Input` (render)
 - `GrassiBoard Virtual Microphone` (capture)
 
-If this package is part of the capture diagnostic matrix, read
-`CAPTURE-MATRIX-TESTING.md` first and identify the package using
-`capture-variant.json`.
+This package seeds the capture endpoint's missing Windows 10 Audio Engine mix-format
+and engine-period policy values. Read `CAPTURE-ENGINE-POLICY-TESTING.md` before the
+PCM transport acceptance test.
 
 PCM played to the stereo render endpoint is downmixed and delivered by a kernel ring
 to the mono capture endpoint. Both use fixed 48 kHz, 16-bit device formats and can be

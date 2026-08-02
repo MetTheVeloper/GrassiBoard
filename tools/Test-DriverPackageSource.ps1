@@ -97,6 +97,14 @@ if (-not $captureTopologySection.Contains('PKEY_AudioEngine_OEMFormat') -or
     -not $inf.Contains('PKEY_AudioEngine_OEMFormat="{E4870E26-3CC5-4CD2-BA46-CA0A9A70ED04},3"')) {
     throw 'The capture diagnostic baseline must explicitly register its mono OEM format.'
 }
+if (-not $captureTopologySection.Contains('PKEY_AudioEngine_InternalMixFormat') -or
+    -not $captureTopologySection.Contains('PKEY_AudioEngine_InternalPeriod') -or
+    -not $captureTopologySection.Contains('41,00,00,00,28,00,00,00,FE,FF,01,00,80,BB,00,00,00,EE,02,00,04,00,20,00,16,00,20,00,04,00,00,00,03,00,00,00,00,00,10,00,80,00,00,AA,00,38,9B,71') -or
+    -not $captureTopologySection.Contains('41,00,00,00,08,00,00,00,A0,86,01,00,00,00,00,00') -or
+    -not $inf.Contains('PKEY_AudioEngine_InternalMixFormat="{E4870E26-3CC5-4CD2-BA46-CA0A9A70ED04},0"') -or
+    -not $inf.Contains('PKEY_AudioEngine_InternalPeriod="{E4870E26-3CC5-4CD2-BA46-CA0A9A70ED04},1"')) {
+    throw 'The capture endpoint must seed the Windows 10 Audio Engine mix-format and period policy values.'
+}
 if (-not $minipairs.Contains('GRASSIBOARD_CAPTURE_REFERENCE_MODES') -or
     -not $minipairs.Contains('MicInPinDeviceFormatsAndModes') -or
     -not $streamSource.Contains('GRASSIBOARD_CAPTURE_REFERENCE_TONE') -or
