@@ -316,11 +316,20 @@ Return Value:
     }
     RtlCopyMemory(m_pWfExt, pWfEx, sizeof(WAVEFORMATEX) + pWfEx->cbSize);
 
-    if ((IsGrassiBoardCableRenderStream() || IsGrassiBoardCableCaptureStream()) &&
+    if (IsGrassiBoardCableRenderStream() &&
         (m_pWfExt->Format.nSamplesPerSec != GrassiBoardCableTransport::SampleRate ||
-         m_pWfExt->Format.nChannels != GrassiBoardCableTransport::ChannelCount ||
+         m_pWfExt->Format.nChannels != GrassiBoardCableTransport::RenderChannelCount ||
          m_pWfExt->Format.wBitsPerSample != GrassiBoardCableTransport::BitsPerSample ||
-         m_pWfExt->Format.nBlockAlign != GrassiBoardCableTransport::BlockAlign))
+         m_pWfExt->Format.nBlockAlign != GrassiBoardCableTransport::RenderBlockAlign))
+    {
+        return STATUS_NO_MATCH;
+    }
+
+    if (IsGrassiBoardCableCaptureStream() &&
+        (m_pWfExt->Format.nSamplesPerSec != GrassiBoardCableTransport::SampleRate ||
+         m_pWfExt->Format.nChannels != GrassiBoardCableTransport::CaptureChannelCount ||
+         m_pWfExt->Format.wBitsPerSample != GrassiBoardCableTransport::BitsPerSample ||
+         m_pWfExt->Format.nBlockAlign != GrassiBoardCableTransport::CaptureBlockAlign))
     {
         return STATUS_NO_MATCH;
     }

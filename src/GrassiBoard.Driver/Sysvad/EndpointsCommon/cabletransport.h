@@ -3,10 +3,12 @@
 namespace GrassiBoardCableTransport
 {
     constexpr ULONG SampleRate = 48000;
-    constexpr ULONG ChannelCount = 2;
+    constexpr ULONG RenderChannelCount = 2;
+    constexpr ULONG CaptureChannelCount = 1;
     constexpr ULONG BitsPerSample = 16;
-    constexpr ULONG BlockAlign = ChannelCount * (BitsPerSample / 8);
-    constexpr ULONG BytesPerSecond = SampleRate * BlockAlign;
+    constexpr ULONG RenderBlockAlign = RenderChannelCount * (BitsPerSample / 8);
+    constexpr ULONG CaptureBlockAlign = CaptureChannelCount * (BitsPerSample / 8);
+    constexpr ULONG CaptureBytesPerSecond = SampleRate * CaptureBlockAlign;
 
     void SetRenderActive(bool active);
     void SetCaptureActive(bool active);

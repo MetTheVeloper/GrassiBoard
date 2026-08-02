@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v0.6.2`
+- Version: `v0.6.3`
 - Milestone: `5 — Virtual Cable PCM Transport`
-- Status: v0.6.0 and v0.6.1 capture activation failed on Windows 10; v0.6.2 timer-driven capture fix is awaiting CI and manual retest
+- Status: v0.6.0 through v0.6.2 capture activation failed on Windows 10; v0.6.3 reference-MicIn contract fix is awaiting CI and manual retest
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -13,15 +13,15 @@
 
 The driver is a minimal extraction of Microsoft's SysVAD/WaveRT code pinned to commit `ef7c3074748ab05726c3a9161d3256118efd76e2`. It uses hardware ID `ROOT\GrassiBoardVirtualAudio` and exposes `GrassiBoard Virtual Cable Input` plus `GrassiBoard Virtual Microphone`.
 
-The two system streams now advertise one shared 48 kHz, 16-bit, stereo PCM device format. A preallocated 250 ms SPSC ring transports consumed render frames to capture. Capture uses a 10 ms pre-roll, zero-fills underruns, and invalidates queued frames whenever render or capture pauses/stops so old audio cannot repeat. The transport counts fill, underruns, and overruns and performs no kernel DSP or allocation in the DPC path.
+The render stream advertises fixed 48 kHz, 16-bit stereo PCM. Its frames are downmixed without allocation into a fixed 48 kHz, 16-bit mono ring consumed by the capture stream, preserving Microsoft's reference external-MicIn channel contract. Capture uses a 10 ms pre-roll, zero-fills underruns, and invalidates queued frames whenever render or capture pauses/stops so old audio cannot repeat. The transport counts fill, underruns, and overruns.
 
 The cable is deliberately testable without the GrassiBoard app. App-to-cable routing is Milestone 6.
 
 ## Milestone 5 Windows 10 capture finding
 
-Manual testing on Windows 10 build 19045 found that the v0.6.0 and v0.6.1 endpoints were present and Device Manager reported `OK`, but Voice Recorder could not open the virtual microphone. A direct KS probe verified the capture filter, its two pins, all five processing modes, exact 48 kHz/16-bit/stereo format negotiation, and successful pin creation. A direct WASAPI probe still reproduced `AUDCLNT_E_UNSUPPORTED_FORMAT` from `IAudioClient::GetMixFormat` and both shared/exclusive initialization paths.
+Manual testing on Windows 10 build 19045 found that the v0.6.0 through v0.6.2 endpoints were present and Device Manager reported `OK`, but Voice Recorder could not open the virtual microphone. A direct KS probe verified the capture filter, its two pins, all five processing modes, exact format negotiation, and successful pin creation. A direct WASAPI probe still reproduced `AUDCLNT_E_UNSUPPORTED_FORMAT` from `IAudioClient::GetMixFormat` and both shared/exclusive initialization paths.
 
-A focused ETW trace exposed the underlying Audio Engine result as `0x80070490` (`Element not found`) during per-endpoint policy construction; Windows then mapped it to `AUDCLNT_E_UNSUPPORTED_FORMAT`. The internal device stream was being created with the event-callback flag because the capture INF opted into event-driven WaveRT. v0.6.2 removes that capture-only opt-in and uses the timer-driven WaveRT path on Windows 10 while leaving render event-driven. The earlier one-versus-five stream-instance diagnosis was disproved by the unchanged v0.6.1 behavior and is no longer treated as the cause.
+A focused ETW trace exposed the underlying Audio Engine result as `0x80070490` (`Element not found`) during per-endpoint policy construction; Windows then mapped it to `AUDCLNT_E_UNSUPPORTED_FORMAT`. The unchanged v0.6.2 result disproved event-driven scheduling as the cause, just as v0.6.1 disproved the earlier stream-instance hypothesis. v0.6.3 restores event-driven capture and removes the remaining material divergence from Microsoft's working external MicIn reference: the capture endpoint is mono again, with a matching mono topology jack and default formats. The stereo render input is downmixed before entering the mono ring.
 
 ## Milestone 5 automated result
 

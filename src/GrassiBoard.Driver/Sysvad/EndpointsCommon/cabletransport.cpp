@@ -1,11 +1,13 @@
 #include <sysvad.h>
 #include "cabletransport.h"
+#include "pcmconvert.h"
 #include "pcmring.h"
 
 namespace
 {
-    constexpr ULONG TransportCapacityBytes = GrassiBoardCableTransport::BytesPerSecond / 4; // 250 ms
-    constexpr ULONG TransportPreRollBytes = GrassiBoardCableTransport::BytesPerSecond / 100; // 10 ms
+    constexpr ULONG TransportCapacityBytes = GrassiBoardCableTransport::CaptureBytesPerSecond / 4; // 250 ms
+    constexpr ULONG TransportPreRollBytes = GrassiBoardCableTransport::CaptureBytesPerSecond / 100; // 10 ms
+    constexpr ULONG DownmixFramesPerChunk = 256;
 
     struct KernelPcmRingOperations
     {
@@ -66,7 +68,7 @@ namespace
                 g_TransportBuffer,
                 TransportCapacityBytes,
                 TransportPreRollBytes,
-                GrassiBoardCableTransport::BlockAlign);
+                GrassiBoardCableTransport::CaptureBlockAlign);
             InterlockedExchange(&g_InitializeState, 2);
             return;
         }
@@ -93,7 +95,34 @@ void GrassiBoardCableTransport::SetCaptureActive(bool active)
 ULONG GrassiBoardCableTransport::Write(const BYTE* source, ULONG byteCount)
 {
     EnsureInitialized();
-    return g_Transport.Write(source, byteCount);
+    if (source == nullptr || byteCount < RenderBlockAlign)
+    {
+        return 0;
+    }
+
+    const ULONG alignedBytes = byteCount - (byteCount % RenderBlockAlign);
+    ULONG consumedBytes = 0;
+    SHORT mono[DownmixFramesPerChunk] = {};
+
+    while (consumedBytes < alignedBytes)
+    {
+        const ULONG remainingFrames = (alignedBytes - consumedBytes) / RenderBlockAlign;
+        const ULONG chunkFrames = min(remainingFrames, DownmixFramesPerChunk);
+        const SHORT* stereo = reinterpret_cast<const SHORT*>(source + consumedBytes);
+        GrassiBoardDownmixStereo16ToMono16(stereo, mono, chunkFrames);
+
+        const ULONG monoBytes = chunkFrames * CaptureBlockAlign;
+        const ULONG writtenBytes = g_Transport.Write(
+            reinterpret_cast<const BYTE*>(mono),
+            monoBytes);
+        consumedBytes += (writtenBytes / CaptureBlockAlign) * RenderBlockAlign;
+        if (writtenBytes != monoBytes)
+        {
+            break;
+        }
+    }
+
+    return consumedBytes;
 }
 
 ULONG GrassiBoardCableTransport::Read(BYTE* destination, ULONG byteCount)

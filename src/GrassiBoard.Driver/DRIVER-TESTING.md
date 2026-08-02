@@ -1,18 +1,17 @@
-# GrassiBoard v0.6.2 test driver
+# GrassiBoard v0.6.3 test driver
 
 This package is a test-signed Milestone 5 driver for Windows 10/11 x64. It creates:
 
 - `GrassiBoard Virtual Cable Input` (render)
 - `GrassiBoard Virtual Microphone` (capture)
 
-PCM played to the render endpoint is delivered by a kernel ring to the capture endpoint.
-The cable uses a fixed 48 kHz, 16-bit, stereo device format and can be tested without
-opening the GrassiBoard app.
+PCM played to the stereo render endpoint is downmixed and delivered by a kernel ring
+to the mono capture endpoint. Both use fixed 48 kHz, 16-bit device formats and can be
+tested without opening the GrassiBoard app.
 
-The virtual render endpoint remains event-driven. The virtual microphone uses
-timer-driven WaveRT for Windows 10 build 19045 compatibility; ETW diagnostics on
-v0.6.1 showed that its event-driven capture graph failed during Audio Engine policy
-construction before a client stream could open.
+Both endpoints retain the reference SysVAD event-driven WaveRT contract. Manual
+v0.6.2 testing disproved the timer-driven hypothesis; this package instead restores
+the external MicIn endpoint's reference mono channel contract.
 
 ## Before testing
 
@@ -32,8 +31,8 @@ deliberately manual decisions.
 
 1. Confirm both endpoint names in Sound settings, confirm `GrassiBoard Virtual Audio`
    has no warning icon in Device Manager, and confirm `Windows Audio` remains Running.
-2. In each endpoint's Advanced properties, confirm the default format is
-   `2 channel, 16 bit, 48000 Hz`.
+2. In Advanced properties, confirm the render endpoint is `2 channel, 16 bit, 48000 Hz`
+   and the virtual microphone is `1 channel, 16 bit, 48000 Hz`.
 3. In this package's `scripts` directory, run `./New-CableTestWave.ps1`. It creates
    `GrassiBoard-cable-test.wav` on the Desktop with 440, 660, and 880 Hz tones separated
    by silence and followed by two seconds of silence.

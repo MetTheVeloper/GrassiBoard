@@ -17,10 +17,10 @@ NTSTATUS CreateMiniportTopologySYSVAD(
     _Out_ PUNKNOWN*, _In_ REFCLSID, _In_opt_ PUNKNOWN, _In_ POOL_FLAGS,
     _In_ PUNKNOWN, _In_opt_ PVOID, _In_ PENDPOINT_MINIPAIR);
 
-// Both sides of the kernel cable expose one identical device format. Windows
-// Audio Engine performs client conversion; the driver transports PCM frames
-// without resampling or channel conversion in kernel mode.
-static KSDATAFORMAT_WAVEFORMATEXTENSIBLE GrassiBoardCablePcmFormats[] =
+// Keep the working SysVAD speaker contract stereo and the reference MicIn
+// contract mono. Windows Audio converts client formats; the kernel cable only
+// performs the required stereo-to-mono PCM16 downmix between its endpoints.
+static KSDATAFORMAT_WAVEFORMATEXTENSIBLE GrassiBoardCableRenderPcmFormats[] =
 {
     {
         {
@@ -35,10 +35,10 @@ static KSDATAFORMAT_WAVEFORMATEXTENSIBLE GrassiBoardCablePcmFormats[] =
         {
             {
                 WAVE_FORMAT_EXTENSIBLE,
-                GrassiBoardCableTransport::ChannelCount,
+                GrassiBoardCableTransport::RenderChannelCount,
                 GrassiBoardCableTransport::SampleRate,
-                GrassiBoardCableTransport::BytesPerSecond,
-                GrassiBoardCableTransport::BlockAlign,
+                GrassiBoardCableTransport::SampleRate * GrassiBoardCableTransport::RenderBlockAlign,
+                GrassiBoardCableTransport::RenderBlockAlign,
                 GrassiBoardCableTransport::BitsPerSample,
                 sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
             },
@@ -49,53 +49,82 @@ static KSDATAFORMAT_WAVEFORMATEXTENSIBLE GrassiBoardCablePcmFormats[] =
     }
 };
 
+static KSDATAFORMAT_WAVEFORMATEXTENSIBLE GrassiBoardCableCapturePcmFormats[] =
+{
+    {
+        {
+            sizeof(KSDATAFORMAT_WAVEFORMATEXTENSIBLE),
+            0,
+            0,
+            0,
+            STATICGUIDOF(KSDATAFORMAT_TYPE_AUDIO),
+            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM),
+            STATICGUIDOF(KSDATAFORMAT_SPECIFIER_WAVEFORMATEX)
+        },
+        {
+            {
+                WAVE_FORMAT_EXTENSIBLE,
+                GrassiBoardCableTransport::CaptureChannelCount,
+                GrassiBoardCableTransport::SampleRate,
+                GrassiBoardCableTransport::CaptureBytesPerSecond,
+                GrassiBoardCableTransport::CaptureBlockAlign,
+                GrassiBoardCableTransport::BitsPerSample,
+                sizeof(WAVEFORMATEXTENSIBLE) - sizeof(WAVEFORMATEX)
+            },
+            GrassiBoardCableTransport::BitsPerSample,
+            KSAUDIO_SPEAKER_MONO,
+            STATICGUIDOF(KSDATAFORMAT_SUBTYPE_PCM)
+        }
+    }
+};
+
 static MODE_AND_DEFAULT_FORMAT GrassiBoardRenderModes[] =
 {
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW, &GrassiBoardCablePcmFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_DEFAULT, &GrassiBoardCablePcmFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_MEDIA, &GrassiBoardCablePcmFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_MOVIE, &GrassiBoardCablePcmFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS, &GrassiBoardCablePcmFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_NOTIFICATION, &GrassiBoardCablePcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW, &GrassiBoardCableRenderPcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_DEFAULT, &GrassiBoardCableRenderPcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_MEDIA, &GrassiBoardCableRenderPcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_MOVIE, &GrassiBoardCableRenderPcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS, &GrassiBoardCableRenderPcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_NOTIFICATION, &GrassiBoardCableRenderPcmFormats[0].DataFormat },
 };
 
 static MODE_AND_DEFAULT_FORMAT GrassiBoardCaptureModes[] =
 {
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW, &GrassiBoardCablePcmFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_DEFAULT, &GrassiBoardCablePcmFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_SPEECH, &GrassiBoardCablePcmFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS, &GrassiBoardCablePcmFormats[0].DataFormat },
-    { STATIC_AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH, &GrassiBoardCablePcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_RAW, &GrassiBoardCableCapturePcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_DEFAULT, &GrassiBoardCableCapturePcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_SPEECH, &GrassiBoardCableCapturePcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_COMMUNICATIONS, &GrassiBoardCableCapturePcmFormats[0].DataFormat },
+    { STATIC_AUDIO_SIGNALPROCESSINGMODE_FAR_FIELD_SPEECH, &GrassiBoardCableCapturePcmFormats[0].DataFormat },
 };
 
 static PIN_DEVICE_FORMATS_AND_MODES GrassiBoardRenderFormatsAndModes[] =
 {
     {
         SystemRenderPin,
-        GrassiBoardCablePcmFormats,
-        SIZEOF_ARRAY(GrassiBoardCablePcmFormats),
+        GrassiBoardCableRenderPcmFormats,
+        SIZEOF_ARRAY(GrassiBoardCableRenderPcmFormats),
         GrassiBoardRenderModes,
         SIZEOF_ARRAY(GrassiBoardRenderModes)
     },
     {
         OffloadRenderPin,
-        GrassiBoardCablePcmFormats,
-        SIZEOF_ARRAY(GrassiBoardCablePcmFormats),
+        GrassiBoardCableRenderPcmFormats,
+        SIZEOF_ARRAY(GrassiBoardCableRenderPcmFormats),
         GrassiBoardRenderModes,
         SIZEOF_ARRAY(GrassiBoardRenderModes)
     },
     {
         RenderLoopbackPin,
-        GrassiBoardCablePcmFormats,
-        SIZEOF_ARRAY(GrassiBoardCablePcmFormats),
+        GrassiBoardCableRenderPcmFormats,
+        SIZEOF_ARRAY(GrassiBoardCableRenderPcmFormats),
         NULL,
         0
     },
     { BridgePin, NULL, 0, NULL, 0 },
     {
         NoPin,
-        GrassiBoardCablePcmFormats,
-        SIZEOF_ARRAY(GrassiBoardCablePcmFormats),
+        GrassiBoardCableRenderPcmFormats,
+        SIZEOF_ARRAY(GrassiBoardCableRenderPcmFormats),
         NULL,
         0
     }
@@ -106,8 +135,8 @@ static PIN_DEVICE_FORMATS_AND_MODES GrassiBoardCaptureFormatsAndModes[] =
     { BridgePin, NULL, 0, NULL, 0 },
     {
         SystemCapturePin,
-        GrassiBoardCablePcmFormats,
-        SIZEOF_ARRAY(GrassiBoardCablePcmFormats),
+        GrassiBoardCableCapturePcmFormats,
+        SIZEOF_ARRAY(GrassiBoardCableCapturePcmFormats),
         GrassiBoardCaptureModes,
         SIZEOF_ARRAY(GrassiBoardCaptureModes)
     }
@@ -187,7 +216,7 @@ static ENDPOINT_MINIPAIR GrassiBoardCaptureMiniports =
     CreateMiniportWaveRTSYSVAD,
     &MicInWaveMiniportFilterDescriptor,
     0, NULL,
-    GrassiBoardCableTransport::ChannelCount,
+    GrassiBoardCableTransport::CaptureChannelCount,
     GrassiBoardCaptureFormatsAndModes,
     SIZEOF_ARRAY(GrassiBoardCaptureFormatsAndModes),
     GrassiBoardCapturePhysicalConnections,

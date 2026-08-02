@@ -2,6 +2,18 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.6.3] - 2026-08-02
+
+### Fixed
+
+- Restored the capture endpoint to the reference SysVAD MicIn contract: mono PCM, a mono topology jack, five processing modes, and event-driven WaveRT.
+- Kept the working virtual speaker stereo and added a bounded, allocation-free PCM16 stereo-to-mono downmix before frames enter the capture ring.
+- Added regression coverage for the endpoint contract and downmix arithmetic, including full-scale samples.
+
+### Investigation
+
+- Manual v0.6.2 testing disproved the timer-driven hypothesis: WASAPI still failed at `GetMixFormat` with `0x88890008`. The remaining material divergence from Microsoft's working external MicIn reference was GrassiBoard's stereo capture conversion, so v0.6.3 removes that divergence.
+
 ## [0.6.2] - 2026-08-02
 
 ### Fixed
