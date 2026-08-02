@@ -5,6 +5,7 @@
 #include <iostream>
 
 #include "pcmring.h"
+#include "pcmconvert.h"
 
 namespace
 {
@@ -150,6 +151,20 @@ namespace
             "restart before new playback must remain silent");
         return ok;
     }
+
+    bool TestStereoToMonoDownmix()
+    {
+        const std::array<short, 8> stereo{
+            1000, 3000,
+            -3000, -1000,
+            32767, 32767,
+            -32768, 32767};
+        std::array<short, 4> mono{};
+        GrassiBoardDownmixStereo16ToMono16(stereo.data(), mono.data(), 4);
+
+        const std::array<short, 4> expected{2000, -2000, 32767, 0};
+        return Expect(mono == expected, "stereo PCM16 downmix changed amplitude or overflowed");
+    }
 }
 
 int main()
@@ -160,6 +175,7 @@ int main()
     ok &= TestUnderrunReturnsSilenceWithoutRepeating();
     ok &= TestOverrunDropsNewestFrames();
     ok &= TestStopFlushesStaleAudio();
+    ok &= TestStereoToMonoDownmix();
     if (ok)
     {
         std::cout << "GrassiBoard PCM transport policy tests passed.\n";

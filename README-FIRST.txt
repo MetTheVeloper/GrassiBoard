@@ -1,4 +1,4 @@
-GrassiBoard v0.6.2 — Milestone 5 Windows 10 capture activation compatibility fix
+GrassiBoard v0.6.3 — Milestone 5 Windows 10 reference-MicIn compatibility candidate
 
 SAFETY: Use headphones and lower their volume before starting the engine.
 

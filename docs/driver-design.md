@@ -4,7 +4,7 @@ Milestone 5 builds on the minimal Windows desktop WaveRT driver derived from Mic
 
 The root device uses hardware ID `ROOT\GrassiBoardVirtualAudio`, service/binary name `GrassiBoardVirtualAudio`, and GrassiBoard-specific product and endpoint-name GUIDs. It exposes exactly two interfaces: render `GrassiBoard Virtual Cable Input` and capture `GrassiBoard Virtual Microphone`.
 
-The system render and system capture streams advertise the same fixed device format: 48 kHz, 16-bit, stereo PCM. Windows Audio converts client formats; kernel mode performs no resampling or DSP.
+The system render stream advertises fixed 48 kHz, 16-bit stereo PCM. The capture stream preserves the reference external-MicIn contract at fixed 48 kHz, 16-bit mono PCM. Windows Audio converts client sample formats; the cable performs only a bounded PCM16 stereo-to-mono downmix.
 
 The render DPC copies consumed WaveRT frames into a preallocated 250 ms SPSC ring. Capture waits for a 10 ms pre-roll, copies available frames into its WaveRT buffer, and zero-fills every unavailable byte. Pause, stop, and restart invalidate queued bytes so a previous session cannot repeat. The ring drops newest frames on overrun, returns silence on underrun, and records fill/underrun/overrun counters. PCM is accepted only from the system-render pin and delivered only to the system-capture pin.
 

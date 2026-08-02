@@ -42,5 +42,8 @@
     <ClCompile Include="NewDelete.cpp" />
     <ClCompile Include="speakertopo.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pcmconvert.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

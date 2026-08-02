@@ -9,9 +9,11 @@ $inf = Get-Content -LiteralPath (Join-Path $root 'GrassiBoardVirtualAudio.inf') 
 $minipairs = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtualAudio\minipairs.h') -Raw
 $captureWaveTable = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtualAudio\micinwavtable.h') -Raw
 $captureTopologyTable = Get-Content -LiteralPath (Join-Path $root 'Sysvad\GrassiBoardVirtualAudio\micintoptable.h') -Raw
+$transportHeader = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\cabletransport.h') -Raw
 $endpointProject = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\GrassiBoard.EndpointsCommon.vcxproj') -Raw
 $streamSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\minwavertstream.cpp') -Raw
 $transportSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\cabletransport.cpp') -Raw
+$convertHeader = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\pcmconvert.h') -Raw
 $ringSource = Get-Content -LiteralPath (Join-Path $root 'Sysvad\EndpointsCommon\pcmring.h') -Raw
 $scriptsDirectory = Join-Path $root 'scripts'
 $commonScript = Get-Content -LiteralPath (Join-Path $scriptsDirectory 'DriverScript.Common.ps1') -Raw
@@ -44,6 +46,7 @@ foreach ($text in $requiredTransportText) {
     if (-not $streamSource.Contains($text)) { throw "WaveRT stream does not route PCM through: $text" }
 }
 if (-not $endpointProject.Contains('cabletransport.cpp') -or
+    -not $endpointProject.Contains('pcmconvert.h') -or
     -not $transportSource.Contains('TransportPreRollBytes') -or
     -not $ringSource.Contains('m_underruns') -or
     -not $ringSource.Contains('m_overruns') -or
@@ -51,16 +54,25 @@ if (-not $endpointProject.Contains('cabletransport.cpp') -or
     -not $ringSource.Contains('TOps::Zero(destination, byteCount)')) {
     throw 'The driver PCM ring must provide pre-roll, silence, stale-data invalidation, and underrun/overrun accounting.'
 }
-if (-not $minipairs.Contains('GrassiBoardCablePcmFormats') -or
+if (-not $minipairs.Contains('GrassiBoardCableRenderPcmFormats') -or
+    -not $minipairs.Contains('GrassiBoardCableCapturePcmFormats') -or
     -not $minipairs.Contains('GrassiBoardCableTransport::SampleRate') -or
-    -not $minipairs.Contains('GrassiBoardCableTransport::BlockAlign') -or
+    -not $minipairs.Contains('GrassiBoardCableTransport::RenderBlockAlign') -or
+    -not $minipairs.Contains('GrassiBoardCableTransport::CaptureBlockAlign') -or
     -not $minipairs.Contains('GrassiBoardRenderFormatsAndModes') -or
     -not $minipairs.Contains('GrassiBoardCaptureFormatsAndModes')) {
-    throw 'Render and capture endpoints must advertise the same fixed PCM transport format.'
+    throw 'Render and capture endpoints must advertise their fixed stereo-render and mono-capture PCM formats.'
 }
-if ($captureWaveTable -notmatch '#define\s+MICIN_DEVICE_MAX_CHANNELS\s+2' -or
-    -not $captureTopologyTable.Contains('KSAUDIO_SPEAKER_STEREO')) {
-    throw 'The capture data range and topology jack must agree with the stereo cable format.'
+if ($captureWaveTable -notmatch '#define\s+MICIN_DEVICE_MAX_CHANNELS\s+1' -or
+    -not $captureTopologyTable.Contains('KSAUDIO_SPEAKER_MONO') -or
+    -not $transportHeader.Contains('CaptureChannelCount = 1') -or
+    -not $minipairs.Contains('KSAUDIO_SPEAKER_MONO')) {
+    throw 'The capture format, data range, and topology jack must preserve the reference mono SysVAD MicIn contract.'
+}
+if (-not $transportHeader.Contains('RenderChannelCount = 2') -or
+    -not $convertHeader.Contains('GrassiBoardDownmixStereo16ToMono16') -or
+    -not $transportSource.Contains('GrassiBoardDownmixStereo16ToMono16')) {
+    throw 'The stereo render stream must be explicitly downmixed into the mono capture ring.'
 }
 if ($captureWaveTable -notmatch '#define\s+MICIN_MAX_INPUT_STREAMS\s+5') {
     throw 'The capture pin must retain the SysVAD reference instance capacity.'
@@ -77,8 +89,8 @@ $captureTopologySection = [regex]::Match(
 if (-not $renderTopologySection.Contains('PKEY_AudioEndpoint_Supports_EventDriven_Mode')) {
     throw 'The render endpoint must retain event-driven WaveRT support.'
 }
-if ($captureTopologySection.Contains('PKEY_AudioEndpoint_Supports_EventDriven_Mode')) {
-    throw 'The Windows 10-compatible capture endpoint must not opt into event-driven WaveRT.'
+if (-not $captureTopologySection.Contains('PKEY_AudioEndpoint_Supports_EventDriven_Mode')) {
+    throw 'The capture endpoint must preserve the reference SysVAD event-driven WaveRT contract.'
 }
 
 $requiredScriptText = @(
@@ -120,4 +132,4 @@ if ($upstream -notmatch 'ef7c3074748ab05726c3a9161d3256118efd76e2') {
     throw 'The SysVAD upstream commit is not pinned.'
 }
 
-Write-Host 'Driver source contract passed: unique IDs, two endpoints, Windows 10 capture mode, fixed-format PCM ring transport, lifecycle recovery, pinned provenance, and no private key material.'
+Write-Host 'Driver source contract passed: unique IDs, two endpoints, reference mono MicIn contract, fixed-format PCM ring transport, lifecycle recovery, pinned provenance, and no private key material.'
