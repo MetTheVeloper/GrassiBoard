@@ -20,6 +20,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
+    <GrassiBoardCaptureVariant Condition="'$(GrassiBoardCaptureVariant)'==''">Cable</GrassiBoardCaptureVariant>
     <TargetName>GrassiBoard.EndpointsCommon</TargetName>
     <OutDir>$(SolutionDir)out\driver\lib\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)out\driver\$(ProjectName)\$(Configuration)\</IntDir>
@@ -29,6 +30,16 @@
       <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(ProjectDir)..;$(ProjectDir)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>%(PreprocessorDefinitions);_WIN32;UNICODE;_UNICODE;PC_IMPLEMENTATION;_USE_WAVERT_;_NEW_DELETE_OPERATORS_;DEBUG_LEVEL=DEBUGLVL_TERSE</PreprocessorDefinitions>
       <LanguageStandard>stdcpp17</LanguageStandard><WarningLevel>Level4</WarningLevel><TreatWarningAsError>true</TreatWarningAsError><ExceptionHandling>false</ExceptionHandling>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(GrassiBoardCaptureVariant)'=='ReferenceModes'">
+    <ClCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);GRASSIBOARD_CAPTURE_REFERENCE_MODES</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(GrassiBoardCaptureVariant)'=='ReferenceCapture'">
+    <ClCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);GRASSIBOARD_CAPTURE_REFERENCE_MODES;GRASSIBOARD_CAPTURE_REFERENCE_TONE</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>

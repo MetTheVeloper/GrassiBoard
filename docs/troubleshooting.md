@@ -38,7 +38,7 @@ Report the source and destination modes, the latency shown after the switch, whe
 
 ## Driver questions
 
-The v0.6.3 driver is in a separate test-signed ZIP. Read `DRIVER-TESTING.md` before changing TESTSIGNING. If installation or removal fails, run `scripts/Collect-DriverDiagnostics.ps1` before making further changes. The scripts do not disable Secure Boot, suspend BitLocker, or reboot automatically.
+The v0.6.4 diagnostic drivers are separate test-signed ZIPs. Read `CAPTURE-MATRIX-TESTING.md` before testing. If installation or removal fails, run `scripts/Collect-DriverDiagnostics.ps1` before making further changes. The scripts do not disable Secure Boot, suspend BitLocker, or reboot automatically.
 
 ## Virtual cable is silent
 

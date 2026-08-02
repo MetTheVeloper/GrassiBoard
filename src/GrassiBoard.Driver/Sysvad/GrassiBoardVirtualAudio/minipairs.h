@@ -142,6 +142,12 @@ static PIN_DEVICE_FORMATS_AND_MODES GrassiBoardCaptureFormatsAndModes[] =
     }
 };
 
+#if defined(GRASSIBOARD_CAPTURE_REFERENCE_MODES)
+#define GRASSIBOARD_SELECTED_CAPTURE_FORMATS MicInPinDeviceFormatsAndModes
+#else
+#define GRASSIBOARD_SELECTED_CAPTURE_FORMATS GrassiBoardCaptureFormatsAndModes
+#endif
+
 static struct
 {
     KSAUDIO_PACKETSIZE_CONSTRAINTS2 TransportPacketConstraints;
@@ -217,8 +223,8 @@ static ENDPOINT_MINIPAIR GrassiBoardCaptureMiniports =
     &MicInWaveMiniportFilterDescriptor,
     0, NULL,
     GrassiBoardCableTransport::CaptureChannelCount,
-    GrassiBoardCaptureFormatsAndModes,
-    SIZEOF_ARRAY(GrassiBoardCaptureFormatsAndModes),
+    GRASSIBOARD_SELECTED_CAPTURE_FORMATS,
+    SIZEOF_ARRAY(GRASSIBOARD_SELECTED_CAPTURE_FORMATS),
     GrassiBoardCapturePhysicalConnections,
     SIZEOF_ARRAY(GrassiBoardCapturePhysicalConnections),
     ENDPOINT_NO_FLAGS,

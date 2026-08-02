@@ -1626,10 +1626,14 @@ BOOL CMiniportWaveRTStream::IsGrassiBoardCableRenderStream() const
 #pragma code_seg()
 BOOL CMiniportWaveRTStream::IsGrassiBoardCableCaptureStream() const
 {
+#if defined(GRASSIBOARD_CAPTURE_REFERENCE_TONE)
+    return FALSE;
+#else
     return m_bCapture &&
         m_pMiniport != NULL &&
         m_pMiniport->m_DeviceType == eMicInDevice &&
         m_pMiniport->IsSystemCapturePin(m_ulPin);
+#endif
 }
 
 //=============================================================================

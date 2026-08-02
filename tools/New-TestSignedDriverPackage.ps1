@@ -5,7 +5,10 @@ param(
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
     [Parameter(Mandatory = $true)][string]$WdkPackageDirectory,
     [Parameter(Mandatory = $true)][string]$SdkBuildToolsPackageDirectory,
-    [Parameter(Mandatory = $true)][string]$Version
+    [Parameter(Mandatory = $true)][string]$Version,
+    [ValidateSet('standard', 'oem-format', 'reference-modes', 'reference-capture')]
+    [string]$CaptureVariant = 'standard',
+    [string]$DriverVersion
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,11 +41,31 @@ $infPath = Join-Path $output 'GrassiBoardVirtualAudio.inf'
 $toolPath = Join-Path $output 'GrassiBoard.DeviceTool.exe'
 Copy-Item -LiteralPath $sysSource.FullName -Destination $sysPath -Force
 Copy-Item -LiteralPath $infSource -Destination $infPath -Force
+if ($DriverVersion) {
+    $infText = Get-Content -LiteralPath $infPath -Raw
+    $updatedInfText = $infText -replace '(?m)^DriverVer=([^,]+),[^\r\n]+$', "DriverVer=`$1,$DriverVersion"
+    if ($updatedInfText -eq $infText) {
+        throw 'DriverVer stamping did not update the packaged INF.'
+    }
+    Set-Content -LiteralPath $infPath -Value $updatedInfText -Encoding ascii
+}
 Copy-Item -LiteralPath $toolSource.FullName -Destination $toolPath -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\DRIVER-TESTING.md') -Destination $output -Force
+Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\CAPTURE-MATRIX-TESTING.md') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\UPSTREAM.md') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\THIRD-PARTY-MS-PL.txt') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'src\GrassiBoard.Driver\scripts') -Destination $output -Recurse -Force
+
+[ordered]@{
+    Variant = $CaptureVariant
+    DriverVersion = if ($DriverVersion) { $DriverVersion } else { 'from-source-inf' }
+    Hypothesis = switch ($CaptureVariant) {
+        'oem-format' { 'Explicit capture PKEY_AudioEngine_OEMFormat' }
+        'reference-modes' { 'OEM format plus official SysVAD MicIn format/mode tables' }
+        'reference-capture' { 'OEM format and official modes plus official SysVAD tone capture path' }
+        default { 'Standard product build' }
+    }
+} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $output 'capture-variant.json') -Encoding utf8
 
 $certificate = $null
 $temporaryRoot = if ($env:RUNNER_TEMP) { $env:RUNNER_TEMP } else { $env:TEMP }
@@ -89,6 +112,8 @@ try {
     $manifest = [ordered]@{
         Product = 'GrassiBoard Virtual Audio'
         Version = $Version
+        CaptureVariant = $CaptureVariant
+        DriverVersion = if ($DriverVersion) { $DriverVersion } else { 'from-source-inf' }
         Architecture = 'x64'
         HardwareId = 'ROOT\GrassiBoardVirtualAudio'
         RenderEndpoint = 'GrassiBoard Virtual Cable Input'
@@ -124,6 +149,8 @@ $requiredFiles = @(
     'GrassiBoard-TestCertificate.cer',
     'GrassiBoard.DeviceTool.exe',
     'DRIVER-TESTING.md',
+    'CAPTURE-MATRIX-TESTING.md',
+    'capture-variant.json',
     'manifest.json',
     'scripts\Install-GrassiBoardDriver.ps1',
     'scripts\Uninstall-GrassiBoardDriver.ps1',

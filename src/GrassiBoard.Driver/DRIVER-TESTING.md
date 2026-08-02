@@ -1,9 +1,13 @@
-# GrassiBoard v0.6.3 test driver
+# GrassiBoard v0.6.4 diagnostic driver
 
 This package is a test-signed Milestone 5 driver for Windows 10/11 x64. It creates:
 
 - `GrassiBoard Virtual Cable Input` (render)
 - `GrassiBoard Virtual Microphone` (capture)
+
+If this package is part of the capture diagnostic matrix, read
+`CAPTURE-MATRIX-TESTING.md` first and identify the package using
+`capture-variant.json`.
 
 PCM played to the stereo render endpoint is downmixed and delivered by a kernel ring
 to the mono capture endpoint. Both use fixed 48 kHz, 16-bit device formats and can be

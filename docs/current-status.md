@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v0.6.3`
+- Version: `v0.6.4`
 - Milestone: `5 — Virtual Cable PCM Transport`
-- Status: v0.6.0 through v0.6.2 capture activation failed on Windows 10; v0.6.3 reference-MicIn contract fix is awaiting CI and manual retest
+- Status: v0.6.0 through v0.6.3 capture activation failed on Windows 10; v0.6.4 three-variant diagnostic matrix is awaiting CI and sequential manual testing
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -22,6 +22,8 @@ The cable is deliberately testable without the GrassiBoard app. App-to-cable rou
 Manual testing on Windows 10 build 19045 found that the v0.6.0 through v0.6.2 endpoints were present and Device Manager reported `OK`, but Voice Recorder could not open the virtual microphone. A direct KS probe verified the capture filter, its two pins, all five processing modes, exact format negotiation, and successful pin creation. A direct WASAPI probe still reproduced `AUDCLNT_E_UNSUPPORTED_FORMAT` from `IAudioClient::GetMixFormat` and both shared/exclusive initialization paths.
 
 A focused ETW trace exposed the underlying Audio Engine result as `0x80070490` (`Element not found`) during per-endpoint policy construction; Windows then mapped it to `AUDCLNT_E_UNSUPPORTED_FORMAT`. The unchanged v0.6.2 result disproved event-driven scheduling as the cause, just as v0.6.1 disproved the earlier stream-instance hypothesis. v0.6.3 restores event-driven capture and removes the remaining material divergence from Microsoft's working external MicIn reference: the capture endpoint is mono again, with a matching mono topology jack and default formats. The stereo render input is downmixed before entering the mono ring.
+
+Manual v0.6.3 testing produced the same failure and disproved the mono-channel-contract hypothesis. Direct endpoint-volume and meter calls nevertheless succeed, including channel count, volume range, master level, mute, and peak queries. v0.6.4 therefore packages three cumulative variants in one CI run: explicit OEM format, official MicIn mode tables, and finally the official tone-capture stream without GrassiBoard ring participation.
 
 ## Milestone 5 automated result
 

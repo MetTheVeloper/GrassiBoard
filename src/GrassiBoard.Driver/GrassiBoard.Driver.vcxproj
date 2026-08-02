@@ -32,6 +32,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <PropertyGroup>
+    <GrassiBoardCaptureVariant Condition="'$(GrassiBoardCaptureVariant)'==''">Cable</GrassiBoardCaptureVariant>
     <TargetName>GrassiBoardVirtualAudio</TargetName>
     <OutDir>$(SolutionDir)artifacts\driver-build\</OutDir>
     <IntDir>$(SolutionDir)out\driver\$(ProjectName)\$(Configuration)\</IntDir>
@@ -55,6 +56,16 @@
       <AdditionalDependencies>%(AdditionalDependencies);$(DDK_LIB_PATH)\portcls.lib;$(DDK_LIB_PATH)\stdunk.lib;$(DDK_LIB_PATH)\libcntpr.lib</AdditionalDependencies>
     </Link>
     <DriverSign><FileDigestAlgorithm>sha256</FileDigestAlgorithm></DriverSign>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(GrassiBoardCaptureVariant)'=='ReferenceModes'">
+    <ClCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);GRASSIBOARD_CAPTURE_REFERENCE_MODES</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(GrassiBoardCaptureVariant)'=='ReferenceCapture'">
+    <ClCompile>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions);GRASSIBOARD_CAPTURE_REFERENCE_MODES;GRASSIBOARD_CAPTURE_REFERENCE_TONE</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Sysvad\adapter.cpp" />
