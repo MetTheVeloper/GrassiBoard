@@ -154,14 +154,14 @@ namespace GrassiBoard.Diagnostics
             WaveFormatExtensible exact = new WaveFormatExtensible
             {
                 FormatTag = 0xFFFE,
-                Channels = 2,
+                Channels = 1,
                 SamplesPerSecond = 48000,
-                AverageBytesPerSecond = 192000,
-                BlockAlign = 4,
+                AverageBytesPerSecond = 96000,
+                BlockAlign = 2,
                 BitsPerSample = 16,
                 ExtraSize = 22,
                 ValidBitsPerSample = 16,
-                ChannelMask = 3,
+                ChannelMask = 4,
                 SubFormat = PcmSubFormat
             };
 
