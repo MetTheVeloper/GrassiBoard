@@ -13,11 +13,13 @@ Selected physical microphone
     -> preallocated mono ring buffer
     -> stereo duplication
     -> WASAPI shared/event-driven render
-Selected headset monitoring output
+Selected external virtual-cable playback endpoint
+    -> paired cable recording endpoint
+    -> target application microphone input
 ```
 
 Pitch, Fine Pitch, Formant Shift, preservation, Bypass, and quality targets update without restarting the stream. The UI reports the selected mode's algorithmic latency after its crossfade completes. Endpoint and ring-buffer delays remain separate.
 
 Formant preservation is implemented as a smoothly variable compensation term tied to the current pitch map. Formant Shift remains independent, so the user can preserve vocal character and then deliberately move it.
 
-Noise processing, mixer, soundboard, virtual output, and kernel driver do not participate in this version.
+Noise processing, mixer, soundboard, and separate headphone monitoring do not participate in this version. The virtual transport is supplied by an independently installed external cable.

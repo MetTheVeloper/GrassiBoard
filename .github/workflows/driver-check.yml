@@ -1,30 +1,6 @@
-name: Driver Artifact
+name: Experimental Custom Driver
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - src/GrassiBoard.Driver/**
-      - src/GrassiBoard.DeviceTool/**
-      - tools/Test-DriverPackageSource.ps1
-      - tools/Test-DriverLifecycleHelpers.ps1
-      - tools/diagnostics/**
-      - tools/New-TestSignedDriverPackage.ps1
-      - packages.config
-      - Directory.Build.props
-      - .github/workflows/driver-check.yml
-  pull_request:
-    paths:
-      - src/GrassiBoard.Driver/**
-      - src/GrassiBoard.DeviceTool/**
-      - tools/Test-DriverPackageSource.ps1
-      - tools/Test-DriverLifecycleHelpers.ps1
-      - tools/diagnostics/**
-      - tools/New-TestSignedDriverPackage.ps1
-      - packages.config
-      - Directory.Build.props
-      - .github/workflows/driver-check.yml
   workflow_dispatch:
 
 permissions:
@@ -84,7 +60,7 @@ jobs:
       - name: Upload driver artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: GrassiBoard-driver-engine-policy-${{ env.GRASSIBOARD_VERSION }}-${{ github.run_number }}
+          name: GrassiBoard-experimental-driver-${{ env.GRASSIBOARD_VERSION }}-${{ github.run_number }}
           path: artifacts/driver/**
           if-no-files-found: error
           retention-days: 30

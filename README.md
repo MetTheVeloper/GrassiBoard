@@ -1,31 +1,32 @@
 # GrassiBoard
 
-GrassiBoard is a Windows x64 voice-processing and soundboard application. Development is milestone-based; each milestone is packaged and manually accepted before work begins on the next one.
+GrassiBoard is a Windows x64 live voice-processing and soundboard application.
 
-## Current release
+## Current milestone
 
-`v0.6.5` is **Milestone 5 — Virtual Cable PCM Transport** with a Windows 10 capture engine-policy fix derived from the completed v0.6.4 diagnostic matrix, while retaining the accepted app/DSP and driver lifecycle:
+`v0.7.0` routes the processed physical microphone into an **external virtual audio cable**. The target application sees the cable's recording endpoint as its microphone, so the same GrassiBoard output can be used by Voice Recorder, OBS, Discord, browsers, and other standard Windows audio clients.
 
-- Live pitch and Fine Pitch from Milestone 2
-- Formant preservation and independent formant shift from −12 to +12 semitones
-- Low latency, Balanced, and High quality Signalsmith configurations
-- Live 20 ms crossfades between already-prepared configurations without restarting WASAPI
-- Smoothed Formant and preservation changes
-- Per-mode CPU, latency, and pitch-frequency benchmarks
-- Offline voice-like WAV outputs for preservation, formant shift, and live mode switching
-- Balanced default selected by an explicit benchmark policy
-- A separate test-signed x64 driver package with `GrassiBoard Virtual Cable Input` and `GrassiBoard Virtual Microphone`
-- Controlled install, removal, TESTSIGNING, and diagnostic scripts
-- Real PCM transport from the virtual render endpoint to the virtual microphone
-- Fixed 48 kHz / 16-bit / stereo transport with pre-roll, silence, stale-data flushing, and underrun/overrun accounting
-- A deterministic WAV generator and automated transport-policy regression tests
-- Timer-driven capture on Windows 10; the render side remains event-driven
+The app:
 
-The cable can be tested without opening GrassiBoard. Sending the processed app output to the virtual cable begins in Milestone 6; Soundboard playback is not implemented yet.
+- keeps the accepted live Pitch, Fine Pitch, Formant, Bypass, and quality modes;
+- enumerates active Windows render and capture endpoints;
+- identifies paired virtual-cable endpoints by Windows Container ID with a name-based fallback;
+- prefers an installed external cable automatically;
+- shows the exact recording endpoint to select in the target application;
+- ignores the retired test-signed GrassiBoard driver;
+- does not bundle, install, or redistribute a third-party driver.
+
+The previous custom SysVAD driver remains in the repository as experimental research, but it is no longer built or shipped by the product workflow. It installed correctly but did not satisfy the Windows 10 WASAPI capture contract.
+
+## External cable
+
+Any Windows virtual cable exposing a paired playback and recording endpoint can work. VB-CABLE is the documented reference because it supports Windows 10/11 and standard Windows audio APIs. Download and license it directly from its publisher; it is not part of GrassiBoard.
+
+See [external virtual cable setup](docs/external-virtual-cable.md). The portable package includes the same guide as `EXTERNAL-CABLE-SETUP.md`.
 
 ## Build
 
-Prerequisites are Visual Studio 2022 with Desktop development with C++, Git submodules, .NET SDK `8.0.423`, and NuGet CLI. The kernel build restores pinned WDK/SDK NuGet packages from `packages.config`.
+Prerequisites are Visual Studio 2022 with Desktop development with C++, CMake, Git submodules, and .NET SDK `8.0.423`.
 
 ```powershell
 git submodule update --init --recursive
@@ -36,16 +37,10 @@ dotnet run --project tests/GrassiBoard.App.SmokeTests/GrassiBoard.App.SmokeTests
 dotnet build src/GrassiBoard.App/GrassiBoard.App.csproj -c Release -p:Platform=x64
 ```
 
-GitHub Actions builds the self-contained Windows package, comparison WAV files, and benchmark report on every push to `main`.
-
 ## Safety
 
-Start live monitoring with a low headset volume. Selecting speakers can create a feedback loop. The v0.6.5 driver is test-signed; read `CAPTURE-ENGINE-POLICY-TESTING.md` inside the package before testing.
-
-## Documentation
-
-See [driver design](docs/driver-design.md), [pitch benchmark](docs/pitch-benchmark.md), and [test plan](docs/test-plan.md).
+Do not select the cable's recording endpoint as GrassiBoard's physical input; that would create a routing loop. Local headphone monitoring is intentionally not part of this first external-cable build.
 
 ## License
 
-See [LICENSE](LICENSE), [LICENSES.md](LICENSES.md), and [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+See [LICENSE](LICENSE), [LICENSES.md](LICENSES.md), and [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt). External cable software has its own publisher and license.

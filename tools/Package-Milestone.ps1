@@ -4,9 +4,7 @@ param(
     [Parameter(Mandatory = $true)][string]$ShortSha,
     [Parameter(Mandatory = $true)][string]$PublishDirectory,
     [Parameter(Mandatory = $true)][string]$NativeDirectory,
-    [Parameter(Mandatory = $true)][string]$DriverDirectory,
     [Parameter(Mandatory = $true)][string]$TestResultsDirectory,
-    [string]$DriverBuildDirectory,
     [string]$OutputDirectory = (Join-Path $PSScriptRoot '..\artifacts\packages')
 )
 
@@ -25,30 +23,25 @@ if (Test-Path -LiteralPath $stagingRoot) {
 }
 
 $portableStage = Join-Path $stagingRoot 'portable'
-$driverStage = Join-Path $stagingRoot 'driver'
 $symbolsStage = Join-Path $stagingRoot 'symbols'
 $testsStage = Join-Path $stagingRoot 'tests'
-New-Item -ItemType Directory -Path $portableStage, $driverStage, $symbolsStage, $testsStage -Force | Out-Null
+New-Item -ItemType Directory -Path $portableStage, $symbolsStage, $testsStage -Force | Out-Null
 
 Copy-Item -Path (Join-Path $PublishDirectory '*') -Destination $portableStage -Recurse -Force
 Copy-Item -Path (Join-Path $NativeDirectory 'GrassiBoard.AudioEngine.dll') -Destination $portableStage -Force
-Copy-Item -Path (Join-Path $DriverDirectory '*') -Destination $driverStage -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\CHANGELOG.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README-FIRST.txt') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\THIRD-PARTY-NOTICES.txt') -Destination $portableStage -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\docs\external-virtual-cable.md') `
+    -Destination (Join-Path $portableStage 'EXTERNAL-CABLE-SETUP.md') -Force
 
 Get-ChildItem -Path $PublishDirectory, $NativeDirectory -Filter '*.pdb' -Recurse -ErrorAction SilentlyContinue |
     Copy-Item -Destination $symbolsStage -Force
-if ($DriverBuildDirectory -and (Test-Path -LiteralPath $DriverBuildDirectory)) {
-    Get-ChildItem -LiteralPath $DriverBuildDirectory -Filter '*.pdb' -Recurse -ErrorAction SilentlyContinue |
-        Copy-Item -Destination $symbolsStage -Force
-}
 Copy-Item -Path (Join-Path $TestResultsDirectory '*') -Destination $testsStage -Recurse -Force
 
 $packages = [ordered]@{
     Portable = Join-Path $output "GrassiBoard-portable-win-x64-$Version-$ShortSha.zip"
-    Driver = Join-Path $output "GrassiBoard-driver-x64-$Version-$ShortSha.zip"
     Symbols = Join-Path $output "GrassiBoard-symbols-$Version-$ShortSha.zip"
     Tests = Join-Path $output "GrassiBoard-test-results-$Version-$ShortSha.zip"
 }
@@ -60,7 +53,6 @@ foreach ($archive in $packages.Values) {
 }
 
 Compress-Archive -Path (Join-Path $portableStage '*') -DestinationPath $packages.Portable -CompressionLevel Optimal
-Compress-Archive -Path (Join-Path $driverStage '*') -DestinationPath $packages.Driver -CompressionLevel Optimal
 Compress-Archive -Path (Join-Path $symbolsStage '*') -DestinationPath $packages.Symbols -CompressionLevel Optimal
 Compress-Archive -Path (Join-Path $testsStage '*') -DestinationPath $packages.Tests -CompressionLevel Optimal
 

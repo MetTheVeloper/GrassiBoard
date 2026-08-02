@@ -1,44 +1,29 @@
 # Test plan
 
-## Automated Milestone 5 checks
-
-- Compile and run the platform-neutral PCM ring policy used by the kernel wrapper.
-- Preserve PCM byte order across wrap-around and enforce block-aligned writes/reads.
-- Require capture pre-roll and zero-filled output while render/capture is inactive or insufficiently primed.
-- Require partial underruns to zero-fill their tail and subsequent empty reads never to repeat old PCM.
-- Exercise bounded overrun behavior plus underrun/overrun counters.
-- Flush queued audio across render stop/restart so no previous session can leak into capture.
-- Build the x64 WaveRT driver with fixed 48 kHz, 16-bit stereo render and mono capture formats.
-- Require event-driven WaveRT on both endpoints, matching the reference SysVAD contracts.
-- Package the deterministic 440/660/880 Hz WAV generator with the driver.
+## Automated v0.7.0 checks
 
 - Build the native x64 Release DLL with warnings treated as errors and validate native ABI version 4.
-- Retain Milestone 2 frequency, sample-count, finite/peak, variable-block, Bypass, and automation coverage.
-- Generate voice-like source audio with deterministic harmonic/formant envelopes.
-- Verify measurable output differences for preservation on/off and a +6-semitone Formant shift.
-- Exercise live Low latency, High quality, and Balanced transitions without resetting the processor.
-- Reject non-finite/excessive output, severe sample discontinuities, or long silent gaps during live switching.
-- Benchmark all three configurations for algorithmic latency, processing time, estimated single-core percentage, and pitch-frequency error.
-- Enforce the explicit Balanced default-selection policy.
-- Generate input, pitch, Formant, and live-switch WAV files plus JSON reports.
-- Retain all accepted Milestone 3 native and managed tests.
-- Build the x64 kernel driver and statically linked SetupAPI device helper with pinned WDK/SDK NuGet packages.
-- Validate the unique hardware ID, exact endpoint names, one-render/one-capture registration, and pinned SysVAD provenance.
-- Exercise lifecycle helpers with a generated instance ID that differs from the hardware ID; require correct root-device, OEM INF, and two-endpoint discovery.
-- Generate the INF catalog, sign SYS and CAT with an ephemeral test certificate, verify both signatures, and reject private-key material from the artifact.
-- Publish the portable app and test-signed driver as separate packages; reject driver/certificate material from the portable ZIP.
+- Retain all accepted pitch, formant, quality switching, benchmark, and DSP regression tests.
+- Enumerate active capture and render endpoints with friendly name, default state, and Windows Container ID.
+- Pair VB-CABLE endpoints by Container ID.
+- Pair AMM-style virtual endpoints by the conservative family-name fallback.
+- Reject a physical headset pair as a virtual cable.
+- Reject the retired GrassiBoard test-driver endpoints.
+- Publish portable app, symbols, and test results without SYS, INF, CAT, certificate, or third-party cable files.
 
-Runner timing is comparative evidence, not a promise of target-PC CPU usage. Audible Formant character, perceived quality, and physical endpoint stability remain manual checks.
+The experimental custom driver workflow is manual and is not a product/release dependency.
 
-## Manual Milestone 5 acceptance
+## Manual v0.7.0 acceptance
 
-1. Enable TESTSIGNING, reboot, and install the v0.6.5 engine-policy package using its elevated scripts.
-2. Confirm Device Manager is `OK`, both endpoints exist, and their Advanced default format is `2 channel, 16 bit, 48000 Hz`.
-3. Run `scripts/New-CableTestWave.ps1` to create the fixed acceptance WAV.
-4. Route a media player to `GrassiBoard Virtual Cable Input`, select `GrassiBoard Virtual Microphone` as the recording input, and record the complete WAV.
-5. Restore the physical headset output before listening. Confirm the recorded sequence contains 440, 660, and 880 Hz tones with the intended silent gaps and acceptable quality.
-6. Continue recording for at least three seconds after playback ends; require silence with no loop or repeated tail.
-7. Repeat play/stop three times and confirm Windows Audio remains Running and no application hangs.
-8. Uninstall the v0.6.5 package, confirm both endpoints disappear, disable TESTSIGNING, and reboot.
+1. Confirm the retired GrassiBoard test driver is uninstalled and TESTSIGNING is disabled.
+2. Use the already installed AMM virtual device if it exposes a working endpoint pair, or install VB-CABLE from its official publisher and reboot.
+3. Open GrassiBoard and confirm the physical LifeChat microphone is selected as `INPUT MICROPHONE`.
+4. Confirm `SEND TO VIRTUAL CABLE INPUT` selects the cable playback endpoint.
+5. Require a green `Cable ready` message and note the paired recording endpoint named below it.
+6. Start in Balanced mode with Bypass enabled; require moving input and cable-send meters.
+7. Select the named cable recording endpoint as the microphone in Voice Recorder and record speech.
+8. Disable Bypass, set Pitch to `+7`, and require the recorded voice to contain the pitch change.
+9. Repeat with OBS or another target application that accepts a microphone.
+10. Repeat Start/Stop three times and require the target microphone to reopen without restarting Windows Audio.
 
-Milestone 4 lifecycle acceptance passed on Windows 10 before Milestone 5 began. App-to-cable routing and processed microphone output are not Milestone 5 acceptance requirements.
+Separate low-latency headphone monitoring and Soundboard mixing are not v0.7.0 acceptance requirements.

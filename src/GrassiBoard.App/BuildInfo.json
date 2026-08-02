@@ -1,12 +1,12 @@
 {
-  "Version": "0.6.5",
+  "Version": "0.7.0",
   "CommitSha": "local",
   "BuildDate": "local",
   "WorkflowRunNumber": "local",
   "Configuration": "Debug",
   "TargetArchitecture": "x64",
-  "WdkVersion": "10.0.26100.6584",
-  "SdkVersion": "10.0.26100.0",
+  "WdkVersion": "external-cable",
+  "SdkVersion": "windows-runner",
   "DotNetVersion": "8.0.423",
   "PitchBackendVersion": "signalsmith-stretch-1.3.2+57b93f4e"
 }

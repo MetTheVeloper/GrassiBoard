@@ -1,18 +1,16 @@
 # Architecture
 
-## Milestone 5 boundary
+## Milestone 6 boundary
 
-The repository has three layers:
+The product has two active layers:
 
 1. `GrassiBoard.App`: a WPF `net8.0-windows` x64 UI process.
 2. `GrassiBoard.AudioEngine`: a native C++20 x64 DLL exposing C ABI version 4.
-3. `GrassiBoard.Driver`: a test-signed SysVAD/WaveRT virtual cable with one render and one capture endpoint.
-
-`GrassiBoard.DeviceTool` is a statically linked SetupAPI helper used only by the elevated install/removal scripts to create and remove the unique root-enumerated device. The portable app and driver package remain separate artifacts.
+An independently installed virtual cable supplies the Windows render/capture endpoint pair. `GrassiBoard.Driver` and `GrassiBoard.DeviceTool` are retained only as experimental historical source and are not built or published by the product workflow.
 
 The app calls the native layer through source-generated P/Invoke. C++/CLI is not used.
 
-The kernel cable uses fixed `48,000 Hz`, 16-bit stereo PCM on render and fixed mono PCM on capture. A bounded PCM16 downmix feeds a preallocated lock-free mono ring from the render DPC to the capture DPC. Capture pre-rolls 10 ms, zero-fills shortages, and flushes all queued data when either cable stream pauses or stops. Both endpoints retain the reference event-driven WaveRT contract. No resampling, allocation, file I/O, or blocking lock occurs in the transport path.
+The app enumerates active Windows endpoints and pairs an external cable's render and capture sides by Container ID, falling back to a conservative virtual-device family-name match. The physical microphone feeds the user-mode DSP, which renders stereo float audio to the cable playback endpoint. The target application opens the paired cable recording endpoint.
 
 ## Audio ownership
 
@@ -30,7 +28,7 @@ The real-time loop performs no logging, file I/O, exception propagation, blockin
 
 ## Version contract
 
-- Product version: `0.6.5`
+- Product version: `0.7.0`
 - Native ABI version: `4`
 - Architecture: `x64`
 - Processing format: `48,000 Hz`, 32-bit float, mono processing and stereo monitoring

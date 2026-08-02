@@ -1,18 +1,15 @@
-GrassiBoard v0.6.5 — Milestone 5 Windows 10 capture engine-policy fix
+GrassiBoard v0.7.0 — External virtual cable integration
 
-SAFETY: Use headphones and lower their volume before starting the engine.
+PREREQUISITE: Install a compatible external virtual audio cable and reboot if its publisher requires it.
 
-1. Extract the entire ZIP and run GrassiBoard.exe.
-2. Select the Microsoft LifeChat microphone and headset output.
-3. Start in Balanced mode with Bypass pitch checked; confirm clean monitoring.
-4. Uncheck Bypass and set Pitch to +7, then toggle Preserve formants while speaking.
-5. Confirm that preservation on/off has an audible vocal-character difference.
-6. Test Formant Shift at −6, 0, and +6 semitones with preservation enabled.
-7. Switch live between Low latency, Balanced, and High quality while speaking continuously.
-8. Confirm the stream does not stop and compare latency and sound quality between modes.
-9. Move Pitch and Formant controls rapidly and listen for severe clicks, pops, or cuts.
-10. Toggle Bypass repeatedly, repeat Start/Stop three times, and record latency plus U/O/D counters.
+1. Extract the complete GrassiBoard portable ZIP and run GrassiBoard.exe.
+2. INPUT MICROPHONE: select the physical Microsoft LifeChat microphone.
+3. SEND TO VIRTUAL CABLE INPUT: select the cable playback endpoint.
+4. Confirm the green Cable ready message names the paired recording endpoint.
+5. Start GrassiBoard in Balanced mode with Bypass checked.
+6. In Voice Recorder or OBS, select the exact target microphone shown by GrassiBoard.
+7. Confirm speech is recorded, then uncheck Bypass and test Pitch at +7.
+8. Confirm the recording contains the processed voice and the meters move.
+9. Repeat Start/Stop three times and confirm the target app can reopen the microphone.
 
-Balanced is the benchmark-selected default. The portable ZIP never installs a driver.
-The separately downloaded driver ZIP contains DRIVER-TESTING.md and the explicit test-signing workflow.
-The cable transport is tested independently of the app by following that driver guide.
+The portable ZIP does not contain or install a virtual audio driver. The old GrassiBoard test driver is retired and should be uninstalled before this test. Local headphone monitoring is deferred; this build validates system-wide microphone routing first.

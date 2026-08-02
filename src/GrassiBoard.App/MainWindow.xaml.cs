@@ -17,6 +17,8 @@ public partial class MainWindow : Window
     private bool _running;
     private bool _busy;
     private bool _closing;
+    private IReadOnlyList<AudioDevice> _captureDevices = [];
+    private AudioDevice? _targetCaptureEndpoint;
 
     public MainWindow()
     {
@@ -83,14 +85,14 @@ public partial class MainWindow : Window
             if (!_running)
             {
                 if (InputDeviceCombo.SelectedItem is not AudioDevice input ||
-                    MonitorDeviceCombo.SelectedItem is not AudioDevice monitor)
+                    CableOutputCombo.SelectedItem is not AudioDevice cableOutput)
                 {
-                    SetNativeStatus("Select both an input and a monitor device", false);
+                    SetNativeStatus("Select an input microphone and a virtual cable input", false);
                     return;
                 }
 
                 SetNativeStatus("Starting WASAPI streams…", true);
-                NativeResult result = await Task.Run(() => NativeMethods.EngineStart(_engine, input.Id, monitor.Id));
+                NativeResult result = await Task.Run(() => NativeMethods.EngineStart(_engine, input.Id, cableOutput.Id));
                 if (_closing)
                 {
                     return;
@@ -102,7 +104,10 @@ public partial class MainWindow : Window
                 }
 
                 _running = true;
-                SetNativeStatus($"Running · 48 kHz · {SelectedQualityName()}", true);
+                string destination = _targetCaptureEndpoint is null
+                    ? cableOutput.Name
+                    : $"target mic: {_targetCaptureEndpoint.Name}";
+                SetNativeStatus($"Running · 48 kHz · {SelectedQualityName()} · {destination}", true);
             }
             else
             {
@@ -223,17 +228,26 @@ public partial class MainWindow : Window
         {
             IReadOnlyList<AudioDevice> inputs = ReadDevices(input: true);
             IReadOnlyList<AudioDevice> outputs = ReadDevices(input: false);
+            _captureDevices = inputs;
             InputDeviceCombo.ItemsSource = inputs;
-            MonitorDeviceCombo.ItemsSource = outputs;
-            InputDeviceCombo.SelectedItem = inputs.FirstOrDefault(device => device.IsDefault) ?? inputs.FirstOrDefault();
-            MonitorDeviceCombo.SelectedItem = outputs.FirstOrDefault(device => device.IsDefault) ?? outputs.FirstOrDefault();
+            CableOutputCombo.ItemsSource = outputs;
+
+            InputDeviceCombo.SelectedItem =
+                inputs.FirstOrDefault(device => device.IsDefault && !IsExternalVirtualEndpoint(device)) ??
+                inputs.FirstOrDefault(device => !IsExternalVirtualEndpoint(device)) ??
+                inputs.FirstOrDefault();
+
+            CableOutputCombo.SelectedItem = outputs.FirstOrDefault(output => FindPairedCaptureEndpoint(output) is not null) ??
+                outputs.FirstOrDefault(device => device.IsDefault) ??
+                outputs.FirstOrDefault();
 
             bool ready = inputs.Count > 0 && outputs.Count > 0;
             if (!ready)
             {
-                SetNativeStatus("No active microphone or monitor output was found", false);
+                SetNativeStatus("No active microphone or render output was found", false);
             }
             StartStopButton.IsEnabled = ready;
+            UpdateCableRouteStatus();
         }
         catch (Exception exception)
         {
@@ -242,6 +256,48 @@ public partial class MainWindow : Window
         }
         UpdateControlState();
     }
+
+    private void CableOutputCombo_SelectionChanged(
+        object sender,
+        System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (CableRouteText is not null)
+        {
+            UpdateCableRouteStatus();
+        }
+    }
+
+    private void UpdateCableRouteStatus()
+    {
+        _targetCaptureEndpoint = CableOutputCombo.SelectedItem is AudioDevice output
+            ? FindPairedCaptureEndpoint(output)
+            : null;
+
+        if (_targetCaptureEndpoint is not null && CableOutputCombo.SelectedItem is AudioDevice cableInput)
+        {
+            CableRouteText.Text = $"Cable ready · {cableInput.Name}";
+            CableRouteHintText.Text =
+                $"In Discord, OBS, Voice Recorder, or another target app, select: {_targetCaptureEndpoint.Name}";
+            CableRouteText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#75E6B5"));
+            return;
+        }
+
+        CableRouteText.Text = "No paired external virtual-cable microphone was detected for this output.";
+        CableRouteHintText.Text =
+            "Install an external cable or select its playback/input endpoint. GrassiBoard's retired test driver is ignored.";
+        CableRouteText.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#F4D899"));
+    }
+
+    private AudioDevice? FindPairedCaptureEndpoint(AudioDevice output)
+    {
+        AudioEndpointDescriptor? match = VirtualCableMatcher.FindPairedCaptureEndpoint(
+            output.ToDescriptor(),
+            _captureDevices.Select(device => device.ToDescriptor()));
+        return match is null ? null : _captureDevices.FirstOrDefault(device => device.Id == match.Id);
+    }
+
+    private static bool IsExternalVirtualEndpoint(AudioDevice device) =>
+        VirtualCableMatcher.IsExternalVirtualEndpoint(device.ToDescriptor());
 
     private static IReadOnlyList<AudioDevice> ReadDevices(bool input)
     {
@@ -344,10 +400,10 @@ public partial class MainWindow : Window
     {
         bool selectionEnabled = !_running && !_busy;
         InputDeviceCombo.IsEnabled = selectionEnabled;
-        MonitorDeviceCombo.IsEnabled = selectionEnabled;
+        CableOutputCombo.IsEnabled = selectionEnabled;
         RefreshButton.IsEnabled = selectionEnabled;
         StartStopButton.IsEnabled = _engine != nint.Zero && !_busy &&
-            (_running || (InputDeviceCombo.SelectedItem is not null && MonitorDeviceCombo.SelectedItem is not null));
+            (_running || (InputDeviceCombo.SelectedItem is not null && CableOutputCombo.SelectedItem is not null));
         StartStopButton.Content = _busy ? "Please wait…" : _running ? "Stop engine" : "Start engine";
         StartStopButton.Background = new SolidColorBrush(
             (Color)ColorConverter.ConvertFromString(_running ? "#FF7A90" : "#75E6B5"));
@@ -382,7 +438,10 @@ public partial class MainWindow : Window
     {
         public string Id { get; init; } = string.Empty;
         public string Name { get; init; } = string.Empty;
+        public string ContainerId { get; init; } = string.Empty;
         public bool IsDefault { get; init; }
+
+        public AudioEndpointDescriptor ToDescriptor() => new(Id, Name, ContainerId, IsDefault);
     }
 
     private enum NativeResult

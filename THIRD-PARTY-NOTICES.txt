@@ -32,7 +32,7 @@ Pinned commit: ef7c3074748ab05726c3a9161d3256118efd76e2
 Upstream path: audio/sysvad
 
 Licensed under the Microsoft Public License. The complete license text is stored
-at src/GrassiBoard.Driver/THIRD-PARTY-MS-PL.txt and included with the driver ZIP.
+at src/GrassiBoard.Driver/THIRD-PARTY-MS-PL.txt. The experimental driver is not included in product packages.
 
 -------------------------------------------------------------------------------
 

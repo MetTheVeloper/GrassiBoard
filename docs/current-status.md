@@ -1,15 +1,21 @@
 # Current status
 
-- Version: `v0.6.5`
-- Milestone: `5 — Virtual Cable PCM Transport`
-- Status: v0.6.0 through all three v0.6.4 diagnostic variants failed capture activation on Windows 10; v0.6.5 seeds the two missing capture Audio Engine policy values and awaits manual verification
+- Version: `v0.7.0`
+- Milestone: `6 — External virtual cable integration`
+- Status: implemented; automated build and manual Windows 10 routing acceptance are pending
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
 - Backend: Signalsmith Stretch 1.3.2 + Signalsmith Linear 0.3.1, both pinned
-- Virtual driver: one test-signed render endpoint and one capture endpoint connected by a fixed-format PCM ring
+- Virtual routing: vendor-neutral external cable selected as the processed WASAPI render destination
 
-## Milestone 5 implementation
+## Architecture decision
+
+The custom SysVAD path is retired from product builds. Manual v0.6.5 testing confirmed that its capture endpoint still failed `GetMixFormat` and shared initialization with `AUDCLNT_E_UNSUPPORTED_FORMAT`; the expected Audio Engine mix-format property did not materialize. The source and diagnostic history remain in the repository, but official GrassiBoard packages no longer contain or publish that driver.
+
+v0.7.0 instead sends the accepted user-mode DSP output to an installed external cable. The UI pairs its playback and recording endpoints, ignores the retired GrassiBoard endpoints, and tells the user which microphone to select in the target application.
+
+## Historical custom-driver implementation
 
 The driver is a minimal extraction of Microsoft's SysVAD/WaveRT code pinned to commit `ef7c3074748ab05726c3a9161d3256118efd76e2`. It uses hardware ID `ROOT\GrassiBoardVirtualAudio` and exposes `GrassiBoard Virtual Cable Input` plus `GrassiBoard Virtual Microphone`.
 
@@ -17,7 +23,7 @@ The render stream advertises fixed 48 kHz, 16-bit stereo PCM. Its frames are dow
 
 The cable is deliberately testable without the GrassiBoard app. App-to-cable routing is Milestone 6.
 
-## Milestone 5 Windows 10 capture finding
+## Historical Windows 10 capture finding
 
 Manual testing on Windows 10 build 19045 found that the v0.6.0 through v0.6.2 endpoints were present and Device Manager reported `OK`, but Voice Recorder could not open the virtual microphone. A direct KS probe verified the capture filter, its two pins, all five processing modes, exact format negotiation, and successful pin creation. A direct WASAPI probe still reproduced `AUDCLNT_E_UNSUPPORTED_FORMAT` from `IAudioClient::GetMixFormat` and both shared/exclusive initialization paths.
 
@@ -36,7 +42,7 @@ v0.6.5 seeds a 48 kHz/32-bit-float mono engine mix format and the standard 10 ms
 period on the capture topology interface while retaining its 48 kHz/16-bit mono device
 format.
 
-## Milestone 5 automated result
+## Historical custom-driver automated result
 
 Pull request CI [Build](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30713553221) and [Driver Artifact](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/30713553216) passed for implementation commit `03907d7`. The WDK compiled the WaveRT driver with warnings as errors, generated and test-signed its package, and uploaded all artifacts. Native CTest included the exact platform-neutral ring policy used by the kernel wrapper and passed wrap-order, pre-roll, silence, stale-data, overrun, and restart cases. Existing native, managed, DSP, package-isolation, and lifecycle tests also passed.
 

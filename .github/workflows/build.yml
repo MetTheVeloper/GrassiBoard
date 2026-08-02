@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - codex/**
   pull_request:
   workflow_dispatch:
   workflow_call:
@@ -12,10 +13,8 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 0.6.5
+  GRASSIBOARD_VERSION: 0.7.0
   DOTNET_SDK_VERSION: 8.0.423
-  WDK_NUGET_VERSION: 10.0.26100.6584
-  WINDOWS_SDK_VERSION: 10.0.26100.0
 
 jobs:
   build:
@@ -35,15 +34,6 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
 
-      - name: Locate MSBuild
-        uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3
-
-      - name: Install NuGet CLI
-        uses: NuGet/setup-nuget@17d6beb0142f0371858976c178033f915525e692 # v2.0.1
-
-      - name: Restore pinned Windows driver kits
-        run: nuget restore ./packages.config -PackagesDirectory ./packages -NonInteractive
-
       - name: Generate build information
         shell: pwsh
         run: |
@@ -54,8 +44,8 @@ jobs:
             -OutputPath ./src/GrassiBoard.App/BuildInfo.json `
             -Configuration Release `
             -TargetArchitecture x64 `
-            -WdkVersion $env:WDK_NUGET_VERSION `
-            -SdkVersion $env:WINDOWS_SDK_VERSION `
+            -WdkVersion external-cable `
+            -SdkVersion windows-runner `
             -DotNetVersion $env:DOTNET_SDK_VERSION
 
       - name: Configure native engine
@@ -86,34 +76,6 @@ jobs:
             Outcome = 'Passed'
           } | ConvertTo-Json | Set-Content ./artifacts/test-results/managed-tests.json -Encoding utf8
 
-      - name: Validate and build virtual-audio driver
-        shell: pwsh
-        run: |
-          ./tools/Test-DriverPackageSource.ps1
-          ./tools/Test-DriverLifecycleHelpers.ps1
-          $solutionDirectory = "$env:GITHUB_WORKSPACE\"
-          msbuild ./src/GrassiBoard.DeviceTool/GrassiBoard.DeviceTool.vcxproj `
-            /m `
-            /p:Configuration=Release `
-            /p:Platform=x64 `
-            "/p:SolutionDir=$solutionDirectory"
-          msbuild ./src/GrassiBoard.Driver/GrassiBoard.Driver.vcxproj `
-            /m `
-            /p:Configuration=Release `
-            /p:Platform=x64 `
-            "/p:SolutionDir=$solutionDirectory"
-
-      - name: Create ephemeral test-signed driver package
-        shell: pwsh
-        run: |
-          ./tools/New-TestSignedDriverPackage.ps1 `
-            -BuildDirectory ./artifacts/driver-build `
-            -DeviceToolDirectory ./artifacts/driver-tools `
-            -OutputDirectory ./artifacts/driver `
-            -WdkPackageDirectory "./packages/Microsoft.Windows.WDK.x64.$env:WDK_NUGET_VERSION" `
-            -SdkBuildToolsPackageDirectory "./packages/Microsoft.Windows.SDK.BuildTools.$env:WDK_NUGET_VERSION" `
-            -Version $env:GRASSIBOARD_VERSION
-
       - name: Publish self-contained WPF app
         shell: pwsh
         run: |
@@ -143,9 +105,7 @@ jobs:
             -ShortSha $shortSha `
             -PublishDirectory ./artifacts/publish `
             -NativeDirectory ./artifacts/native `
-            -DriverDirectory ./artifacts/driver `
-            -TestResultsDirectory ./artifacts/test-results `
-            -DriverBuildDirectory ./artifacts/driver-build
+            -TestResultsDirectory ./artifacts/test-results
 
       - name: Verify portable package contract
         shell: pwsh
@@ -162,6 +122,7 @@ jobs:
               'BuildInfo.json',
               'CHANGELOG.md',
               'README-FIRST.txt',
+              'EXTERNAL-CABLE-SETUP.md',
               'THIRD-PARTY-NOTICES.txt'
             )
             foreach ($item in $required) {
@@ -182,15 +143,6 @@ jobs:
         with:
           name: GrassiBoard-portable-win-x64-${{ env.GRASSIBOARD_VERSION }}-${{ github.run_number }}
           path: artifacts/packages/GrassiBoard-portable-win-x64-*.zip
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
-
-      - name: Upload test-signed driver package
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: GrassiBoard-driver-x64-${{ env.GRASSIBOARD_VERSION }}-${{ github.run_number }}
-          path: artifacts/packages/GrassiBoard-driver-x64-*.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 30

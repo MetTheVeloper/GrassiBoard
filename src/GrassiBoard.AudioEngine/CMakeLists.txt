@@ -28,7 +28,7 @@ endif()
 
 set_target_properties(GrassiBoard.AudioEngine PROPERTIES
   OUTPUT_NAME "GrassiBoard.AudioEngine"
-  VERSION "0.6.5"
+  VERSION "0.7.0"
 )
 
 install(TARGETS GrassiBoard.AudioEngine

@@ -30,8 +30,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $archives = Get-ChildItem ./artifacts/release -Filter '*.zip' -File
-          if ($archives.Count -ne 4) {
-            throw "Expected four release ZIPs, found $($archives.Count)."
+          if ($archives.Count -ne 3) {
+            throw "Expected three release ZIPs, found $($archives.Count)."
           }
           gh release create $env:GITHUB_REF_NAME $archives.FullName `
             --repo $env:GITHUB_REPOSITORY `
