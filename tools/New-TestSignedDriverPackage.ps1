@@ -43,9 +43,13 @@ Copy-Item -LiteralPath $sysSource.FullName -Destination $sysPath -Force
 Copy-Item -LiteralPath $infSource -Destination $infPath -Force
 if ($DriverVersion) {
     $infText = Get-Content -LiteralPath $infPath -Raw
-    $updatedInfText = $infText -replace '(?m)^DriverVer=([^,]+),[^\r\n]+$', "DriverVer=`$1,$DriverVersion"
-    if ($updatedInfText -eq $infText) {
-        throw 'DriverVer stamping did not update the packaged INF.'
+    $driverVersionPattern = '(?m)^(DriverVer=[^,\r\n]+),[^\r\n]+'
+    if ([regex]::Matches($infText, $driverVersionPattern).Count -ne 1) {
+        throw 'The packaged INF must contain exactly one DriverVer directive.'
+    }
+    $updatedInfText = [regex]::Replace($infText, $driverVersionPattern, "`$1,$DriverVersion")
+    if ($updatedInfText -notmatch "(?m)^DriverVer=[^,\r\n]+,$([regex]::Escape($DriverVersion))\r?$") {
+        throw 'DriverVer stamping did not produce the requested version.'
     }
     Set-Content -LiteralPath $infPath -Value $updatedInfText -Encoding ascii
 }
