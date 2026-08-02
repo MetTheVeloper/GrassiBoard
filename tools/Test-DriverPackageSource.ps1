@@ -63,7 +63,22 @@ if ($captureWaveTable -notmatch '#define\s+MICIN_DEVICE_MAX_CHANNELS\s+2' -or
     throw 'The capture data range and topology jack must agree with the stereo cable format.'
 }
 if ($captureWaveTable -notmatch '#define\s+MICIN_MAX_INPUT_STREAMS\s+5') {
-    throw 'The capture pin must retain enough SysVAD instances for Windows Audio shared-mode negotiation.'
+    throw 'The capture pin must retain the SysVAD reference instance capacity.'
+}
+
+$renderTopologySection = [regex]::Match(
+    $inf,
+    '(?ms)^\[GrassiBoard\.I\.TopologyRender\.AddReg\]\s*(.*?)(?=^\[)'
+).Groups[1].Value
+$captureTopologySection = [regex]::Match(
+    $inf,
+    '(?ms)^\[GrassiBoard\.I\.TopologyCapture\.AddReg\]\s*(.*?)(?=^\[)'
+).Groups[1].Value
+if (-not $renderTopologySection.Contains('PKEY_AudioEndpoint_Supports_EventDriven_Mode')) {
+    throw 'The render endpoint must retain event-driven WaveRT support.'
+}
+if ($captureTopologySection.Contains('PKEY_AudioEndpoint_Supports_EventDriven_Mode')) {
+    throw 'The Windows 10-compatible capture endpoint must not opt into event-driven WaveRT.'
 }
 
 $requiredScriptText = @(
@@ -105,4 +120,4 @@ if ($upstream -notmatch 'ef7c3074748ab05726c3a9161d3256118efd76e2') {
     throw 'The SysVAD upstream commit is not pinned.'
 }
 
-Write-Host 'Driver source contract passed: unique IDs, two endpoints, fixed-format PCM ring transport, lifecycle recovery, pinned provenance, and no private key material.'
+Write-Host 'Driver source contract passed: unique IDs, two endpoints, Windows 10 capture mode, fixed-format PCM ring transport, lifecycle recovery, pinned provenance, and no private key material.'

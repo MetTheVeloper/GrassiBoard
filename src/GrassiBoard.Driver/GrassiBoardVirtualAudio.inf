@@ -3,7 +3,7 @@ Signature="$Windows NT$"
 Class=MEDIA
 ClassGuid={4D36E96C-E325-11CE-BFC1-08002BE10318}
 Provider=%ProviderName%
-DriverVer=08/01/2026,0.6.1.0
+DriverVer=08/02/2026,0.6.2.0
 CatalogFile=GrassiBoardVirtualAudio.cat
 PnpLockDown=1
 
@@ -74,7 +74,10 @@ AddReg=GrassiBoard.I.TopologyCapture.AddReg
 HKR,,CLSID,,%Proxy.CLSID%
 HKR,,FriendlyName,,%CaptureEndpointName%
 HKR,EP\0,%PKEY_AudioEndpoint_Association%,,%KSNODETYPE_ANY%
-HKR,EP\0,%PKEY_AudioEndpoint_Supports_EventDriven_Mode%,0x00010001,1
+; Windows 10 build 19045 fails to construct the capture Audio Engine graph
+; when this WaveRT endpoint opts into pull/event-driven mode. Omit the opt-in
+; for capture so PortCls uses its stable timer-driven WaveRT path. Render keeps
+; the event-driven capability and continues feeding the same kernel PCM ring.
 
 [GrassiBoard_Install.NT.Interfaces]
 AddInterface=%KSCATEGORY_AUDIO%,%KSNAME_WaveRender%,GrassiBoard.I.WaveRender

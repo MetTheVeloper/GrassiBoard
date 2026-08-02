@@ -9,6 +9,7 @@
 - Exercise bounded overrun behavior plus underrun/overrun counters.
 - Flush queued audio across render stop/restart so no previous session can leak into capture.
 - Build the x64 WaveRT driver with the fixed 48 kHz, 16-bit, stereo format advertised on both system streams.
+- Require event-driven WaveRT on render and the Windows 10-compatible timer-driven path on capture.
 - Package the deterministic 440/660/880 Hz WAV generator with the driver.
 
 - Build the native x64 Release DLL with warnings treated as errors and validate native ABI version 4.
@@ -31,13 +32,13 @@ Runner timing is comparative evidence, not a promise of target-PC CPU usage. Aud
 
 ## Manual Milestone 5 acceptance
 
-1. Enable TESTSIGNING, reboot, and install the v0.6.1 driver using the packaged elevated scripts.
+1. Enable TESTSIGNING, reboot, and install the v0.6.2 driver using the packaged elevated scripts.
 2. Confirm Device Manager is `OK`, both endpoints exist, and their Advanced default format is `2 channel, 16 bit, 48000 Hz`.
 3. Run `scripts/New-CableTestWave.ps1` to create the fixed acceptance WAV.
 4. Route a media player to `GrassiBoard Virtual Cable Input`, select `GrassiBoard Virtual Microphone` as the recording input, and record the complete WAV.
 5. Restore the physical headset output before listening. Confirm the recorded sequence contains 440, 660, and 880 Hz tones with the intended silent gaps and acceptable quality.
 6. Continue recording for at least three seconds after playback ends; require silence with no loop or repeated tail.
 7. Repeat play/stop three times and confirm Windows Audio remains Running and no application hangs.
-8. Uninstall v0.6.1, confirm both endpoints disappear, disable TESTSIGNING, and reboot.
+8. Uninstall v0.6.2, confirm both endpoints disappear, disable TESTSIGNING, and reboot.
 
 Milestone 4 lifecycle acceptance passed on Windows 10 before Milestone 5 began. App-to-cable routing and processed microphone output are not Milestone 5 acceptance requirements.

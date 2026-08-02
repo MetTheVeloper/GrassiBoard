@@ -12,7 +12,7 @@ The repository has three layers:
 
 The app calls the native layer through source-generated P/Invoke. C++/CLI is not used.
 
-The kernel cable uses one fixed `48,000 Hz`, 16-bit, stereo PCM device format on both sides. A preallocated lock-free ring moves frames from the render DPC to the capture DPC. Capture pre-rolls 10 ms, zero-fills shortages, and flushes all queued data when either cable stream pauses or stops. No DSP, channel conversion, resampling, allocation, file I/O, or blocking lock occurs in the transport path.
+The kernel cable uses one fixed `48,000 Hz`, 16-bit, stereo PCM device format on both sides. A preallocated lock-free ring moves frames from the render DPC to the capture DPC. Capture pre-rolls 10 ms, zero-fills shortages, and flushes all queued data when either cable stream pauses or stops. The render endpoint opts into event-driven WaveRT; capture deliberately uses timer-driven WaveRT because Windows 10 build 19045 fails while constructing the event-driven capture graph. No DSP, channel conversion, resampling, allocation, file I/O, or blocking lock occurs in the transport path.
 
 ## Audio ownership
 
@@ -30,7 +30,7 @@ The real-time loop performs no logging, file I/O, exception propagation, blockin
 
 ## Version contract
 
-- Product version: `0.6.1`
+- Product version: `0.6.2`
 - Native ABI version: `4`
 - Architecture: `x64`
 - Processing format: `48,000 Hz`, 32-bit float, mono processing and stereo monitoring

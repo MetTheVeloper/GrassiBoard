@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v0.6.1`
+- Version: `v0.6.2`
 - Milestone: `5 — Virtual Cable PCM Transport`
-- Status: v0.6.0 manual capture negotiation failed on Windows 10; v0.6.1 compatibility fix is awaiting CI and retest
+- Status: v0.6.0 and v0.6.1 capture activation failed on Windows 10; v0.6.2 timer-driven capture fix is awaiting CI and manual retest
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -19,7 +19,9 @@ The cable is deliberately testable without the GrassiBoard app. App-to-cable rou
 
 ## Milestone 5 Windows 10 capture finding
 
-Manual testing on Windows 10 build 19045 found that the v0.6.0 endpoint was present and Device Manager reported `OK`, but Voice Recorder could not open it. A direct WASAPI probe reproduced `AUDCLNT_E_UNSUPPORTED_FORMAT` from `IAudioClient::GetMixFormat`, while the endpoint's persisted 48 kHz, 16-bit, stereo format was valid. The capture pin had been reduced from SysVAD's five instances to one; this left no capacity when Windows Audio retained an engine instance during client negotiation. v0.6.1 restores the reference capacity and adds a regression contract check.
+Manual testing on Windows 10 build 19045 found that the v0.6.0 and v0.6.1 endpoints were present and Device Manager reported `OK`, but Voice Recorder could not open the virtual microphone. A direct KS probe verified the capture filter, its two pins, all five processing modes, exact 48 kHz/16-bit/stereo format negotiation, and successful pin creation. A direct WASAPI probe still reproduced `AUDCLNT_E_UNSUPPORTED_FORMAT` from `IAudioClient::GetMixFormat` and both shared/exclusive initialization paths.
+
+A focused ETW trace exposed the underlying Audio Engine result as `0x80070490` (`Element not found`) during per-endpoint policy construction; Windows then mapped it to `AUDCLNT_E_UNSUPPORTED_FORMAT`. The internal device stream was being created with the event-callback flag because the capture INF opted into event-driven WaveRT. v0.6.2 removes that capture-only opt-in and uses the timer-driven WaveRT path on Windows 10 while leaving render event-driven. The earlier one-versus-five stream-instance diagnosis was disproved by the unchanged v0.6.1 behavior and is no longer treated as the cause.
 
 ## Milestone 5 automated result
 

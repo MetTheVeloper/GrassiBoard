@@ -9,6 +9,7 @@ on:
       - src/GrassiBoard.DeviceTool/**
       - tools/Test-DriverPackageSource.ps1
       - tools/Test-DriverLifecycleHelpers.ps1
+      - tools/diagnostics/**
       - tools/New-TestSignedDriverPackage.ps1
       - packages.config
       - Directory.Build.props
@@ -19,6 +20,7 @@ on:
       - src/GrassiBoard.DeviceTool/**
       - tools/Test-DriverPackageSource.ps1
       - tools/Test-DriverLifecycleHelpers.ps1
+      - tools/diagnostics/**
       - tools/New-TestSignedDriverPackage.ps1
       - packages.config
       - Directory.Build.props
@@ -29,7 +31,7 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 0.6.1
+  GRASSIBOARD_VERSION: 0.6.2
   WDK_NUGET_VERSION: 10.0.26100.6584
 
 jobs:

@@ -1,4 +1,4 @@
-GrassiBoard v0.6.1 — Milestone 5 virtual cable transport capture compatibility fix
+GrassiBoard v0.6.2 — Milestone 5 Windows 10 capture activation compatibility fix
 
 SAFETY: Use headphones and lower their volume before starting the engine.
 
