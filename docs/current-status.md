@@ -2,7 +2,7 @@
 
 - Version: `v0.8.0`
 - Milestone: `7 — Soundboard + UI architecture foundation`
-- Status: implementation in progress; automated build and manual Windows 10 acceptance pending
+- Status: implemented; automated build passed; manual Windows 10 acceptance pending
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -19,7 +19,9 @@ Milestone 6 was accepted on 2026-08-09 on Windows 10. The user confirmed that th
 
 v0.8.0 adds a native cached Soundboard mixer after the accepted Voice DSP and establishes the final application shell. Sound Pads never enter the microphone Pitch/Formant path. Mute Mic gates only the processed microphone branch; Stop All clears only Soundboard voices. WAV/MP3 decode, disk access, resampling, and large allocation happen on a background thread before PCM crosses the native ABI.
 
-The milestone is not accepted until GitHub Actions passes, a portable artifact exists, regression and Soundboard tests pass, and the user explicitly approves the manual Windows 10 report.
+GitHub Actions [Build run #50](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/31332077929) passed for implementation commit `7fead3f`. Native `/W4 /WX`, accepted DSP regressions, the isolated Soundboard mixer contract, managed WAV decode/JSON persistence, self-contained WPF publish, package verification, and all three artifact uploads succeeded.
+
+The milestone is not accepted until the user explicitly approves the manual Windows 10 regression/UI/Soundboard report.
 
 ## Architecture decision
 
