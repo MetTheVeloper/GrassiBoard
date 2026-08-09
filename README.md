@@ -1,28 +1,34 @@
 # GrassiBoard
 
-GrassiBoard is a Windows x64 live voice-processing and soundboard application.
+GrassiBoard is a Windows x64 live voice-processing and Soundboard application. It captures a physical microphone, applies live Pitch/Formant processing, mixes Sound Pads, and sends the result to an independently installed external virtual audio cable.
 
 ## Current milestone
 
-`v0.7.0` routes the processed physical microphone into an **external virtual audio cable**. The target application sees the cable's recording endpoint as its microphone, so the same GrassiBoard output can be used by Voice Recorder, OBS, Discord, browsers, and other standard Windows audio clients.
+`v0.8.0` adds the production application shell and the first real Soundboard while preserving the manually accepted `v0.7.0` microphone route.
 
-The app:
+- **Board** is the daily workspace: reusable Sound Pads plus compact Voice FX.
+- **Voice** contains full Pitch, Fine Pitch, Formant, preservation, quality, and latency controls.
+- **Routing** selects the physical microphone and external virtual-cable playback endpoint.
+- **Settings** contains copy-safe diagnostics and build information.
+- The persistent top bar exposes Mic/Soundboard/Master meters, Mic Mute, and Soundboard-only Stop All.
 
-- keeps the accepted live Pitch, Fine Pitch, Formant, Bypass, and quality modes;
-- enumerates active Windows render and capture endpoints;
-- identifies paired virtual-cable endpoints by Windows Container ID with a name-based fallback;
-- prefers an installed external cable automatically;
-- shows the exact recording endpoint to select in the target application;
-- ignores the retired test-signed GrassiBoard driver;
-- does not bundle, install, or redistribute a third-party driver.
+Sound Pads support WAV and MP3, volume, Loop, per-pad stop, simultaneous playback, drag/drop, edit/delete, and JSON persistence. Files are referenced in their original locations. They are decoded and resampled to stereo 48 kHz float away from the real-time audio callback, then cached in the native engine.
 
-The previous custom SysVAD driver remains in the repository as experimental research, but it is no longer built or shipped by the product workflow. It installed correctly but did not satisfy the Windows 10 WASAPI capture contract.
+## Audio route
+
+```text
+Physical microphone -> Voice DSP ----┐
+                                     ├-> Master mix -> external cable playback endpoint
+Cached Sound Pads -------------------┘                    -> target app microphone
+```
+
+Voice Pitch/Formant affects only the microphone branch. Mic Mute leaves Sound Pads active; Stop All stops Sound Pads without stopping the microphone or engine.
 
 ## External cable
 
-Any Windows virtual cable exposing a paired playback and recording endpoint can work. VB-CABLE is the documented reference because it supports Windows 10/11 and standard Windows audio APIs. Download and license it directly from its publisher; it is not part of GrassiBoard.
+GrassiBoard does not bundle or install a virtual driver. Any Windows virtual cable exposing a paired playback and recording endpoint can work. VB-CABLE is the documented reference. Download and license it directly from its publisher.
 
-See [external virtual cable setup](docs/external-virtual-cable.md). The portable package includes the same guide as `EXTERNAL-CABLE-SETUP.md`.
+See [external virtual cable setup](docs/external-virtual-cable.md). Do not select the cable's recording endpoint as GrassiBoard's physical input, because that creates a routing loop.
 
 ## Build
 
@@ -37,9 +43,16 @@ dotnet run --project tests/GrassiBoard.App.SmokeTests/GrassiBoard.App.SmokeTests
 dotnet build src/GrassiBoard.App/GrassiBoard.App.csproj -c Release -p:Platform=x64
 ```
 
-## Safety
+GitHub Actions publishes a self-contained portable Windows package, symbols, and test results. A user does not need local build tools to test the milestone artifact.
 
-Do not select the cable's recording endpoint as GrassiBoard's physical input; that would create a routing loop. Local headphone monitoring is intentionally not part of this first external-cable build.
+## Documentation
+
+- [Current status](docs/current-status.md)
+- [Architecture](docs/architecture.md)
+- [Audio pipeline](docs/audio-pipeline.md)
+- [UI architecture](docs/ui-architecture.md)
+- [Soundboard behavior](docs/soundboard.md)
+- [Manual test plan](docs/test-plan.md)
 
 ## License
 

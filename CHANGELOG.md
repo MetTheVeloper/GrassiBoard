@@ -2,6 +2,34 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.8.0] - 2026-08-09
+
+### Added
+
+- Add a real Soundboard with WAV/MP3 import, drag/drop, volume, Loop, per-pad stop, Stop All, simultaneous playback, edit/delete, and JSON persistence.
+- Decode/resample Sound Pad files on a background thread with pinned NAudio 2.3.0, then cache immutable stereo 48 kHz PCM in the native engine.
+- Add a fixed-command-queue, 32-voice native Soundboard mixer after the accepted microphone Voice DSP.
+- Add Mic, Soundboard, and Master meters plus microphone-only Mute.
+- Add native and managed regression tests for Soundboard mixing, offline WAV decode, and Pad persistence.
+- Add the persistent Board, Voice, Routing, and Settings application shell with shared theme resources and copy-safe diagnostics.
+
+### Changed
+
+- Make Board the default daily workspace and move detailed Voice, device routing, and diagnostics controls to dedicated pages.
+- Present native Pitch bypass as the positive user-facing Voice FX ON/OFF state.
+- Simplify ordinary routing language to “virtual microphone” while keeping exact external-cable endpoint names in Routing and Diagnostics.
+- Bump the native ABI to version 5 and product/native version to 0.8.0.
+
+### Preserved
+
+- Preserve the manually accepted v0.7.0 physical-microphone, Pitch/Formant, WASAPI, and external-cable route.
+- Keep Sound Pads outside the microphone Pitch/Formant path.
+- Keep the experimental custom driver out of product builds and packages.
+
+### Deferred
+
+- Separate low-latency headphone monitoring and Mixer/Dynamics controls remain future milestones.
+
 ## [0.7.0] - 2026-08-03
 
 ### Added

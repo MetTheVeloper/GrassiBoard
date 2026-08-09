@@ -1,19 +1,31 @@
 # Current status
 
-- Version: `v0.7.0`
-- Milestone: `6 — External virtual cable integration`
-- Status: implemented; automated build and manual Windows 10 routing acceptance are pending
+- Version: `v0.8.0`
+- Milestone: `7 — Soundboard + UI architecture foundation`
+- Status: implementation in progress; automated build and manual Windows 10 acceptance pending
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
 - Backend: Signalsmith Stretch 1.3.2 + Signalsmith Linear 0.3.1, both pinned
 - Virtual routing: vendor-neutral external cable selected as the processed WASAPI render destination
+- UI: persistent Board/Voice/Routing/Settings shell with shared top bar and state
+- Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
+
+## v0.7.0 manual acceptance
+
+Milestone 6 was accepted on 2026-08-09 on Windows 10. The user confirmed that the processed Microsoft LifeChat microphone, including Pitch and the existing Voice controls, was successfully recorded in Telegram and Windows Voice Recorder through the installed VB-CABLE route. This acceptance freezes the v0.7 microphone/DSP/WASAPI behavior as the regression baseline for v0.8.0.
+
+## v0.8.0 implementation boundary
+
+v0.8.0 adds a native cached Soundboard mixer after the accepted Voice DSP and establishes the final application shell. Sound Pads never enter the microphone Pitch/Formant path. Mute Mic gates only the processed microphone branch; Stop All clears only Soundboard voices. WAV/MP3 decode, disk access, resampling, and large allocation happen on a background thread before PCM crosses the native ABI.
+
+The milestone is not accepted until GitHub Actions passes, a portable artifact exists, regression and Soundboard tests pass, and the user explicitly approves the manual Windows 10 report.
 
 ## Architecture decision
 
 The custom SysVAD path is retired from product builds. Manual v0.6.5 testing confirmed that its capture endpoint still failed `GetMixFormat` and shared initialization with `AUDCLNT_E_UNSUPPORTED_FORMAT`; the expected Audio Engine mix-format property did not materialize. The source and diagnostic history remain in the repository, but official GrassiBoard packages no longer contain or publish that driver.
 
-v0.7.0 instead sends the accepted user-mode DSP output to an installed external cable. The UI pairs its playback and recording endpoints, ignores the retired GrassiBoard endpoints, and tells the user which microphone to select in the target application.
+v0.7.0 and later send the accepted user-mode DSP output to an installed external cable. The UI pairs its playback and recording endpoints, ignores the retired GrassiBoard endpoints, and tells the user which microphone to select in the target application.
 
 ## Historical custom-driver implementation
 

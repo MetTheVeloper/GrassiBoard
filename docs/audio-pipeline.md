@@ -1,25 +1,46 @@
 # Audio pipeline
 
-Milestone 3 uses this user-mode path:
+## Live route
 
 ```text
 Selected physical microphone
     -> WASAPI shared/event-driven capture
-48 kHz mono float
-    -> three pre-warmed Signalsmith configurations
-       Low latency / Balanced / High quality
-    -> 20 ms live mode crossfade
-    -> formant-aware pitch output or latency-aligned Bypass
-    -> preallocated mono ring buffer
-    -> stereo duplication
-    -> WASAPI shared/event-driven render
-Selected external virtual-cable playback endpoint
-    -> paired cable recording endpoint
-    -> target application microphone input
+    -> 48 kHz mono float
+    -> prewarmed Signalsmith Voice DSP
+       Pitch + Fine Pitch + Formant + preservation + quality crossfade
+    -> existing preallocated mono ring buffer
+    -> Mic Mute gate --------------------------------------┐
+                                                          ├-> bounded stereo master sum
+WAV / MP3 file                                            │       -> WASAPI render
+    -> background decode + channel conversion + resample  │       -> external cable playback endpoint
+    -> immutable cached 48 kHz stereo float clip           │       -> paired cable recording endpoint
+    -> fixed command queue + 32-voice Soundboard mixer ----┘       -> target application microphone
 ```
 
-Pitch, Fine Pitch, Formant Shift, preservation, Bypass, and quality targets update without restarting the stream. The UI reports the selected mode's algorithmic latency after its crossfade completes. Endpoint and ring-buffer delays remain separate.
+The Voice branch is the accepted v0.7.0 path. Soundboard enters after Pitch/Formant processing, so Pad audio stays at its original pitch. Mic Mute gates only the Voice branch. Stop All clears only Soundboard voices.
 
-Formant preservation is implemented as a smoothly variable compensation term tied to the current pitch map. Formant Shift remains independent, so the user can preserve vocal character and then deliberately move it.
+## Real-time rules
 
-Noise processing, mixer, soundboard, and separate headphone monitoring do not participate in this version. The virtual transport is supplied by an independently installed external cable.
+The render callback may pop processed microphone samples, drain bounded playback commands, read cached PCM, mix active voices, update atomic meters/counters, and write the WASAPI buffer.
+
+It must not:
+
+- open or read files;
+- decode WAV/MP3;
+- resample;
+- allocate a clip or resize a collection;
+- access WPF/UI state;
+- acquire the clip-registry mutex;
+- log or propagate exceptions.
+
+## Meter definitions
+
+- **Mic**: physical microphone peak received by capture. It may continue moving while Mic Mute is active.
+- **Soundboard**: summed Pad peak before the master clamp.
+- **Master**: final stereo signal written to the external virtual-cable playback endpoint.
+
+The WPF timer samples native statistics every 100 ms rather than repainting at audio-block frequency.
+
+## Deferred work
+
+Separate low-latency headphone monitoring, gain stages, dynamics, ducking, and configurable clipping protection remain future milestones. The current master uses bounded float clamping only when Voice and Soundboard sums exceed the output range; the accepted microphone-only route remains unchanged below that boundary.

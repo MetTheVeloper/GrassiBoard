@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 0.7.0
+  GRASSIBOARD_VERSION: 0.8.0
   DOTNET_SDK_VERSION: 8.0.423
 
 jobs:
@@ -119,10 +119,12 @@ jobs:
             $required = @(
               'GrassiBoard.exe',
               'GrassiBoard.AudioEngine.dll',
+              'NAudio.dll',
               'BuildInfo.json',
               'CHANGELOG.md',
               'README-FIRST.txt',
               'EXTERNAL-CABLE-SETUP.md',
+              'LICENSES.md',
               'THIRD-PARTY-NOTICES.txt'
             )
             foreach ($item in $required) {

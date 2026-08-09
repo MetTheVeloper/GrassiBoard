@@ -28,7 +28,8 @@ enum gb_result : std::int32_t {
     GB_ERROR_ALREADY_RUNNING = 6,
     GB_ERROR_NOT_RUNNING = 7,
     GB_ERROR_BUFFER_TOO_SMALL = 8,
-    GB_ERROR_INTERNAL = 9
+    GB_ERROR_INTERNAL = 9,
+    GB_ERROR_QUEUE_FULL = 10
 };
 
 struct gb_audio_statistics {
@@ -48,6 +49,12 @@ struct gb_audio_statistics {
     float input_rms;
     float output_peak;
     float output_rms;
+    float soundboard_peak;
+    float soundboard_rms;
+    float master_peak;
+    float master_rms;
+    std::uint32_t active_sound_count;
+    std::uint32_t microphone_muted;
 };
 
 GB_API std::uint32_t GB_CALL gb_get_api_version() noexcept;
@@ -80,6 +87,22 @@ GB_API gb_result GB_CALL gb_set_pitch_bypass(gb_engine_handle engine, std::uint3
 GB_API gb_result GB_CALL gb_set_formant_semitones(gb_engine_handle engine, float semitones) noexcept;
 GB_API gb_result GB_CALL gb_set_formant_preservation(gb_engine_handle engine, std::uint32_t preserve) noexcept;
 GB_API gb_result GB_CALL gb_set_pitch_quality(gb_engine_handle engine, std::uint32_t quality_mode) noexcept;
+// Sound clips must be decoded to interleaved 48 kHz stereo float PCM before
+// they cross this boundary. The engine copies clip data outside the render callback.
+GB_API gb_result GB_CALL gb_load_sound_clip(
+    gb_engine_handle engine,
+    std::uint64_t clip_key,
+    const float* interleaved_stereo_samples,
+    std::uint64_t frame_count) noexcept;
+GB_API gb_result GB_CALL gb_play_sound_clip(
+    gb_engine_handle engine,
+    std::uint64_t clip_key,
+    float volume,
+    std::uint32_t loop,
+    std::uint32_t restart) noexcept;
+GB_API gb_result GB_CALL gb_stop_sound_clip(gb_engine_handle engine, std::uint64_t clip_key) noexcept;
+GB_API gb_result GB_CALL gb_stop_all_sounds(gb_engine_handle engine) noexcept;
+GB_API gb_result GB_CALL gb_set_microphone_muted(gb_engine_handle engine, std::uint32_t muted) noexcept;
 GB_API gb_result GB_CALL gb_get_audio_statistics(
     gb_engine_handle engine,
     gb_audio_statistics* statistics) noexcept;

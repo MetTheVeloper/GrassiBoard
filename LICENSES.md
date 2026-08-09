@@ -21,6 +21,15 @@ Signalsmith Linear is the pinned FFT/STFT dependency used by Signalsmith Stretch
 
 The project source is licensed under the Apache License 2.0; see `LICENSE`.
 
+## NAudio
+
+- Source: https://github.com/naudio/NAudio
+- Package: `NAudio` `2.3.0` (pinned NuGet reference)
+- License: MIT
+- Usage: background WAV/MP3 decode and 48 kHz resampling; not used in the native real-time callback
+
+The complete MIT notice is included in `THIRD-PARTY-NOTICES.txt` and in the portable package.
+
 ## Microsoft Windows Driver Samples (SysVAD extraction)
 
 - Source: `src/GrassiBoard.Driver/Sysvad`

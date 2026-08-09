@@ -33,6 +33,7 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README.md') -Destination $po
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\CHANGELOG.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README-FIRST.txt') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\THIRD-PARTY-NOTICES.txt') -Destination $portableStage -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\LICENSES.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\docs\external-virtual-cable.md') `
     -Destination (Join-Path $portableStage 'EXTERNAL-CABLE-SETUP.md') -Force
 

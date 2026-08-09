@@ -1142,11 +1142,13 @@ Driver Verifier فقط در Milestoneهای پایانی و با هشدار وا
 
 Monitoring جداگانه هدفون پس از پذیرش این مسیر اضافه می‌شود و شرط پذیرش v0.7.0 نیست.
 
+نتیجهٔ تست ۲۰۲۶-۰۸-۰۹: این Milestone روی Windows 10 با VB-CABLE پذیرفته شد. صدای پردازش‌شده همراه Pitch و تنظیمات Voice در Telegram و Windows Voice Recorder ضبط شد. مسیر Mic/DSP/WASAPI این نسخه baseline ثابت رگرسیون نسخه‌های بعدی است.
+
 پس از تست متوقف شو.
 
 ---
 
-## Milestone 7 — Soundboard
+## Milestone 7 — Soundboard و UI Architecture Foundation
 
 نسخه: `v0.8.0`
 
@@ -1157,18 +1159,36 @@ Monitoring جداگانه هدفون پس از پذیرش این مسیر اضا
 - WAV و MP3
 - Volume
 - Loop
+- Stop Current
 - Stop All
 - چند صدای هم‌زمان
 - پخش در Virtual Mic
-- پخش اختیاری در Monitoring
 - Cache یا Predecode
+- ذخیره و بازیابی Padها با JSON و File Reference
+- حالت امن برای فایل Missing/Unreadable
+- Sidebar دائمی با صفحات Board، Voice، Routing و Settings
+- Top Bar دائمی با Engine Status، Mic/Soundboard/Master Meter، Mute Mic و Stop All
+- Board به‌عنوان workspace پیش‌فرض همراه Voice FX فشرده
+- انتقال کنترل‌های کامل Voice به صفحهٔ Voice
+- انتقال Device Selection و Engine lifecycle به Routing
+- انتقال Diagnostics و About به Settings
+- ResourceDictionary مشترک برای Design Token و Styleها
+- یک Shared State و یک Audio Engine برای همهٔ صفحات
+
+Monitoring مستقیم هدفون فقط در صورتی اضافه می‌شود که بدون بازطراحی پرریسک مسیر پذیرفته‌شده ممکن باشد؛ در v0.8.0 به‌صورت آگاهانه Deferred است.
 
 معیار پذیرش:
 
 - صداهای Soundboard با میکروفون Mix شوند.
 - میکروفون هنگام پخش Soundboard قطع نشود.
+- Pitch/Formant میکروفون روی صدای Pad اعمال نشود.
+- Mute Mic فقط میکروفون را ساکت کند و Padها ادامه دهند.
+- Navigation باعث Restart یا قطع Audio Engine نشود.
+- Padها پس از Restart برنامه بازیابی شوند.
 - Stop All فوری کار کند.
 - پخش Pad باعث Dropout محسوس نشود.
+- WAV/MP3 Decode، Disk I/O و Allocation بزرگ داخل Real-time Callback انجام نشود.
+- نسخه فقط بعد از پاس CI، تولید Artifact و تأیید دستی کاربر پذیرفته شود.
 
 پس از تست متوقف شو.
 
@@ -1190,6 +1210,7 @@ Monitoring جداگانه هدفون پس از پذیرش این مسیر اضا
 - Clipping Protection
 - Wet/Dry Pitch Mix
 - Presetهای صوتی
+- افزودن کنترل‌های Mixer به shell موجود؛ کنترل‌های Voice در صفحهٔ Voice و Meter/Diagnostics در جای فعلی خود بمانند.
 
 معیار پذیرش:
 
@@ -1197,6 +1218,7 @@ Monitoring جداگانه هدفون پس از پذیرش این مسیر اضا
 - تغییر تنظیمات زنده باشد.
 - Ducking قابل تنظیم باشد.
 - هیچ کنترل UI، Audio Thread را Block نکند.
+- Navigation و Shared State معرفی‌شده در v0.8.0 حفظ شود و Audio Engine هنگام تعویض صفحه بازسازی نشود.
 
 پس از تست متوقف شو.
 

@@ -2,6 +2,7 @@
 
 #include "grassiboard/audio_engine.h"
 #include "pitch_processor.h"
+#include "soundboard_mixer.h"
 
 #include <Windows.h>
 
@@ -48,6 +49,11 @@ public:
     void SetFormantSemitones(float semitones) noexcept;
     void SetFormantPreservation(bool preserve) noexcept;
     void SetPitchQuality(PitchQualityMode mode) noexcept;
+    gb_result LoadSoundClip(std::uint64_t key, const float* stereoSamples, std::uint64_t frameCount);
+    gb_result PlaySoundClip(std::uint64_t key, float volume, bool loop, bool restart) noexcept;
+    gb_result StopSoundClip(std::uint64_t key) noexcept;
+    gb_result StopAllSounds() noexcept;
+    void SetMicrophoneMuted(bool muted) noexcept;
     void GetStatistics(gb_audio_statistics& statistics) const noexcept;
     std::string GetLastError() const;
 
@@ -68,6 +74,7 @@ private:
 
     FloatRingBuffer ring_buffer_;
     LivePitchProcessor pitch_processor_;
+    SoundboardMixer soundboard_mixer_;
     std::vector<float> pitch_input_buffer_;
     std::vector<float> pitch_output_buffer_;
     std::atomic<float> pitch_semitones_{0.0F};
@@ -86,6 +93,11 @@ private:
     std::atomic<float> input_rms_{0.0F};
     std::atomic<float> output_peak_{0.0F};
     std::atomic<float> output_rms_{0.0F};
+    std::atomic<float> soundboard_peak_{0.0F};
+    std::atomic<float> soundboard_rms_{0.0F};
+    std::atomic<float> master_peak_{0.0F};
+    std::atomic<float> master_rms_{0.0F};
+    std::atomic<bool> microphone_muted_{false};
 
     void UpdatePitchTarget() noexcept;
 };

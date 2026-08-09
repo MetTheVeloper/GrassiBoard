@@ -1,37 +1,49 @@
 # Architecture
 
-## Milestone 6 boundary
+## v0.8 product boundary
 
-The product has two active layers:
+The active product has three layers:
 
-1. `GrassiBoard.App`: a WPF `net8.0-windows` x64 UI process.
-2. `GrassiBoard.AudioEngine`: a native C++20 x64 DLL exposing C ABI version 4.
-An independently installed virtual cable supplies the Windows render/capture endpoint pair. `GrassiBoard.Driver` and `GrassiBoard.DeviceTool` are retained only as experimental historical source and are not built or published by the product workflow.
+1. `GrassiBoard.App`: WPF `net8.0-windows` x64 application shell, shared state, Sound Pad persistence, and offline file decoding.
+2. `GrassiBoard.AudioEngine`: native C++20 x64 DLL exposing C ABI version 5 and owning WASAPI, Voice DSP, the predecoded Soundboard mixer, and meters.
+3. An independently installed external virtual cable providing the Windows render/capture endpoint pair.
 
-The app calls the native layer through source-generated P/Invoke. C++/CLI is not used.
+`GrassiBoard.Driver` and `GrassiBoard.DeviceTool` remain historical experimental source. They are not built, installed, or published by the product workflow.
 
-The app enumerates active Windows endpoints and pairs an external cable's render and capture sides by Container ID, falling back to a conservative virtual-device family-name match. The physical microphone feeds the user-mode DSP, which renders stereo float audio to the cable playback endpoint. The target application opens the paired cable recording endpoint.
+The app calls the native engine through source-generated P/Invoke. NAudio 2.3.0 is pinned for offline WAV/MP3 decoding and resampling only; it does not own the live output stream.
+
+## Long-lived application state
+
+`MainViewModel` owns one `NativeAudioEngine` service for the lifetime of `MainWindow`. Board, Voice, Routing, and Settings are presentation views over that same state. Navigation never recreates the engine, devices, Voice parameters, meters, or pad playback.
+
+Sound Pad definitions live in `%APPDATA%\GrassiBoard\soundboard.json`. The JSON contains stable IDs, titles, original file references, volume, Loop, and restart behavior. Missing or unreadable files become recoverable per-pad error states instead of startup failures.
+
+See [UI architecture](ui-architecture.md) and [Soundboard behavior](soundboard.md).
 
 ## Audio ownership
 
-A dedicated native STA worker owns every MMDevice and WASAPI interface from creation through release. Capture and render use shared-mode event callbacks. A single worker waits on capture, render, and stop events, avoiding COM-interface handoff and mutexes in the audio path.
+A dedicated native STA worker owns every MMDevice and WASAPI interface from creation through release. Capture and render use shared-mode event callbacks. A single worker waits on capture, render, and stop events, avoiding COM-interface handoff and blocking locks in the audio path.
 
-Microphone samples are converted to 48 kHz mono float, processed, and written to a preallocated mono ring buffer. Render duplicates the processed mono signal to stereo. Windows Audio performs endpoint-format conversion and resampling where needed.
+Microphone samples are converted to 48 kHz mono float, processed, and written to the existing preallocated mono ring buffer. Render pops processed microphone samples, applies Mic Mute, obtains stereo Soundboard samples from `SoundboardMixer`, clamps the final sum to the float range, and renders stereo to the selected external-cable playback endpoint.
+
+## Soundboard ownership
+
+WAV/MP3 decode, channel conversion, 48 kHz resampling, disk reads, and large allocations happen on a managed background thread. The completed stereo float buffer crosses the C ABI once and is copied into immutable native clip storage outside the audio callback.
+
+Playback control uses a fixed 256-command single-producer/single-consumer queue. The render worker mixes from a fixed 32-voice array. The callback performs no decode, file I/O, UI operation, first-use allocation, or blocking lock acquisition.
 
 ## Live DSP ownership
 
-`LivePitchProcessor` owns three `SignalsmithPitchProcessor` instances configured as Low latency, Balanced, and High quality. All three are configured, allocated, and reset before WASAPI starts. They remain warm from the same input timeline, allowing a 20 ms crossfade to another mode without stopping or resetting the stream. This trades additional CPU for deterministic live switching; the aggregate cost is measured by CI.
-
-Pitch, Fine Pitch, Formant Shift, preservation, Bypass, and requested quality mode cross threads through atomics. Pitch/Formant/preservation targets are smoothed over 25 ms. Each mode owns its latency-aligned dry delay, and Bypass crossfades over 10 ms.
-
-The real-time loop performs no logging, file I/O, exception propagation, blocking lock acquisition, or first-use allocation.
+`LivePitchProcessor` retains the accepted v0.7 behavior: three prewarmed Signalsmith processors, live mode crossfades, smoothed Pitch/Formant targets, and latency-aligned bypass. Soundboard samples enter after this processor, so Voice Pitch/Formant never alters a Sound Pad.
 
 ## Version contract
 
-- Product version: `0.7.0`
-- Native ABI version: `4`
+- Product version: `0.8.0`
+- Native ABI version: `5`
 - Architecture: `x64`
-- Processing format: `48,000 Hz`, 32-bit float, mono processing and stereo monitoring
+- Processing/mix format: `48,000 Hz`, 32-bit float; mono Voice DSP and stereo master output
+- Cached Sound Pad limit: WAV/MP3, mono or stereo, at most ten minutes per file
+- Simultaneous Sound Pad voices: 32
 - Pitch range: `-12` to `+12` semitones plus `-100` to `+100` cents
 - Formant shift range: `-12` to `+12` semitones
-- Default mode: Balanced, preservation enabled, Bypass enabled
+- Default Voice state: Balanced, preservation enabled, Voice FX disabled (positive UI maps to native bypass)

@@ -7,12 +7,12 @@
 
 int main()
 {
-    if (gb_get_api_version() != 4U) {
+    if (gb_get_api_version() != 5U) {
         std::cerr << "Unexpected native API version.\n";
         return 1;
     }
 
-    if (std::strcmp(gb_get_version(), "0.7.0") != 0) {
+    if (std::strcmp(gb_get_version(), "0.8.0") != 0) {
         std::cerr << "Unexpected native engine version.\n";
         return 2;
     }
@@ -24,7 +24,7 @@ int main()
     }
 
     gb_engine_handle engine = nullptr;
-    if (gb_engine_create(4U, &engine) != GB_OK || engine == nullptr) {
+    if (gb_engine_create(5U, &engine) != GB_OK || engine == nullptr) {
         std::cerr << "Engine creation failed.\n";
         return 4;
     }
@@ -49,16 +49,29 @@ int main()
         gb_set_formant_preservation(engine, 2U) != GB_ERROR_INVALID_ARGUMENT ||
         gb_set_pitch_quality(engine, 0U) != GB_OK ||
         gb_set_pitch_quality(engine, 2U) != GB_OK ||
-        gb_set_pitch_quality(engine, 3U) != GB_ERROR_INVALID_ARGUMENT) {
+        gb_set_pitch_quality(engine, 3U) != GB_ERROR_INVALID_ARGUMENT ||
+        gb_set_microphone_muted(engine, 1U) != GB_OK ||
+        gb_set_microphone_muted(engine, 2U) != GB_ERROR_INVALID_ARGUMENT) {
         std::cerr << "Pitch parameter contract failed.\n";
         gb_engine_destroy(engine);
         return 6;
     }
 
+    constexpr float clip[]{0.25F, -0.25F, 0.5F, -0.5F};
+    if (gb_load_sound_clip(engine, 42U, clip, 2U) != GB_OK ||
+        gb_load_sound_clip(engine, 0U, clip, 2U) != GB_ERROR_INVALID_ARGUMENT ||
+        gb_play_sound_clip(engine, 42U, 1.0F, 0U, 1U) != GB_OK ||
+        gb_stop_sound_clip(engine, 42U) != GB_OK ||
+        gb_stop_all_sounds(engine) != GB_OK) {
+        std::cerr << "Soundboard ABI contract failed.\n";
+        gb_engine_destroy(engine);
+        return 7;
+    }
+
     if (gb_engine_stop(engine) != GB_OK) {
         std::cerr << "Stopping an idle engine failed.\n";
         gb_engine_destroy(engine);
-        return 7;
+        return 8;
     }
     gb_engine_destroy(engine);
 

@@ -9,8 +9,8 @@
 #include <string>
 
 namespace {
-constexpr std::uint32_t kApiVersion = 4;
-constexpr char kEngineVersion[] = "0.7.0";
+constexpr std::uint32_t kApiVersion = 5;
+constexpr char kEngineVersion[] = "0.8.0";
 
 gb_result WriteUtf8Result(
     const std::string& value,
@@ -199,6 +199,65 @@ gb_result GB_CALL gb_set_pitch_quality(
     }
     static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchQuality(
         static_cast<grassiboard::PitchQualityMode>(quality_mode));
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_load_sound_clip(
+    const gb_engine_handle engine,
+    const std::uint64_t clip_key,
+    const float* const interleaved_stereo_samples,
+    const std::uint64_t frame_count) noexcept
+{
+    if (engine == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    try {
+        return static_cast<grassiboard::WasapiEngine*>(engine)->LoadSoundClip(
+            clip_key, interleaved_stereo_samples, frame_count);
+    }
+    catch (...) {
+        return GB_ERROR_INTERNAL;
+    }
+}
+
+gb_result GB_CALL gb_play_sound_clip(
+    const gb_engine_handle engine,
+    const std::uint64_t clip_key,
+    const float volume,
+    const std::uint32_t loop,
+    const std::uint32_t restart) noexcept
+{
+    if (engine == nullptr || !std::isfinite(volume) || loop > 1U || restart > 1U) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    return static_cast<grassiboard::WasapiEngine*>(engine)->PlaySoundClip(
+        clip_key, volume, loop != 0U, restart != 0U);
+}
+
+gb_result GB_CALL gb_stop_sound_clip(
+    const gb_engine_handle engine,
+    const std::uint64_t clip_key) noexcept
+{
+    return engine == nullptr
+        ? GB_ERROR_INVALID_ARGUMENT
+        : static_cast<grassiboard::WasapiEngine*>(engine)->StopSoundClip(clip_key);
+}
+
+gb_result GB_CALL gb_stop_all_sounds(const gb_engine_handle engine) noexcept
+{
+    return engine == nullptr
+        ? GB_ERROR_INVALID_ARGUMENT
+        : static_cast<grassiboard::WasapiEngine*>(engine)->StopAllSounds();
+}
+
+gb_result GB_CALL gb_set_microphone_muted(
+    const gb_engine_handle engine,
+    const std::uint32_t muted) noexcept
+{
+    if (engine == nullptr || muted > 1U) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetMicrophoneMuted(muted != 0U);
     return GB_OK;
 }
 
