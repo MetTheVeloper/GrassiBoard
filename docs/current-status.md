@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v0.8.0`
+- Version: `v0.8.1`
 - Milestone: `7 — Soundboard + UI architecture foundation`
-- Status: implemented; automated build passed; manual Windows 10 acceptance pending
+- Status: startup hotfix implemented and locally verified; automated build and manual Windows 10 retest pending
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -22,6 +22,10 @@ v0.8.0 adds a native cached Soundboard mixer after the accepted Voice DSP and es
 GitHub Actions [Build run #50](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/31332077929) passed for implementation commit `7fead3f`. Native `/W4 /WX`, accepted DSP regressions, the isolated Soundboard mixer contract, managed WAV decode/JSON persistence, self-contained WPF publish, package verification, and all three artifact uploads succeeded.
 
 The milestone is not accepted until the user explicitly approves the manual Windows 10 regression/UI/Soundboard report.
+
+## v0.8.1 startup hotfix
+
+Manual Windows 10 launch testing found that v0.8.0 exited before showing its window. WPF treated `ProgressBar.Value` bindings as TwoWay by default and attempted to write meter values back to read-only ViewModel properties. v0.8.1 makes every meter binding explicitly OneWay and adds a startup exception report at `%LOCALAPPDATA%\GrassiBoard\startup-error.txt` so any future initialization failure is visible instead of silent. The corrected build was compiled and launched locally on the affected Windows 10 system; the GrassiBoard window remained open and responsive.
 
 ## Architecture decision
 

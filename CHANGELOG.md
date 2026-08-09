@@ -2,6 +2,17 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.8.1] - 2026-08-09
+
+### Fixed
+
+- Make Mic, Soundboard, and Master `ProgressBar.Value` bindings explicitly OneWay so WPF does not write into read-only meter properties and crash before showing the window.
+- Add a visible startup-error dialog and `%LOCALAPPDATA%\GrassiBoard\startup-error.txt` report instead of silently exiting on future initialization failures.
+
+### Verified
+
+- Compile the corrected WPF app with .NET SDK 8.0.423 on the affected Windows 10 system and confirm the GrassiBoard window opens and remains responsive.
+
 ## [0.8.0] - 2026-08-09
 
 ### Added

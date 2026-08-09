@@ -2,7 +2,7 @@
 
 ## Application shell
 
-v0.8.0 establishes the persistent GrassiBoard shell used by later milestones:
+v0.8.x establishes the persistent GrassiBoard shell used by later milestones:
 
 - left sidebar: Board, Voice, Routing, Settings;
 - top bar: engine health, Mic/Soundboard/Master meters, Mute Mic, Stop All;

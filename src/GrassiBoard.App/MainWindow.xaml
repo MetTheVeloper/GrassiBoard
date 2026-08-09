@@ -144,7 +144,7 @@
                             <TextBlock Text="{Binding MicrophoneDb}" HorizontalAlignment="Right" FontSize="9"
                                        Foreground="{StaticResource MutedTextBrush}" FontFamily="{StaticResource MonoFont}" />
                         </Grid>
-                        <ProgressBar Value="{Binding MicrophoneMeter}" />
+                        <ProgressBar Value="{Binding MicrophoneMeter, Mode=OneWay}" />
                     </StackPanel>
                     <StackPanel Grid.Column="3" VerticalAlignment="Center">
                         <Grid Margin="0,0,0,5">
@@ -152,7 +152,7 @@
                             <TextBlock Text="{Binding SoundboardDb}" HorizontalAlignment="Right" FontSize="9"
                                        Foreground="{StaticResource MutedTextBrush}" FontFamily="{StaticResource MonoFont}" />
                         </Grid>
-                        <ProgressBar Value="{Binding SoundboardMeter}" />
+                        <ProgressBar Value="{Binding SoundboardMeter, Mode=OneWay}" />
                     </StackPanel>
                     <StackPanel Grid.Column="5" VerticalAlignment="Center">
                         <Grid Margin="0,0,0,5">
@@ -160,7 +160,7 @@
                             <TextBlock Text="{Binding MasterDb}" HorizontalAlignment="Right" FontSize="9"
                                        Foreground="{StaticResource MutedTextBrush}" FontFamily="{StaticResource MonoFont}" />
                         </Grid>
-                        <ProgressBar Value="{Binding MasterMeter}" />
+                        <ProgressBar Value="{Binding MasterMeter, Mode=OneWay}" />
                     </StackPanel>
                     <StackPanel Grid.Column="7" Orientation="Horizontal" VerticalAlignment="Center">
                         <Button Content="{Binding MuteButtonLabel}" Style="{StaticResource SecondaryButtonStyle}"

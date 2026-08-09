@@ -38,7 +38,7 @@ Playback control uses a fixed 256-command single-producer/single-consumer queue.
 
 ## Version contract
 
-- Product version: `0.8.0`
+- Product version: `0.8.1`
 - Native ABI version: `5`
 - Architecture: `x64`
 - Processing/mix format: `48,000 Hz`, 32-bit float; mono Voice DSP and stereo master output

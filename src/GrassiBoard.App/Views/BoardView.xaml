@@ -182,13 +182,13 @@
                             <TextBlock Text="{Binding MicrophoneDb}" HorizontalAlignment="Right"
                                        FontFamily="{StaticResource MonoFont}" FontSize="11" />
                         </Grid>
-                        <ProgressBar Value="{Binding MicrophoneMeter}" />
+                        <ProgressBar Value="{Binding MicrophoneMeter, Mode=OneWay}" />
                         <Grid Margin="0,14,0,5">
                             <TextBlock Text="Soundboard" />
                             <TextBlock Text="{Binding SoundboardDb}" HorizontalAlignment="Right"
                                        FontFamily="{StaticResource MonoFont}" FontSize="11" />
                         </Grid>
-                        <ProgressBar Value="{Binding SoundboardMeter}" />
+                        <ProgressBar Value="{Binding SoundboardMeter, Mode=OneWay}" />
                     </StackPanel>
                 </Border>
             </StackPanel>

@@ -4,7 +4,7 @@ GrassiBoard is a Windows x64 live voice-processing and Soundboard application. I
 
 ## Current milestone
 
-`v0.8.0` adds the production application shell and the first real Soundboard while preserving the manually accepted `v0.7.0` microphone route.
+`v0.8.1` adds the production application shell and the first real Soundboard while preserving the manually accepted `v0.7.0` microphone route. It includes the Windows 10 startup binding hotfix discovered during initial v0.8.0 manual testing.
 
 - **Board** is the daily workspace: reusable Sound Pads plus compact Voice FX.
 - **Voice** contains full Pitch, Fine Pitch, Formant, preservation, quality, and latency controls.

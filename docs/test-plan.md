@@ -1,15 +1,15 @@
 # Test plan
 
-## Automated v0.8.0 checks
+## Automated v0.8.x checks
 
-- Build native x64 Release with `/W4 /WX` and validate ABI version 5 / engine version 0.8.0.
+- Build native x64 Release with `/W4 /WX` and validate ABI version 5 / current v0.8.x engine version.
 - Retain all accepted Pitch, Formant, quality-switching, benchmark, device-pairing, and DSP regression tests.
 - Test the isolated Soundboard mixer: clip loading, one-shot completion, simultaneous mix, Loop, per-pad stop, and Stop All.
 - Test managed WAV decode/resample contract and Sound Pad JSON round-trip.
 - Publish a self-contained portable app with the native DLL, NAudio runtime dependencies, BuildInfo, documentation, changelog, and third-party notices.
 - Verify no experimental SYS/INF/CAT/certificate or third-party virtual-cable installer enters the portable package.
 
-## Manual v0.8.0 acceptance
+## Manual v0.8.x acceptance
 
 ### Regression
 
@@ -75,4 +75,4 @@ Crash/freeze:
 Other notes:
 ```
 
-Do not begin v0.9.0 until the user explicitly accepts v0.8.0.
+Do not begin v0.9.0 until the user explicitly accepts the current v0.8.x build.

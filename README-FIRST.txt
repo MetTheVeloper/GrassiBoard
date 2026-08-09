@@ -1,4 +1,4 @@
-GrassiBoard v0.8.0 — Soundboard and application shell
+GrassiBoard v0.8.1 — Soundboard and application shell startup hotfix
 
 PREREQUISITE: Keep the known working external virtual audio cable installed.
 
@@ -13,4 +13,4 @@ PREREQUISITE: Keep the known working external virtual audio cable installed.
 9. Test Mute Mic and confirm Pads continue.
 10. Restart GrassiBoard and confirm Pad definitions return.
 
-The ZIP does not install a virtual driver. Sound files stay in their original folders. Local headphone monitoring remains deferred; v0.8.0 mixes Voice and Soundboard into the accepted external-cable route.
+The ZIP does not install a virtual driver. Sound files stay in their original folders. Local headphone monitoring remains deferred; v0.8.1 mixes Voice and Soundboard into the accepted external-cable route.

@@ -1,10 +1,10 @@
 <Project>
   <PropertyGroup>
-    <Version>0.8.0</Version>
-    <AssemblyVersion>0.8.0.0</AssemblyVersion>
-    <FileVersion>0.8.0.0</FileVersion>
-    <InformationalVersion Condition="'$(SourceRevisionId)' == ''">0.8.0+local</InformationalVersion>
-    <InformationalVersion Condition="'$(SourceRevisionId)' != ''">0.8.0+$(SourceRevisionId)</InformationalVersion>
+    <Version>0.8.1</Version>
+    <AssemblyVersion>0.8.1.0</AssemblyVersion>
+    <FileVersion>0.8.1.0</FileVersion>
+    <InformationalVersion Condition="'$(SourceRevisionId)' == ''">0.8.1+local</InformationalVersion>
+    <InformationalVersion Condition="'$(SourceRevisionId)' != ''">0.8.1+$(SourceRevisionId)</InformationalVersion>
     <Company>GrassiBoard</Company>
     <Product>GrassiBoard</Product>
     <Copyright>Copyright © GrassiBoard contributors</Copyright>

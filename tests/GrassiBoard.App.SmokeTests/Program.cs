@@ -1,8 +1,9 @@
 using GrassiBoard.Shared;
 using GrassiBoard.Models;
 using GrassiBoard.Services;
+using System.Xml.Linq;
 
-if (BuildInfo.CurrentVersion != "0.8.0")
+if (BuildInfo.CurrentVersion != "0.8.1")
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -11,7 +12,7 @@ if (BuildInfo.CurrentVersion != "0.8.0")
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "0.8.0",
+      "Version": "0.8.1",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -20,7 +21,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "0.8.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "0.8.1" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -86,6 +87,27 @@ try
 finally
 {
     Directory.Delete(temporaryRoot, true);
+}
+
+string[] meterViews =
+[
+    Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.App", "MainWindow.xaml"),
+    Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.App", "Views", "BoardView.xaml")
+];
+foreach (string meterView in meterViews)
+{
+    XDocument document = XDocument.Load(meterView);
+    XNamespace presentation = "http://schemas.microsoft.com/winfx/2006/xaml/presentation";
+    foreach (XElement progressBar in document.Descendants(presentation + "ProgressBar"))
+    {
+        string binding = progressBar.Attribute("Value")?.Value ?? string.Empty;
+        if (binding.Contains("Meter", StringComparison.Ordinal) &&
+            !binding.Contains("Mode=OneWay", StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine($"Meter binding must be OneWay: {meterView} · {binding}");
+            return 6;
+        }
+    }
 }
 
 Console.WriteLine("Managed app, decode, and persistence smoke tests passed.");

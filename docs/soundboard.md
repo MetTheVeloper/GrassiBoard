@@ -21,4 +21,4 @@ The native mixer supports 32 simultaneous voices and a bounded 256-command queue
 
 Soundboard audio mixes after the microphone Voice DSP and before the existing virtual output. It is never Pitch/Formant shifted. The microphone continues while Pads play. Mute Mic preserves Pads; Stop All preserves the microphone and engine.
 
-Optional direct headphone monitoring is not implemented in v0.8.0 because it would require a separate render route and additional latency policy. Target-application monitoring may still be used where acceptable.
+Optional direct headphone monitoring is not implemented in v0.8.x because it would require a separate render route and additional latency policy. Target-application monitoring may still be used where acceptable.

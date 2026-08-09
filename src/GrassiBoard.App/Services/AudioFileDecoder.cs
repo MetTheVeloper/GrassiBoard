@@ -18,7 +18,7 @@ internal static class AudioFileDecoder
         if (!extension.Equals(".wav", StringComparison.OrdinalIgnoreCase) &&
             !extension.Equals(".mp3", StringComparison.OrdinalIgnoreCase))
         {
-            throw new NotSupportedException("Only WAV and MP3 files are supported in v0.8.0.");
+            throw new NotSupportedException("Only WAV and MP3 files are supported in v0.8.x.");
         }
 
         using var reader = new AudioFileReader(path);
