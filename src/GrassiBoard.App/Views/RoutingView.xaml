@@ -38,7 +38,7 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock Text="{Binding VirtualMicrophoneStatus}" FontSize="17" FontWeight="SemiBold"
-                                   Foreground="{StaticResource AccentBrush}" />
+                                   Foreground="{DynamicResource AccentBrush}" />
                         <TextBlock Text="{Binding VirtualMicrophoneHint}" Style="{StaticResource MutedTextStyle}"
                                    Margin="0,7,20,0" />
                     </StackPanel>
@@ -50,9 +50,9 @@
                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                            <Setter Property="Background" Value="{StaticResource DangerDarkBrush}" />
-                                            <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}" />
-                                            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+                                            <Setter Property="Background" Value="{DynamicResource DangerDarkBrush}" />
+                                            <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -62,14 +62,14 @@
                 </Grid>
             </Border>
 
-            <Border Background="{StaticResource PanelQuietBrush}" BorderBrush="{StaticResource BorderBrush}"
+            <Border Background="{DynamicResource PanelQuietBrush}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="10" Padding="18" Margin="0,16,0,0">
                 <StackPanel>
                     <TextBlock Text="HOW TO USE THE VIRTUAL MICROPHONE" Style="{StaticResource EyebrowTextStyle}" />
                     <TextBlock Text="Start the engine here. Then, in Telegram, OBS, a recorder, game, or another target app, select the paired recording endpoint named above as its microphone."
                                Style="{StaticResource MutedTextStyle}" Margin="0,8,0,0" />
                     <TextBlock Text="Raw cable endpoint names remain visible here for setup and in Settings → Diagnostics."
-                               Foreground="{StaticResource WarningBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
+                               Foreground="{DynamicResource WarningBrush}" TextWrapping="Wrap" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>
         </StackPanel>

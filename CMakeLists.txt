@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(GrassiBoard VERSION 0.8.1 LANGUAGES CXX)
+project(GrassiBoard VERSION 0.8.2 LANGUAGES CXX)
 
 include(CTest)
 add_subdirectory(third_party/signalsmith-linear EXCLUDE_FROM_ALL SYSTEM)

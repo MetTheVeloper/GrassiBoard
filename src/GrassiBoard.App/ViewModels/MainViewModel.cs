@@ -24,7 +24,7 @@ internal enum AppPage
 internal sealed class MainViewModel : ObservableObject, IDisposable
 {
     private readonly NativeAudioEngine _engine = new();
-    private readonly SoundboardStore _store = new();
+    private readonly SoundboardStore _store;
     private readonly DispatcherTimer _meterTimer;
     private readonly DispatcherTimer _saveTimer;
     private readonly BuildInfo _build;
@@ -56,8 +56,9 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     private AudioStatistics _statistics;
     private bool _disposed;
 
-    public MainViewModel()
+    public MainViewModel(SoundboardStore? store = null)
     {
+        _store = store ?? new SoundboardStore();
         _build = BuildInfo.Load(Path.Combine(AppContext.BaseDirectory, "BuildInfo.json"));
         Pads = [];
         InputDevices = [];
@@ -442,7 +443,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         catch (Exception exception) when (exception is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
             EngineStatus = $"Native engine unavailable · {exception.GetType().Name}";
-            EngineDetail = "Use the complete v0.8.1 portable package.";
+                EngineDetail = "Use the complete v0.8.2 portable package.";
         }
     }
 
@@ -528,9 +529,10 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             pad.DurationSeconds = decoded.Duration.TotalSeconds;
             pad.IsLoaded = true;
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException or InvalidOperationException)
+        catch (Exception exception)
         {
             pad.Error = exception.Message;
+            CrashReporter.Report(exception, $"Loading Sound Pad: {pad.FilePath}", false);
         }
         finally
         {
@@ -808,6 +810,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         text.AppendLine($"Virtual output: {SelectedOutput?.Name ?? "not selected"}");
         text.AppendLine($"Virtual output ID: {SelectedOutput?.Id ?? "not selected"}");
         text.AppendLine($"Target microphone: {_targetCapture?.Name ?? "not detected"}");
+        text.AppendLine($"Latest error report: {Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GrassiBoard", "CrashReports", "latest.txt")}");
         return text.ToString().TrimEnd();
     }
 
@@ -847,9 +850,10 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         {
             _store.Save(Pads);
         }
-        catch (IOException exception)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             EngineDetail = $"Soundboard save failed: {exception.Message}";
+            CrashReporter.Report(exception, "Saving Soundboard layout", false);
         }
     }
 

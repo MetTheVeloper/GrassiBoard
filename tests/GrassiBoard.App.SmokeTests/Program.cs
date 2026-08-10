@@ -1,9 +1,102 @@
 using GrassiBoard.Shared;
+using GrassiBoard;
+using GrassiBoard.Infrastructure;
 using GrassiBoard.Models;
 using GrassiBoard.Services;
+using GrassiBoard.ViewModels;
+using System.Windows;
+using System.Windows.Threading;
 using System.Xml.Linq;
 
-if (BuildInfo.CurrentVersion != "0.8.1")
+if (args is ["--diagnose-add-pad", string audioPath])
+{
+    string diagnosticRoot = Path.Combine(Path.GetTempPath(), $"GrassiBoard-pad-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(diagnosticRoot);
+    using var viewModel = new MainViewModel(new SoundboardStore(Path.Combine(diagnosticRoot, "soundboard.json")));
+    await viewModel.InitializeAsync();
+    int existingPadCount = viewModel.Pads.Count;
+    await viewModel.AddFilesAsync([audioPath]);
+    SoundPadModel pad = viewModel.Pads.Skip(existingPadCount).Single();
+    Console.WriteLine($"Pad diagnostic: loaded={pad.IsLoaded}; error={pad.Error ?? "none"}");
+    bool loaded = pad.IsLoaded;
+    viewModel.Dispose();
+    Directory.Delete(diagnosticRoot, true);
+    return loaded ? 0 : 20;
+}
+
+if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
+{
+    string diagnosticRoot = Path.Combine(Path.GetTempPath(), $"GrassiBoard-pad-ui-{Guid.NewGuid():N}");
+    Directory.CreateDirectory(diagnosticRoot);
+    Exception? uiFailure = null;
+    bool loaded = false;
+    bool themeChanged = false;
+    var thread = new Thread(() =>
+    {
+        try
+        {
+            var application = new Application();
+            application.Resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri("/GrassiBoard;component/Themes/Tokens.xaml", UriKind.Relative)
+            });
+            application.Resources.MergedDictionaries.Add(new ResourceDictionary
+            {
+                Source = new Uri("/GrassiBoard;component/Themes/Controls.xaml", UriKind.Relative)
+            });
+            application.Resources["BooleanToVisibilityConverter"] = new System.Windows.Controls.BooleanToVisibilityConverter();
+            application.Resources["InverseBooleanToVisibilityConverter"] = new InverseBooleanToVisibilityConverter();
+            application.DispatcherUnhandledException += (_, eventArgs) =>
+            {
+                uiFailure = eventArgs.Exception;
+                eventArgs.Handled = true;
+                application.Shutdown();
+            };
+            var viewModel = new MainViewModel(new SoundboardStore(Path.Combine(diagnosticRoot, "soundboard.json")));
+            var window = new MainWindow(viewModel);
+            window.Show();
+            var darkColor = ((System.Windows.Media.SolidColorBrush)window.Background).Color;
+            ThemeManager.Apply(isDark: false, persist: false);
+            var lightColor = ((System.Windows.Media.SolidColorBrush)window.Background).Color;
+            themeChanged = darkColor != lightColor;
+            ThemeManager.Apply(isDark: true, persist: false);
+            window.Dispatcher.BeginInvoke(async () =>
+            {
+                try
+                {
+                    await Task.Delay(1_500);
+                    var activeViewModel = (MainViewModel)window.DataContext;
+                    int existingPadCount = activeViewModel.Pads.Count;
+                    await activeViewModel.AddFilesAsync([uiAudioPath]);
+                    window.UpdateLayout();
+                    loaded = activeViewModel.Pads.Skip(existingPadCount).Single().IsLoaded;
+                }
+                catch (Exception exception)
+                {
+                    uiFailure = exception;
+                }
+                finally
+                {
+                    window.Close();
+                    application.Shutdown();
+                }
+            }, DispatcherPriority.ApplicationIdle);
+            application.Run();
+        }
+        catch (Exception exception)
+        {
+            uiFailure = exception;
+        }
+    });
+    thread.SetApartmentState(ApartmentState.STA);
+    thread.Start();
+    thread.Join();
+    Directory.Delete(diagnosticRoot, true);
+    Console.WriteLine(uiFailure?.ToString() ?? $"Pad UI diagnostic: loaded={loaded}; themeChanged={themeChanged}");
+    return uiFailure is null && loaded && themeChanged ? 0 : 21;
+}
+
+if (BuildInfo.CurrentVersion != "0.8.2")
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -12,7 +105,7 @@ if (BuildInfo.CurrentVersion != "0.8.1")
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "0.8.1",
+      "Version": "0.8.2",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -21,7 +114,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "0.8.1" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "0.8.2" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -83,6 +176,20 @@ try
         Console.Error.WriteLine("Sound Pad persistence contract failed.");
         return 5;
     }
+
+    string crashPath = CrashReporter.Report(
+        new InvalidOperationException("diagnostic marker"),
+        "Managed smoke test",
+        fatal: true,
+        directoryOverride: temporaryRoot);
+    string crashText = File.ReadAllText(crashPath);
+    if (!crashText.Contains("diagnostic marker", StringComparison.Ordinal) ||
+        !crashText.Contains("Managed smoke test", StringComparison.Ordinal) ||
+        !File.Exists(Path.Combine(temporaryRoot, "latest.txt")))
+    {
+        Console.Error.WriteLine("Crash report contract failed.");
+        return 8;
+    }
 }
 finally
 {
@@ -110,7 +217,29 @@ foreach (string meterView in meterViews)
     }
 }
 
-Console.WriteLine("Managed app, decode, and persistence smoke tests passed.");
+string appSource = Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.App");
+foreach (string xamlPath in Directory.EnumerateFiles(appSource, "*.xaml", SearchOption.AllDirectories))
+{
+    XDocument document = XDocument.Load(xamlPath);
+    foreach (XAttribute attribute in document.Descendants().Attributes()
+        .Where(attribute => attribute.Name.LocalName is "Margin" or "Padding"))
+    {
+        string value = attribute.Value;
+        if (value.StartsWith('{'))
+        {
+            continue;
+        }
+        int componentCount = value.Split(',', StringSplitOptions.TrimEntries).Length;
+        if (componentCount is not (1 or 2 or 4))
+        {
+            Console.Error.WriteLine(
+                $"Invalid WPF {attribute.Name.LocalName} component count: {xamlPath} · {value}");
+            return 7;
+        }
+    }
+}
+
+Console.WriteLine("Managed app, decode, persistence, binding, and XAML layout smoke tests passed.");
 return 0;
 
 static void WriteMonoPcmWave(string path)

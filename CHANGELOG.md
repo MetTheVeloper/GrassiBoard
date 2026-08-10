@@ -2,6 +2,19 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.8.2] - 2026-08-10
+
+### Fixed
+
+- Fix the invalid three-value Sound Pad button margin that raised a `XamlParseException` when the first Pad card was created.
+- Replace the system ComboBox rendering with theme-aware selected-item and popup templates so device and quality labels remain readable.
+
+### Added
+
+- Add a custom draggable Windows title bar with minimize, maximize/restore, close, and persisted light/dark theme controls.
+- Record startup, dispatcher, AppDomain, and unobserved-task failures in `%LOCALAPPDATA%\GrassiBoard\CrashReports`, including a stable `latest.txt` report.
+- Add XAML thickness validation and a real Pad-card materialization diagnostic to prevent the first-Pad crash from returning.
+
 ## [0.8.1] - 2026-08-09
 
 ### Fixed
