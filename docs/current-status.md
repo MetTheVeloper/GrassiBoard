@@ -2,7 +2,7 @@
 
 - Version: `v0.8.2`
 - Milestone: `7 — Soundboard + UI architecture foundation`
-- Status: Sound Pad/UI stability hotfix implemented; automated validation in progress; manual Windows 10 retest pending
+- Status: Sound Pad/UI stability hotfix implemented; local and GitHub Actions validation passed; manual Windows 10 retest pending
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -14,6 +14,8 @@
 ## v0.8.2 Sound Pad and UI stability hotfix
 
 Windows 10 manual testing confirmed the v0.8.1 app starts and preserves the accepted microphone route, but creating the first Sound Pad materialized a deferred WPF template containing the invalid three-value margin `0,12,0`. That raised a `XamlParseException` and terminated the process. v0.8.2 corrects the template, validates XAML thickness values, provides theme-aware ComboBox templates, adds a custom title bar with persisted light/dark switching, and records unexpected runtime failures under `%LOCALAPPDATA%\GrassiBoard\CrashReports`.
+
+GitHub Actions [v0.8.2 stability Build](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/31360162396) passed native compilation/tests, managed decode/persistence/crash-report/XAML regressions, self-contained WPF publish, portable-package verification, and all artifact uploads for implementation commit `2093b1b`.
 
 ## v0.7.0 manual acceptance
 
