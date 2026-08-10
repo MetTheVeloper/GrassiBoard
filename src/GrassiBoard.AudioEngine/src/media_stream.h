@@ -26,8 +26,8 @@ private:
 
     std::vector<float> samples_;
     const std::uint64_t capacity_frames_;
-    alignas(64) std::atomic<std::uint64_t> read_frame_{0U};
-    alignas(64) std::atomic<std::uint64_t> write_frame_{0U};
+    std::atomic<std::uint64_t> read_frame_{0U};
+    std::atomic<std::uint64_t> write_frame_{0U};
     std::atomic<bool> active_{false};
 };
 
