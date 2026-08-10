@@ -96,7 +96,7 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "0.9.0")
+if (BuildInfo.CurrentVersion != "0.11.0" || NativeAudioEngine.ExpectedApiVersion != 7U)
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -105,7 +105,7 @@ if (BuildInfo.CurrentVersion != "0.9.0")
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "0.9.0",
+      "Version": "0.11.0",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -114,7 +114,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "0.9.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "0.11.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -175,6 +175,56 @@ try
     {
         Console.Error.WriteLine("Sound Pad persistence contract failed.");
         return 5;
+    }
+
+    string profilePath = Path.Combine(temporaryRoot, "profiles.json");
+    Guid profileId = Guid.NewGuid();
+    Guid validPresetId = Guid.NewGuid();
+    File.WriteAllText(profilePath, $$"""
+        {
+          "SchemaVersion": 1,
+          "ActiveProfileId": "{{profileId}}",
+          "Profiles": [{
+            "Id": "{{profileId}}",
+            "Name": "Streaming",
+            "Pads": [],
+            "UserPresets": [
+              { "Id": "{{validPresetId}}", "Name": "Radio", "Hotkey": "Ctrl+Alt+R", "State": {} },
+              { "Id": "not-a-guid", "Name": "Broken", "State": {} }
+            ],
+            "Preferences": {}
+          }]
+        }
+        """);
+    ProfileDocument profiles = new ProfileStore(profilePath).Load();
+    if (profiles.Profiles.Count != 1 || profiles.Profiles[0].UserPresets.Count != 1 ||
+        profiles.Profiles[0].UserPresets[0].Name != "Radio")
+    {
+        Console.Error.WriteLine("Profile/preset fault-isolation contract failed.");
+        return 13;
+    }
+
+    profiles.Profiles[0].Pads.Add(new SoundPadModel { Hotkey = "Ctrl+Shift+1" });
+    profiles.Profiles[0].Preferences.ShowHideHotkey = "Ctrl+Alt+G";
+    ProfileModel clonedProfile = profiles.Profiles[0].Clone();
+    if (clonedProfile.Pads[0].Hotkey != "Ctrl+Shift+1" ||
+        clonedProfile.Preferences.ShowHideHotkey != "Ctrl+Alt+G" ||
+        !GlobalHotkeyService.TryParse("Ctrl+Alt+F9", out _, out _) ||
+        GlobalHotkeyService.TryParse("Ctrl+Alt", out _, out _))
+    {
+        Console.Error.WriteLine("Profile clone or hotkey parsing contract failed.");
+        return 14;
+    }
+
+    using (var mediaNative = new NativeAudioEngine())
+    using (var mediaDeck = new MediaDeckService(mediaNative, () => false))
+    {
+        await mediaDeck.LoadAsync("invalid\0media.mp3");
+        if (string.IsNullOrWhiteSpace(mediaDeck.Error) || mediaDeck.IsPlaying)
+        {
+            Console.Error.WriteLine("Media missing/invalid path safety contract failed.");
+            return 16;
+        }
     }
 
     string crashPath = CrashReporter.Report(
@@ -284,6 +334,13 @@ if (System.Runtime.InteropServices.Marshal.SizeOf<MixerSettings>() != 60 ||
 {
     Console.Error.WriteLine("Managed mixer ABI layout failed.");
     return 11;
+}
+
+int statisticsSize = System.Runtime.InteropServices.Marshal.SizeOf<AudioStatistics>();
+if (statisticsSize != 144)
+{
+    Console.Error.WriteLine($"Managed statistics ABI layout failed: {statisticsSize} bytes.");
+    return 15;
 }
 
 if (MainViewModel.ToMeter(float.NegativeInfinity) != 0.0 ||

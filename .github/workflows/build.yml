@@ -13,7 +13,7 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 0.9.0
+  GRASSIBOARD_VERSION: 0.11.0
   DOTNET_SDK_VERSION: 8.0.423
 
 jobs:

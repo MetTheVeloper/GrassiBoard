@@ -1,31 +1,22 @@
-GrassiBoard v0.9.0 — Mixer & Dynamic Processing
+GrassiBoard v0.11.0 — Profiles, Hotkeys, Tray, Media Deck & Latency
 
 PREREQUISITE: Keep the known working external virtual audio cable installed.
 
 1. Extract the complete portable ZIP and run GrassiBoard.exe.
 2. Open Routing, select the physical microphone and the virtual-cable playback/input endpoint.
 3. Confirm “Virtual microphone ready,” start the engine, and verify the paired recording endpoint in Voice Recorder or Telegram.
-4. Confirm the accepted microphone Pitch/Formant route and Soundboard still work.
-5. Check Board, Voice, Mixer, Routing, and Settings in both Light and Dark themes.
-6. Open Board and add one WAV plus one MP3 (drag/drop also works).
-7. Confirm MIC, BOARD, MASTER, Quick Mic, and Quick Soundboard meter fills move and silence leaves them empty.
-8. In Mixer, test all three gains, Gate, Compressor, Limiter, Ducking, Clipping Protection, Pitch Wet/Dry, and each built-in preset.
-9. Confirm Ducking lowers Pads while speaking and Voice processing never changes Pad pitch.
-10. Click global Stop All during multiple/looped Pads: every Pad and the engine must stop, meters must clear, and no setting/Pad may be deleted.
-11. Click Stop All again while idle, then Start Engine and confirm routing works again.
-12. In restored mode confirm the subtle border/shadow; maximize and confirm the window does not cover the taskbar; restore and resize it.
-13. Repeat the visual checks in both Light and Dark themes, then restart GrassiBoard and confirm Pad definitions return.
+4. Confirm the accepted microphone Pitch/Formant, Mixer, Soundboard, and theme behavior still works.
+5. Create and apply a user Voice + Mixer preset, restart, then test update/duplicate/rename/delete and a preset hotkey.
+6. Assign a Pad hotkey and test it with another application focused and while GrassiBoard is minimized to Tray.
+7. Test Mute, Stop All, Voice FX, Push-to-Talk (hold=open/release=muted), Show/Hide, and conflict reporting.
+8. Test Tray Show/Mute/Stop All/Exit, Start Minimized, and optional Start with Windows.
+9. Load a long local audio file in Media Deck; test Play/Pause/Resume/Stop, timeline seek, ±10 seconds, volume, and Media hotkeys.
+10. Test Monitor/Send as ON/ON, ON/OFF, OFF/ON, OFF/OFF. Speak over Media and confirm only Media—not the microphone—is heard in headphones.
+11. While Media plays, trigger Pads and presets; inspect Media fill/underruns and U/O/D diagnostics for crackling or growth.
+12. Global Stop All must stop Pads, Media, and the engine without deleting configuration; Start Engine must work afterward.
+13. Restart and confirm Profile, Pad, Preset, Hotkey, Media volume, Monitor, and Send settings return without autoplay.
 
-The ZIP does not install a virtual driver. Sound files stay in their original folders. Local headphone monitoring remains deferred. If the app encounters an unexpected error, send `%LOCALAPPDATA%\GrassiBoard\CrashReports\latest.txt` with the report.
+The ZIP does not install a virtual driver. Sound files stay in their original folders. Only Media Deck has the new independent headphone monitor; the microphone is never sent there. If the app encounters an unexpected error, send `%LOCALAPPDATA%\GrassiBoard\CrashReports\latest.txt` with the report.
 
 REPORT
-Version / Commit / Windows version / Display scaling / Monitor count:
-Top MIC / BOARD / MASTER meters move:
-Quick Mic / Soundboard meters move:
-Restored border / shadow visible:
-Maximize respects taskbar / Restore / Resize:
-Stop All stops Pads / loops / engine / UI and engine starts again:
-Mic Gain / Soundboard Gain / Master Gain:
-Noise Gate / Compressor / Limiter / Ducking / Clipping Protection:
-Wet/Dry Pitch Mix / Presets:
-Other issues / screenshots / logs:
+Use the complete report template in docs/test-plan.md.

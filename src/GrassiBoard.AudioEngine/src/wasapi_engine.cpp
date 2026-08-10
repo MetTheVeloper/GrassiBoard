@@ -22,6 +22,7 @@ constexpr std::uint32_t kSampleRate = 48'000U;
 constexpr std::uint16_t kCaptureChannels = 1U;
 constexpr std::uint16_t kRenderChannels = 2U;
 constexpr std::size_t kRingCapacityFrames = kSampleRate * 2U;
+constexpr std::size_t kMediaCapacityFrames = kSampleRate * 4U;
 
 WAVEFORMATEX MakeFloatFormat(const std::uint16_t channels) noexcept
 {
@@ -133,6 +134,7 @@ std::size_t FloatRingBuffer::Size() const noexcept
 
 WasapiEngine::WasapiEngine()
     : ring_buffer_(kRingCapacityFrames)
+    , media_stream_(kMediaCapacityFrames)
 {
 }
 
@@ -265,6 +267,29 @@ gb_result WasapiEngine::StopAllSounds() noexcept
     return soundboard_mixer_.StopAll();
 }
 
+gb_result WasapiEngine::WriteMedia(
+    const float* const stereoSamples,
+    const std::uint32_t frameCount,
+    std::uint32_t& acceptedFrames) noexcept
+{
+    if (stereoSamples == nullptr || frameCount == 0U) {
+        acceptedFrames = 0U;
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    acceptedFrames = media_stream_.Write(stereoSamples, frameCount);
+    return GB_OK;
+}
+
+void WasapiEngine::SetMediaActive(const bool active) noexcept
+{
+    media_stream_.SetActive(active);
+}
+
+void WasapiEngine::ClearMedia() noexcept
+{
+    media_stream_.Clear();
+}
+
 void WasapiEngine::SetMicrophoneMuted(const bool muted) noexcept
 {
     microphone_muted_.store(muted, std::memory_order_release);
@@ -318,6 +343,12 @@ void WasapiEngine::GetStatistics(gb_audio_statistics& statistics) const noexcept
     statistics.master_rms = master_rms_.load(std::memory_order_relaxed);
     statistics.active_sound_count = soundboard_mixer_.ActiveVoiceCount();
     statistics.microphone_muted = microphone_muted_.load(std::memory_order_relaxed) ? 1U : 0U;
+    statistics.media_buffer_fill_frames = media_stream_.FillFrames();
+    statistics.media_buffer_capacity_frames = media_stream_.CapacityFrames();
+    statistics.media_underrun_count = media_underrun_count_.load(std::memory_order_relaxed);
+    statistics.media_peak = media_peak_.load(std::memory_order_relaxed);
+    statistics.media_rms = media_rms_.load(std::memory_order_relaxed);
+    statistics.media_active = media_stream_.IsActive() ? 1U : 0U;
 }
 
 std::string WasapiEngine::GetLastError() const
@@ -372,6 +403,11 @@ void WasapiEngine::ResetStatistics() noexcept
     soundboard_rms_.store(0.0F, std::memory_order_relaxed);
     master_peak_.store(0.0F, std::memory_order_relaxed);
     master_rms_.store(0.0F, std::memory_order_relaxed);
+    media_underrun_count_.store(0U, std::memory_order_relaxed);
+    media_peak_.store(0.0F, std::memory_order_relaxed);
+    media_rms_.store(0.0F, std::memory_order_relaxed);
+    media_stream_.Clear();
+    media_stream_.SetActive(false);
     soundboard_mixer_.ResetPlayback();
     mixer_processor_.Reset();
 }
@@ -574,10 +610,13 @@ void WasapiEngine::Worker() noexcept
                         float boardPeak = 0.0F;
                         float microphonePeak = 0.0F;
                         float masterPeak = 0.0F;
+                        float mediaPeak = 0.0F;
                         double microphoneSquareSum = 0.0;
                         double boardSquareSum = 0.0;
                         double masterSquareSum = 0.0;
+                        double mediaSquareSum = 0.0;
                         bool underrun = false;
+                        bool mediaUnderrun = false;
                         mixer_processor_.BeginBlock();
                         for (UINT32 frame = 0; frame < available; ++frame) {
                             float microphoneSample = 0.0F;
@@ -591,17 +630,25 @@ void WasapiEngine::Worker() noexcept
                             float boardLeft = 0.0F;
                             float boardRight = 0.0F;
                             soundboard_mixer_.MixFrame(boardLeft, boardRight);
+                            float mediaLeft = 0.0F;
+                            float mediaRight = 0.0F;
+                            if (media_stream_.IsActive() && !media_stream_.Pop(mediaLeft, mediaRight)) {
+                                mediaUnderrun = true;
+                            }
                             const MixerFrame mixed = mixer_processor_.ProcessFrame(
-                                microphoneSample, boardLeft, boardRight);
+                                microphoneSample, boardLeft, boardRight, mediaLeft, mediaRight);
                             const float masterLeft = SafeSample(mixed.left);
                             const float masterRight = SafeSample(mixed.right);
 
                             microphonePeak = std::max(microphonePeak, std::abs(mixed.microphone));
                             boardPeak = std::max({boardPeak, std::abs(mixed.board_left), std::abs(mixed.board_right)});
+                            mediaPeak = std::max({mediaPeak, std::abs(mixed.media_left), std::abs(mixed.media_right)});
                             masterPeak = std::max({masterPeak, std::abs(masterLeft), std::abs(masterRight)});
                             microphoneSquareSum += static_cast<double>(mixed.microphone) * mixed.microphone;
                             boardSquareSum += (static_cast<double>(mixed.board_left) * mixed.board_left +
                                 static_cast<double>(mixed.board_right) * mixed.board_right) * 0.5;
+                            mediaSquareSum += (static_cast<double>(mixed.media_left) * mixed.media_left +
+                                static_cast<double>(mixed.media_right) * mixed.media_right) * 0.5;
                             masterSquareSum += (static_cast<double>(masterLeft) * masterLeft +
                                 static_cast<double>(masterRight) * masterRight) * 0.5;
                             samples[frame * kRenderChannels] = masterLeft;
@@ -610,12 +657,18 @@ void WasapiEngine::Worker() noexcept
                         if (underrun) {
                             underrun_count_.fetch_add(1U, std::memory_order_relaxed);
                         }
+                        if (mediaUnderrun) {
+                            media_underrun_count_.fetch_add(1U, std::memory_order_relaxed);
+                        }
                         const float boardRms = available == 0U
                             ? 0.0F
                             : static_cast<float>(std::sqrt(boardSquareSum / static_cast<double>(available)));
                         const float masterRms = available == 0U
                             ? 0.0F
                             : static_cast<float>(std::sqrt(masterSquareSum / static_cast<double>(available)));
+                        const float mediaRms = available == 0U
+                            ? 0.0F
+                            : static_cast<float>(std::sqrt(mediaSquareSum / static_cast<double>(available)));
                         const float microphoneRms = available == 0U
                             ? 0.0F
                             : static_cast<float>(std::sqrt(
@@ -628,6 +681,8 @@ void WasapiEngine::Worker() noexcept
                         soundboard_rms_.store(boardRms, std::memory_order_relaxed);
                         master_peak_.store(masterPeak, std::memory_order_relaxed);
                         master_rms_.store(masterRms, std::memory_order_relaxed);
+                        media_peak_.store(mediaPeak, std::memory_order_relaxed);
+                        media_rms_.store(mediaRms, std::memory_order_relaxed);
                         rendered_frames_.fetch_add(available, std::memory_order_relaxed);
                         ring_buffer_fill_frames_.store(
                             static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
@@ -657,6 +712,10 @@ void WasapiEngine::Worker() noexcept
     soundboard_rms_.store(0.0F, std::memory_order_relaxed);
     master_peak_.store(0.0F, std::memory_order_relaxed);
     master_rms_.store(0.0F, std::memory_order_relaxed);
+    media_peak_.store(0.0F, std::memory_order_relaxed);
+    media_rms_.store(0.0F, std::memory_order_relaxed);
+    media_stream_.Clear();
+    media_stream_.SetActive(false);
     soundboard_mixer_.ResetPlayback();
 
     if (mmcssHandle != nullptr) {

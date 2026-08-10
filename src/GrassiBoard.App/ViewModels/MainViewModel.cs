@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
 using System.IO;
@@ -10,6 +11,7 @@ using GrassiBoard.Infrastructure;
 using GrassiBoard.Models;
 using GrassiBoard.Services;
 using GrassiBoard.Shared;
+using GrassiBoard.Views;
 using Microsoft.Win32;
 
 namespace GrassiBoard.ViewModels;
@@ -27,6 +29,10 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
 {
     private readonly NativeAudioEngine _engine = new();
     private readonly SoundboardStore _store;
+    private readonly ProfileStore _profileStore;
+    private readonly ProfileDocument _profileDocument;
+    private readonly MediaDeckService _mediaDeck;
+    private readonly GlobalHotkeyService _hotkeys;
     private readonly DispatcherTimer _meterTimer;
     private readonly DispatcherTimer _saveTimer;
     private readonly BuildInfo _build;
@@ -73,14 +79,41 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     private string _masterDb = "−∞ dBFS";
     private AudioStatistics _statistics;
     private bool _disposed;
+    private ProfileModel _activeProfile;
+    private ProfileModel? _selectedProfile;
+    private UserPresetModel? _selectedUserPreset;
+    private CancellationTokenSource? _presetTransition;
+    private string _hotkeyStatus = "Global hotkeys initialize with the window.";
+    private AudioDevice? _selectedMonitorOutput;
+    private double _mediaPosition;
+    private bool _mediaSeeking;
 
-    public MainViewModel(SoundboardStore? store = null)
+    public MainViewModel(SoundboardStore? store = null, ProfileStore? profileStore = null)
     {
         _store = store ?? new SoundboardStore();
+        string profilePath = Path.Combine(
+            Path.GetDirectoryName(_store.StoragePath) ?? Path.GetTempPath(), "profiles.json");
+        _profileStore = profileStore ?? new ProfileStore(profilePath);
+        _profileDocument = _profileStore.Load();
+        if (_profileDocument.Profiles.Count == 0)
+        {
+            var migrated = new ProfileModel { Name = "Default", Pads = _store.Load().ToList() };
+            _profileDocument.Profiles.Add(migrated);
+            _profileDocument.ActiveProfileId = migrated.Id;
+        }
+        _activeProfile = _profileDocument.Profiles.FirstOrDefault(
+            profile => profile.Id == _profileDocument.ActiveProfileId) ?? _profileDocument.Profiles[0];
+        _profileDocument.ActiveProfileId = _activeProfile.Id;
         _build = BuildInfo.Load(Path.Combine(AppContext.BaseDirectory, "BuildInfo.json"));
         Pads = [];
+        Profiles = new ObservableCollection<ProfileModel>(_profileDocument.Profiles);
+        UserPresets = [];
         InputDevices = [];
         OutputDevices = [];
+        _mediaDeck = new MediaDeckService(_engine, () => IsRunning);
+        _hotkeys = new GlobalHotkeyService(Dispatcher.CurrentDispatcher);
+        LoadProfileState(_activeProfile, populateCollections: true);
+        _selectedProfile = _activeProfile;
 
         NavigateCommand = new RelayCommand(parameter =>
         {
@@ -100,7 +133,25 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         StopAllCommand = new AsyncRelayCommand(_ => StopAllAsync(), _ => NativeReady && !IsBusy);
         ResetVoiceCommand = new RelayCommand(_ => ResetVoice(), _ => NativeReady);
         ResetMixerCommand = new RelayCommand(_ => ResetMixer(), _ => NativeReady);
-        ApplyPresetCommand = new RelayCommand(_ => ApplySelectedPreset(), _ => NativeReady && PresetIndex > 0);
+        ApplyPresetCommand = new AsyncRelayCommand(_ => ApplySelectedPresetAsync(), _ => NativeReady && PresetIndex > 0);
+        ApplyUserPresetCommand = new AsyncRelayCommand(_ => ApplySelectedUserPresetAsync(), _ => NativeReady && SelectedUserPreset is not null);
+        SaveUserPresetCommand = new RelayCommand(_ => SaveUserPreset());
+        UpdateUserPresetCommand = new RelayCommand(_ => UpdateUserPreset(), _ => SelectedUserPreset is not null);
+        DuplicateUserPresetCommand = new RelayCommand(_ => DuplicateUserPreset(), _ => SelectedUserPreset is not null);
+        RenameUserPresetCommand = new RelayCommand(_ => RenameUserPreset(), _ => SelectedUserPreset is not null);
+        DeleteUserPresetCommand = new RelayCommand(_ => DeleteUserPreset(), _ => SelectedUserPreset is not null);
+        ApplyProfileCommand = new AsyncRelayCommand(_ => ApplySelectedProfileAsync(), _ => SelectedProfile is not null && SelectedProfile != _activeProfile);
+        NewProfileCommand = new RelayCommand(_ => NewProfile());
+        DuplicateProfileCommand = new RelayCommand(_ => DuplicateProfile());
+        RenameProfileCommand = new RelayCommand(_ => RenameProfile());
+        DeleteProfileCommand = new RelayCommand(_ => DeleteProfile(), _ => Profiles.Count > 1);
+        ApplyHotkeysCommand = new RelayCommand(_ => { RefreshHotkeys(); ScheduleSave(); });
+        LoadMediaCommand = new AsyncRelayCommand(_ => ChooseMediaAsync());
+        MediaPlayPauseCommand = new RelayCommand(_ => MediaPlayPause());
+        MediaStopCommand = new RelayCommand(_ => { _mediaDeck.Stop(); RefreshMediaState(); });
+        MediaBackCommand = new RelayCommand(_ => { _mediaDeck.Skip(-10.0); RefreshMediaState(); });
+        MediaForwardCommand = new RelayCommand(_ => { _mediaDeck.Skip(10.0); RefreshMediaState(); });
+        ClearMediaCommand = new RelayCommand(_ => { _mediaDeck.Clear(); RefreshMediaState(); ScheduleSave(); });
         AddPadsCommand = new AsyncRelayCommand(_ => ChooseAndAddPadsAsync(), _ => NativeReady);
         PlayPadCommand = new AsyncRelayCommand(parameter => PlayPadAsync(parameter as SoundPadModel), _ => NativeReady);
         StopPadCommand = new RelayCommand(parameter => StopPad(parameter as SoundPadModel));
@@ -114,6 +165,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         DeletePadCommand = new RelayCommand(parameter => DeletePad(parameter as SoundPadModel));
         CopyDiagnosticsCommand = new RelayCommand(_ => Clipboard.SetText(BuildDiagnostics()));
 
+        UserPresets.CollectionChanged += OnUserPresetsChanged;
+
         _meterTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(100), DispatcherPriority.Background, OnMeterTick, Dispatcher.CurrentDispatcher);
         _meterTimer.Stop();
         _saveTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(450), DispatcherPriority.Background, OnSaveTick, Dispatcher.CurrentDispatcher);
@@ -123,6 +176,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public event Action<SoundPadModel>? EditPadRequested;
 
     public ObservableCollection<SoundPadModel> Pads { get; }
+    public ObservableCollection<ProfileModel> Profiles { get; }
+    public ObservableCollection<UserPresetModel> UserPresets { get; }
     public ObservableCollection<AudioDevice> InputDevices { get; }
     public ObservableCollection<AudioDevice> OutputDevices { get; }
 
@@ -134,7 +189,25 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public AsyncRelayCommand StopAllCommand { get; }
     public RelayCommand ResetVoiceCommand { get; }
     public RelayCommand ResetMixerCommand { get; }
-    public RelayCommand ApplyPresetCommand { get; }
+    public AsyncRelayCommand ApplyPresetCommand { get; }
+    public AsyncRelayCommand ApplyUserPresetCommand { get; }
+    public RelayCommand SaveUserPresetCommand { get; }
+    public RelayCommand UpdateUserPresetCommand { get; }
+    public RelayCommand DuplicateUserPresetCommand { get; }
+    public RelayCommand RenameUserPresetCommand { get; }
+    public RelayCommand DeleteUserPresetCommand { get; }
+    public AsyncRelayCommand ApplyProfileCommand { get; }
+    public RelayCommand NewProfileCommand { get; }
+    public RelayCommand DuplicateProfileCommand { get; }
+    public RelayCommand RenameProfileCommand { get; }
+    public RelayCommand DeleteProfileCommand { get; }
+    public RelayCommand ApplyHotkeysCommand { get; }
+    public AsyncRelayCommand LoadMediaCommand { get; }
+    public RelayCommand MediaPlayPauseCommand { get; }
+    public RelayCommand MediaStopCommand { get; }
+    public RelayCommand MediaBackCommand { get; }
+    public RelayCommand MediaForwardCommand { get; }
+    public RelayCommand ClearMediaCommand { get; }
     public AsyncRelayCommand AddPadsCommand { get; }
     public AsyncRelayCommand PlayPadCommand { get; }
     public RelayCommand StopPadCommand { get; }
@@ -198,6 +271,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _selectedInput, value))
             {
                 RaiseCommandStates();
+                ScheduleSave();
             }
         }
     }
@@ -211,8 +285,162 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             {
                 UpdateVirtualMicrophoneStatus();
                 RaiseCommandStates();
+                ScheduleSave();
             }
         }
+    }
+
+    public AudioDevice? SelectedMonitorOutput
+    {
+        get => _selectedMonitorOutput;
+        set
+        {
+            if (SetProperty(ref _selectedMonitorOutput, value))
+            {
+                _mediaDeck.MonitorDeviceId = value?.Id ?? string.Empty;
+                ScheduleSave();
+            }
+        }
+    }
+
+    public ProfileModel? SelectedProfile
+    {
+        get => _selectedProfile;
+        set
+        {
+            if (SetProperty(ref _selectedProfile, value))
+            {
+                ApplyProfileCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
+    public string ActiveProfileLabel => $"Active: {_activeProfile.Name}";
+
+    public UserPresetModel? SelectedUserPreset
+    {
+        get => _selectedUserPreset;
+        set
+        {
+            if (SetProperty(ref _selectedUserPreset, value))
+            {
+                OnPropertyChanged(nameof(SelectedUserPresetHotkey));
+                RaisePresetCommandStates();
+            }
+        }
+    }
+
+    public string SelectedUserPresetHotkey
+    {
+        get => SelectedUserPreset?.Hotkey ?? string.Empty;
+        set
+        {
+            if (SelectedUserPreset is null) return;
+            SelectedUserPreset.Hotkey = value;
+            OnPropertyChanged();
+            RefreshHotkeys();
+            ScheduleSave();
+        }
+    }
+
+    public bool MinimizeToTray
+    {
+        get => _activeProfile.Preferences.MinimizeToTray;
+        set { if (_activeProfile.Preferences.MinimizeToTray != value) { _activeProfile.Preferences.MinimizeToTray = value; OnPropertyChanged(); ScheduleSave(); } }
+    }
+
+    public bool StartMinimized
+    {
+        get => _activeProfile.Preferences.StartMinimized;
+        set { if (_activeProfile.Preferences.StartMinimized != value) { _activeProfile.Preferences.StartMinimized = value; OnPropertyChanged(); ScheduleSave(); } }
+    }
+
+    public bool StartWithWindows
+    {
+        get => _activeProfile.Preferences.StartWithWindows;
+        set
+        {
+            if (_activeProfile.Preferences.StartWithWindows == value) return;
+            if (!StartupManager.SetEnabled(value))
+            {
+                HotkeyStatus = "Windows startup preference could not be changed.";
+                return;
+            }
+            _activeProfile.Preferences.StartWithWindows = value;
+            OnPropertyChanged();
+            ScheduleSave();
+        }
+    }
+
+    public string MuteHotkey { get => _activeProfile.Preferences.MuteHotkey; set => SetHotkey(value, (p, v) => p.MuteHotkey = v, nameof(MuteHotkey)); }
+    public string StopAllHotkey { get => _activeProfile.Preferences.StopAllHotkey; set => SetHotkey(value, (p, v) => p.StopAllHotkey = v, nameof(StopAllHotkey)); }
+    public string VoiceFxHotkey { get => _activeProfile.Preferences.VoiceFxHotkey; set => SetHotkey(value, (p, v) => p.VoiceFxHotkey = v, nameof(VoiceFxHotkey)); }
+    public string PushToTalkHotkey { get => _activeProfile.Preferences.PushToTalkHotkey; set => SetHotkey(value, (p, v) => p.PushToTalkHotkey = v, nameof(PushToTalkHotkey)); }
+    public string ShowHideHotkey { get => _activeProfile.Preferences.ShowHideHotkey; set => SetHotkey(value, (p, v) => p.ShowHideHotkey = v, nameof(ShowHideHotkey)); }
+    public string MediaPlayPauseHotkey { get => _activeProfile.Preferences.MediaPlayPauseHotkey; set => SetHotkey(value, (p, v) => p.MediaPlayPauseHotkey = v, nameof(MediaPlayPauseHotkey)); }
+    public string MediaStopHotkey { get => _activeProfile.Preferences.MediaStopHotkey; set => SetHotkey(value, (p, v) => p.MediaStopHotkey = v, nameof(MediaStopHotkey)); }
+    public string MediaBackHotkey { get => _activeProfile.Preferences.MediaBackHotkey; set => SetHotkey(value, (p, v) => p.MediaBackHotkey = v, nameof(MediaBackHotkey)); }
+    public string MediaForwardHotkey { get => _activeProfile.Preferences.MediaForwardHotkey; set => SetHotkey(value, (p, v) => p.MediaForwardHotkey = v, nameof(MediaForwardHotkey)); }
+
+    public string HotkeyStatus
+    {
+        get => _hotkeyStatus;
+        private set => SetProperty(ref _hotkeyStatus, value);
+    }
+
+    public string MediaFileName => _mediaDeck.FileName;
+    public string MediaError => _mediaDeck.Error ?? string.Empty;
+    public bool HasMedia => !string.IsNullOrWhiteSpace(_mediaDeck.FilePath);
+    public bool MediaHasError => !string.IsNullOrWhiteSpace(_mediaDeck.Error);
+    public bool MediaPlaying => _mediaDeck.IsPlaying;
+    public string MediaPlayPauseLabel => MediaPlaying ? "Pause" : "Play";
+    public string MediaTimeLabel => $"{FormatTime(_mediaDeck.PositionSeconds)} / {FormatTime(_mediaDeck.DurationSeconds)}";
+    public double MediaDuration => Math.Max(0.01, _mediaDeck.DurationSeconds);
+    public double MediaMeter => ToMeter(_statistics.MediaPeak > 0.0F ? _statistics.MediaPeak : _mediaDeck.Peak);
+    public string MediaDb => FormatDb(_statistics.MediaPeak > 0.0F ? _statistics.MediaPeak : _mediaDeck.Peak);
+    public double MediaBufferPercent => _statistics.MediaBufferCapacityFrames == 0U
+        ? 0.0 : _statistics.MediaBufferFillFrames * 100.0 / _statistics.MediaBufferCapacityFrames;
+
+    public double MediaPosition
+    {
+        get => _mediaPosition;
+        set
+        {
+            double clamped = Math.Clamp(double.IsFinite(value) ? value : 0.0, 0.0, MediaDuration);
+            if (SetProperty(ref _mediaPosition, clamped) && !_mediaSeeking)
+            {
+                _mediaDeck.Seek(clamped);
+            }
+        }
+    }
+
+    public double MediaVolume
+    {
+        get => _mediaDeck.Volume;
+        set
+        {
+            double clamped = Math.Clamp(double.IsFinite(value) ? value : 0.8, 0.0, 1.5);
+            if (Math.Abs(_mediaDeck.Volume - clamped) < 0.0001) return;
+            _mediaDeck.Volume = clamped;
+            _activeProfile.Preferences.MediaVolume = clamped;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(MediaVolumeLabel));
+            ScheduleSave();
+        }
+    }
+
+    public string MediaVolumeLabel => $"{MediaVolume:P0}";
+
+    public bool MediaMonitorEnabled
+    {
+        get => _mediaDeck.MonitorEnabled;
+        set { if (_mediaDeck.MonitorEnabled != value) { _mediaDeck.MonitorEnabled = value; _activeProfile.Preferences.MediaMonitorEnabled = value; OnPropertyChanged(); ScheduleSave(); } }
+    }
+
+    public bool MediaSendEnabled
+    {
+        get => _mediaDeck.SendEnabled;
+        set { if (_mediaDeck.SendEnabled != value) { _mediaDeck.SendEnabled = value; _activeProfile.Preferences.MediaSendEnabled = value; OnPropertyChanged(); ScheduleSave(); } }
     }
 
     public bool NativeReady
@@ -294,6 +522,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             {
                 _engine.SetMicrophoneMuted(value);
                 OnPropertyChanged(nameof(MuteButtonLabel));
+                ScheduleSave();
             }
         }
     }
@@ -309,6 +538,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             {
                 _engine.SetVoiceFxEnabled(value);
                 OnPropertyChanged(nameof(VoiceFxLabel));
+                ScheduleSave();
             }
         }
     }
@@ -325,6 +555,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             {
                 _engine.SetPitch((float)clamped);
                 OnPropertyChanged(nameof(PitchLabel));
+                ScheduleSave();
             }
         }
     }
@@ -341,6 +572,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             {
                 _engine.SetFinePitch((float)clamped);
                 OnPropertyChanged(nameof(FinePitchLabel));
+                ScheduleSave();
             }
         }
     }
@@ -357,6 +589,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             {
                 _engine.SetFormant((float)clamped);
                 OnPropertyChanged(nameof(FormantLabel));
+                ScheduleSave();
             }
         }
     }
@@ -371,6 +604,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             if (SetProperty(ref _preserveVocalCharacter, value) && NativeReady)
             {
                 _engine.SetFormantPreservation(value);
+                ScheduleSave();
             }
         }
     }
@@ -385,6 +619,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             {
                 _engine.SetQuality((uint)clamped);
                 OnPropertyChanged(nameof(QualityLabel));
+                ScheduleSave();
             }
         }
     }
@@ -570,10 +805,6 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             EngineStatus = "Audio workspace ready";
             EngineDetail = $"Native API {_engine.ApiVersion} · engine v{_engine.NativeVersion}";
 
-            foreach (SoundPadModel pad in _store.Load())
-            {
-                AddPadToCollection(pad);
-            }
             OnPropertyChanged(nameof(HasPads));
 
             _meterTimer.Start();
@@ -581,11 +812,17 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             {
                 await LoadPadAsync(pad);
             }
+            if (!string.IsNullOrWhiteSpace(_activeProfile.Preferences.LastMediaPath))
+            {
+                await _mediaDeck.LoadAsync(_activeProfile.Preferences.LastMediaPath);
+                RefreshMediaState();
+            }
+            RefreshHotkeys();
         }
         catch (Exception exception) when (exception is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
             EngineStatus = $"Native engine unavailable · {exception.GetType().Name}";
-                EngineDetail = "Use the complete v0.9.0 portable package.";
+                EngineDetail = "Use the complete v0.11.0 portable package.";
         }
     }
 
@@ -616,7 +853,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         string filePath,
         double volume,
         bool loop,
-        bool restartOnPress)
+        bool restartOnPress,
+        string hotkey)
     {
         bool fileChanged = !string.Equals(pad.FilePath, filePath, StringComparison.OrdinalIgnoreCase);
         pad.Title = string.IsNullOrWhiteSpace(title) ? Path.GetFileNameWithoutExtension(filePath) : title.Trim();
@@ -624,6 +862,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         pad.Volume = volume;
         pad.Loop = loop;
         pad.RestartOnPress = restartOnPress;
+        pad.Hotkey = hotkey;
         if (fileChanged || !pad.IsLoaded)
         {
             await LoadPadAsync(pad);
@@ -747,8 +986,10 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         IsBusy = true;
         try
         {
+            _mediaDeck.Stop();
             StopAllSounds();
             NativeResult result = await Task.Run(_engine.Stop);
+            _mediaDeck.SetEngineRunning(false);
             IsRunning = false;
             EngineStatus = result == NativeResult.Ok ? "Audio engine stopped" : $"Stop failed · {result}";
             EngineDetail = result == NativeResult.Ok ? "All audio stopped · ready to start again" : _engine.ReadLastError();
@@ -810,13 +1051,16 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
                     return;
                 }
                 IsRunning = true;
+                _mediaDeck.SetEngineRunning(true);
                 EngineStatus = "Virtual microphone is live";
-                EngineDetail = $"48 kHz · {QualityLabel} · Soundboard mixer ready";
+                EngineDetail = $"48 kHz · {QualityLabel} · Media/Soundboard mixer ready";
             }
             else
             {
+                _mediaDeck.Stop();
                 StopAllSounds();
                 NativeResult result = await Task.Run(_engine.Stop);
+                _mediaDeck.SetEngineRunning(false);
                 IsRunning = false;
                 EngineStatus = result == NativeResult.Ok ? "Audio engine stopped" : $"Stop failed · {result}";
                 EngineDetail = result == NativeResult.Ok ? "Ready to start again" : _engine.ReadLastError();
@@ -855,13 +1099,18 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             }
 
             SelectedInput = inputs.FirstOrDefault(device => device.Id == previousInput?.Id) ??
+                inputs.FirstOrDefault(device => device.Id == _activeProfile.InputDeviceId) ??
                 inputs.FirstOrDefault(device => device.IsDefault && !IsExternalVirtualEndpoint(device)) ??
                 inputs.FirstOrDefault(device => !IsExternalVirtualEndpoint(device)) ??
                 inputs.FirstOrDefault();
             SelectedOutput = outputs.FirstOrDefault(device => device.Id == previousOutput?.Id) ??
+                outputs.FirstOrDefault(device => device.Id == _activeProfile.OutputDeviceId) ??
                 outputs.FirstOrDefault(output => FindPairedCaptureEndpoint(output) is not null) ??
                 outputs.FirstOrDefault(device => device.IsDefault) ??
                 outputs.FirstOrDefault();
+            SelectedMonitorOutput = outputs.FirstOrDefault(device => device.Id == _activeProfile.MonitorDeviceId) ??
+                outputs.FirstOrDefault(device => device.Id != SelectedOutput?.Id && !IsExternalVirtualEndpoint(device)) ??
+                outputs.FirstOrDefault(device => device.IsDefault) ?? outputs.FirstOrDefault();
         }
         catch (Exception exception)
         {
@@ -939,12 +1188,33 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         PresetIndex = 1;
     }
 
-    private void ApplySelectedPreset()
+    private async Task ApplySelectedPresetAsync()
     {
         if (PresetIndex > 0)
         {
-            ApplyPreset(PresetIndex);
+            await ApplySnapshotSmoothAsync(CreateBuiltInSnapshot(PresetIndex));
         }
+    }
+
+    private AudioStateSnapshot CreateBuiltInSnapshot(int index)
+    {
+        AudioStateSnapshot target = CaptureAudioState();
+        switch (index)
+        {
+            case 2:
+                SetSnapshotMixer(target, 3.0, -2.0, -1.0, true, -50.0, true, -18.0, 4.0, true, -1.0, true, 6.0, true, 100.0);
+                break;
+            case 3:
+                SetSnapshotMixer(target, 2.0, 0.0, -1.0, true, -55.0, true, -16.0, 3.0, true, -1.0, true, 10.0, true, 85.0);
+                break;
+            case 4:
+                SetSnapshotMixer(target, 4.0, -4.0, -2.0, true, -48.0, true, -20.0, 4.0, true, -1.0, true, 12.0, true, 70.0);
+                break;
+            default:
+                SetSnapshotMixer(target, 0.0, 0.0, 0.0, false, -55.0, false, -18.0, 3.0, true, -1.0, false, 9.0, true, 100.0);
+                break;
+        }
+        return target;
     }
 
     internal void ApplyPreset(int index)
@@ -973,6 +1243,181 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             _applyingPreset = false;
         }
         ApplyMixerState();
+    }
+
+    private static void SetSnapshotMixer(
+        AudioStateSnapshot state,
+        double micGain, double boardGain, double masterGain,
+        bool gate, double gateThreshold,
+        bool compressor, double compressorThreshold, double compressorRatio,
+        bool limiter, double limiterCeiling,
+        bool ducking, double duckingAmount,
+        bool clippingProtection, double wetMix)
+    {
+        state.MicGain = micGain;
+        state.SoundboardGain = boardGain;
+        state.MasterGain = masterGain;
+        state.NoiseGateEnabled = gate;
+        state.GateThreshold = gateThreshold;
+        state.CompressorEnabled = compressor;
+        state.CompressorThreshold = compressorThreshold;
+        state.CompressorRatio = compressorRatio;
+        state.LimiterEnabled = limiter;
+        state.LimiterCeiling = limiterCeiling;
+        state.DuckingEnabled = ducking;
+        state.DuckingAmount = duckingAmount;
+        state.ClippingProtectionEnabled = clippingProtection;
+        state.PitchWetMix = wetMix;
+    }
+
+    private AudioStateSnapshot CaptureAudioState() => new()
+    {
+        VoiceFxEnabled = VoiceFxEnabled,
+        Pitch = Pitch,
+        FinePitch = FinePitch,
+        Formant = Formant,
+        PreserveVocalCharacter = PreserveVocalCharacter,
+        QualityIndex = QualityIndex,
+        MicGain = MicGain,
+        SoundboardGain = SoundboardGain,
+        MasterGain = MasterGain,
+        NoiseGateEnabled = NoiseGateEnabled,
+        GateThreshold = GateThreshold,
+        CompressorEnabled = CompressorEnabled,
+        CompressorThreshold = CompressorThreshold,
+        CompressorRatio = CompressorRatio,
+        LimiterEnabled = LimiterEnabled,
+        LimiterCeiling = LimiterCeiling,
+        DuckingEnabled = DuckingEnabled,
+        DuckingAmount = DuckingAmount,
+        ClippingProtectionEnabled = ClippingProtectionEnabled,
+        PitchWetMix = PitchWetMix
+    };
+
+    private async Task ApplySnapshotSmoothAsync(AudioStateSnapshot target)
+    {
+        _presetTransition?.Cancel();
+        _presetTransition?.Dispose();
+        var transition = new CancellationTokenSource();
+        _presetTransition = transition;
+        CancellationToken token = transition.Token;
+        AudioStateSnapshot start = CaptureAudioState();
+        const int steps = 12;
+        _applyingPreset = true;
+        try
+        {
+            if (target.VoiceFxEnabled) VoiceFxEnabled = true;
+            if (target.PreserveVocalCharacter) PreserveVocalCharacter = true;
+            if (target.NoiseGateEnabled) NoiseGateEnabled = true;
+            if (target.CompressorEnabled) CompressorEnabled = true;
+            if (target.LimiterEnabled) LimiterEnabled = true;
+            if (target.DuckingEnabled) DuckingEnabled = true;
+            if (target.ClippingProtectionEnabled) ClippingProtectionEnabled = true;
+
+            for (int step = 1; step <= steps; ++step)
+            {
+                token.ThrowIfCancellationRequested();
+                double mix = step / (double)steps;
+                Pitch = Lerp(start.Pitch, target.Pitch, mix);
+                FinePitch = Lerp(start.FinePitch, target.FinePitch, mix);
+                Formant = Lerp(start.Formant, target.Formant, mix);
+                MicGain = Lerp(start.MicGain, target.MicGain, mix);
+                SoundboardGain = Lerp(start.SoundboardGain, target.SoundboardGain, mix);
+                MasterGain = Lerp(start.MasterGain, target.MasterGain, mix);
+                GateThreshold = Lerp(start.GateThreshold, target.GateThreshold, mix);
+                CompressorThreshold = Lerp(start.CompressorThreshold, target.CompressorThreshold, mix);
+                CompressorRatio = Lerp(start.CompressorRatio, target.CompressorRatio, mix);
+                LimiterCeiling = Lerp(start.LimiterCeiling, target.LimiterCeiling, mix);
+                DuckingAmount = Lerp(start.DuckingAmount, target.DuckingAmount, mix);
+                PitchWetMix = Lerp(start.PitchWetMix, target.PitchWetMix, mix);
+                ApplyMixerState();
+                await Task.Delay(TimeSpan.FromMilliseconds(200.0 / steps), token);
+            }
+
+            VoiceFxEnabled = target.VoiceFxEnabled;
+            PreserveVocalCharacter = target.PreserveVocalCharacter;
+            QualityIndex = target.QualityIndex;
+            NoiseGateEnabled = target.NoiseGateEnabled;
+            CompressorEnabled = target.CompressorEnabled;
+            LimiterEnabled = target.LimiterEnabled;
+            DuckingEnabled = target.DuckingEnabled;
+            ClippingProtectionEnabled = target.ClippingProtectionEnabled;
+            ApplyVoiceState();
+            ApplyMixerState();
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer preset transition owns the current targets.
+        }
+        finally
+        {
+            if (ReferenceEquals(_presetTransition, transition))
+            {
+                _applyingPreset = false;
+                ScheduleSave();
+            }
+        }
+    }
+
+    private static double Lerp(double start, double end, double mix) => start + (end - start) * mix;
+
+    private async Task ApplySelectedUserPresetAsync()
+    {
+        if (SelectedUserPreset is not null)
+        {
+            await ApplySnapshotSmoothAsync(SelectedUserPreset.State);
+        }
+    }
+
+    private void SaveUserPreset()
+    {
+        string? name = TextPromptWindow.Prompt("Save preset", "Name this Voice + Mixer preset");
+        if (name is null) return;
+        var preset = new UserPresetModel { Name = name, State = CaptureAudioState() };
+        SubscribePreset(preset);
+        UserPresets.Add(preset);
+        SelectedUserPreset = preset;
+        ScheduleSave();
+        RefreshHotkeys();
+    }
+
+    private void UpdateUserPreset()
+    {
+        if (SelectedUserPreset is null) return;
+        SelectedUserPreset.State = CaptureAudioState();
+        OnPropertyChanged(nameof(SelectedUserPreset));
+        ScheduleSave();
+    }
+
+    private void DuplicateUserPreset()
+    {
+        if (SelectedUserPreset is null) return;
+        UserPresetModel duplicate = SelectedUserPreset.Clone();
+        SubscribePreset(duplicate);
+        UserPresets.Add(duplicate);
+        SelectedUserPreset = duplicate;
+        ScheduleSave();
+    }
+
+    private void RenameUserPreset()
+    {
+        if (SelectedUserPreset is null) return;
+        string? name = TextPromptWindow.Prompt("Rename preset", "Preset name", SelectedUserPreset.Name);
+        if (name is null) return;
+        SelectedUserPreset.Name = name;
+        ScheduleSave();
+    }
+
+    private void DeleteUserPreset()
+    {
+        if (SelectedUserPreset is null) return;
+        if (MessageBox.Show($"Delete preset ‘{SelectedUserPreset.Name}’?", "Delete preset",
+            MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        SelectedUserPreset.PropertyChanged -= OnUserPresetPropertyChanged;
+        UserPresets.Remove(SelectedUserPreset);
+        SelectedUserPreset = UserPresets.FirstOrDefault();
+        ScheduleSave();
+        RefreshHotkeys();
     }
 
     private void SetPresetValues(
@@ -1030,6 +1475,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         {
             PresetIndex = 0;
             ApplyMixerState();
+            ScheduleSave();
         }
     }
 
@@ -1056,7 +1502,9 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         MicrophoneDb = FormatDb(_statistics.InputPeak);
         SoundboardDb = FormatDb(_statistics.SoundboardPeak);
         MasterDb = FormatDb(_statistics.MasterPeak);
+        RefreshMediaState();
         OnPropertyChanged(nameof(PitchLatencyMilliseconds));
+        OnPropertyChanged(nameof(EstimatedTotalLatencyMilliseconds));
 
         if (IsRunning && _statistics.Running == 0U)
         {
@@ -1082,6 +1530,294 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    internal void AttachWindowServices(nint window, Action showHide)
+    {
+        _hotkeys.Attach(window);
+        _showHideAction = showHide;
+        RefreshHotkeys();
+    }
+
+    internal bool HandleWindowMessage(int message, nint wParam) => _hotkeys.HandleMessage(message, wParam);
+
+    internal void TriggerStopAll() => _ = StopAllAsync();
+
+    private Action? _showHideAction;
+
+    private void RefreshHotkeys()
+    {
+        var registrations = new List<HotkeyRegistration>
+        {
+            new(MuteHotkey, "Mute/Unmute microphone", () => MicrophoneMuted = !MicrophoneMuted),
+            new(StopAllHotkey, "Stop All", () => _ = StopAllAsync()),
+            new(VoiceFxHotkey, "Voice FX", () => VoiceFxEnabled = !VoiceFxEnabled),
+            new(ShowHideHotkey, "Show/Hide GrassiBoard", () => _showHideAction?.Invoke()),
+            new(MediaPlayPauseHotkey, "Media Play/Pause", MediaPlayPause),
+            new(MediaStopHotkey, "Media Stop", () => { _mediaDeck.Stop(); RefreshMediaState(); }),
+            new(MediaBackHotkey, "Media -10 seconds", () => { _mediaDeck.Skip(-10.0); RefreshMediaState(); }),
+            new(MediaForwardHotkey, "Media +10 seconds", () => { _mediaDeck.Skip(10.0); RefreshMediaState(); })
+        };
+        registrations.AddRange(Pads.Where(pad => !string.IsNullOrWhiteSpace(pad.Hotkey)).Select(pad =>
+            new HotkeyRegistration(pad.Hotkey, $"Sound Pad ‘{pad.Title}’", () => _ = PlayPadAsync(pad))));
+        registrations.AddRange(UserPresets.Where(preset => !string.IsNullOrWhiteSpace(preset.Hotkey)).Select(preset =>
+            new HotkeyRegistration(preset.Hotkey, $"Preset ‘{preset.Name}’", () => _ = ApplySnapshotSmoothAsync(preset.State))));
+        HotkeyStatus = _hotkeys.Refresh(registrations, PushToTalkHotkey, held => MicrophoneMuted = !held);
+    }
+
+    private void SetHotkey(string value, Action<AppPreferences, string> update, string propertyName)
+    {
+        string safe = value?.Trim() ?? string.Empty;
+        update(_activeProfile.Preferences, safe);
+        OnPropertyChanged(propertyName);
+        ScheduleSave();
+    }
+
+    private async Task ChooseMediaAsync()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "Load Local Media",
+            Filter = "Supported media|*.wav;*.mp3;*.flac;*.aac;*.m4a;*.mp4;*.mov;*.wma;*.aiff|Audio|*.wav;*.mp3;*.flac;*.aac;*.m4a;*.wma;*.aiff|Video audio track|*.mp4;*.mov",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog() != true) return;
+        await _mediaDeck.LoadAsync(dialog.FileName);
+        _activeProfile.Preferences.LastMediaPath = dialog.FileName;
+        RefreshMediaState();
+        ScheduleSave();
+    }
+
+    private void MediaPlayPause()
+    {
+        _mediaDeck.PlayPause();
+        RefreshMediaState();
+    }
+
+    private void RefreshMediaState()
+    {
+        _mediaSeeking = true;
+        try
+        {
+            MediaPosition = _mediaDeck.PositionSeconds;
+        }
+        finally
+        {
+            _mediaSeeking = false;
+        }
+        OnPropertyChanged(nameof(MediaFileName));
+        OnPropertyChanged(nameof(MediaError));
+        OnPropertyChanged(nameof(HasMedia));
+        OnPropertyChanged(nameof(MediaHasError));
+        OnPropertyChanged(nameof(MediaPlaying));
+        OnPropertyChanged(nameof(MediaPlayPauseLabel));
+        OnPropertyChanged(nameof(MediaTimeLabel));
+        OnPropertyChanged(nameof(MediaDuration));
+        OnPropertyChanged(nameof(MediaMeter));
+        OnPropertyChanged(nameof(MediaDb));
+        OnPropertyChanged(nameof(MediaBufferPercent));
+    }
+
+    private static string FormatTime(double seconds)
+    {
+        TimeSpan time = TimeSpan.FromSeconds(Math.Max(0.0, double.IsFinite(seconds) ? seconds : 0.0));
+        return time.TotalHours >= 1.0 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"m\:ss");
+    }
+
+    private void CaptureActiveProfile()
+    {
+        _activeProfile.InputDeviceId = SelectedInput?.Id ?? _activeProfile.InputDeviceId;
+        _activeProfile.OutputDeviceId = SelectedOutput?.Id ?? _activeProfile.OutputDeviceId;
+        _activeProfile.MonitorDeviceId = SelectedMonitorOutput?.Id ?? _activeProfile.MonitorDeviceId;
+        _activeProfile.AudioState = CaptureAudioState();
+        _activeProfile.Pads = Pads.ToList();
+        _activeProfile.UserPresets = UserPresets.ToList();
+        _activeProfile.Preferences.MediaVolume = MediaVolume;
+        _activeProfile.Preferences.MediaMonitorEnabled = MediaMonitorEnabled;
+        _activeProfile.Preferences.MediaSendEnabled = MediaSendEnabled;
+        _activeProfile.Preferences.LastMediaPath = _mediaDeck.FilePath;
+        _profileDocument.ActiveProfileId = _activeProfile.Id;
+    }
+
+    private void LoadProfileState(ProfileModel profile, bool populateCollections)
+    {
+        AudioStateSnapshot state = profile.AudioState ?? new AudioStateSnapshot();
+        _voiceFxEnabled = state.VoiceFxEnabled;
+        _pitch = Safe(state.Pitch, -12.0, 12.0, 0.0);
+        _finePitch = Safe(state.FinePitch, -100.0, 100.0, 0.0);
+        _formant = Safe(state.Formant, -12.0, 12.0, 0.0);
+        _preserveVocalCharacter = state.PreserveVocalCharacter;
+        _qualityIndex = Math.Clamp(state.QualityIndex, 0, 2);
+        _micGain = Safe(state.MicGain, -24.0, 24.0, 0.0);
+        _soundboardGain = Safe(state.SoundboardGain, -24.0, 24.0, 0.0);
+        _masterGain = Safe(state.MasterGain, -24.0, 12.0, 0.0);
+        _noiseGateEnabled = state.NoiseGateEnabled;
+        _gateThreshold = Safe(state.GateThreshold, -80.0, -20.0, -55.0);
+        _compressorEnabled = state.CompressorEnabled;
+        _compressorThreshold = Safe(state.CompressorThreshold, -40.0, -3.0, -18.0);
+        _compressorRatio = Safe(state.CompressorRatio, 1.0, 20.0, 3.0);
+        _limiterEnabled = state.LimiterEnabled;
+        _limiterCeiling = Safe(state.LimiterCeiling, -12.0, 0.0, -1.0);
+        _duckingEnabled = state.DuckingEnabled;
+        _duckingAmount = Safe(state.DuckingAmount, 0.0, 30.0, 9.0);
+        _clippingProtectionEnabled = state.ClippingProtectionEnabled;
+        _pitchWetMix = Safe(state.PitchWetMix, 0.0, 100.0, 100.0);
+        _mediaDeck.Volume = Safe(profile.Preferences.MediaVolume, 0.0, 1.5, 0.8);
+        _mediaDeck.MonitorEnabled = profile.Preferences.MediaMonitorEnabled;
+        _mediaDeck.SendEnabled = profile.Preferences.MediaSendEnabled;
+
+        if (populateCollections)
+        {
+            foreach (SoundPadModel pad in profile.Pads ?? []) AddPadToCollection(pad);
+            foreach (UserPresetModel preset in profile.UserPresets ?? [])
+            {
+                SubscribePreset(preset);
+                UserPresets.Add(preset);
+            }
+            _selectedUserPreset = UserPresets.FirstOrDefault();
+        }
+        RaiseAllAudioProperties();
+        RaisePreferenceProperties();
+    }
+
+    private static double Safe(double value, double minimum, double maximum, double fallback) =>
+        double.IsFinite(value) ? Math.Clamp(value, minimum, maximum) : fallback;
+
+    private async Task ApplySelectedProfileAsync()
+    {
+        if (SelectedProfile is null || SelectedProfile == _activeProfile) return;
+        CaptureActiveProfile();
+        SaveProfiles();
+        if (IsRunning) await StopAllAsync();
+        foreach (SoundPadModel pad in Pads) pad.PropertyChanged -= OnPadPropertyChanged;
+        foreach (UserPresetModel preset in UserPresets) preset.PropertyChanged -= OnUserPresetPropertyChanged;
+        Pads.Clear();
+        UserPresets.Clear();
+        _activeProfile = SelectedProfile;
+        _profileDocument.ActiveProfileId = _activeProfile.Id;
+        LoadProfileState(_activeProfile, populateCollections: true);
+        if (!StartupManager.SetEnabled(_activeProfile.Preferences.StartWithWindows))
+        {
+            HotkeyStatus = "The selected profile loaded, but its Windows startup preference could not be applied.";
+        }
+        ApplyVoiceState();
+        ApplyMixerState();
+        RefreshDevices();
+        OnPropertyChanged(nameof(HasPads));
+        OnPropertyChanged(nameof(ActiveProfileLabel));
+        foreach (SoundPadModel pad in Pads) await LoadPadAsync(pad);
+        if (!string.IsNullOrWhiteSpace(_activeProfile.Preferences.LastMediaPath))
+            await _mediaDeck.LoadAsync(_activeProfile.Preferences.LastMediaPath);
+        else _mediaDeck.Clear();
+        RefreshMediaState();
+        RefreshHotkeys();
+        RaiseCommandStates();
+        ScheduleSave();
+    }
+
+    private void NewProfile()
+    {
+        string? name = TextPromptWindow.Prompt("New profile", "Profile name", "New profile");
+        if (name is null) return;
+        var profile = new ProfileModel { Name = name };
+        Profiles.Add(profile);
+        _profileDocument.Profiles.Add(profile);
+        SelectedProfile = profile;
+        DeleteProfileCommand.RaiseCanExecuteChanged();
+        ScheduleSave();
+    }
+
+    private void DuplicateProfile()
+    {
+        CaptureActiveProfile();
+        ProfileModel duplicate = _activeProfile.Clone();
+        Profiles.Add(duplicate);
+        _profileDocument.Profiles.Add(duplicate);
+        SelectedProfile = duplicate;
+        DeleteProfileCommand.RaiseCanExecuteChanged();
+        ScheduleSave();
+    }
+
+    private void RenameProfile()
+    {
+        ProfileModel profile = SelectedProfile ?? _activeProfile;
+        string? name = TextPromptWindow.Prompt("Rename profile", "Profile name", profile.Name);
+        if (name is null) return;
+        profile.Name = name;
+        if (profile == _activeProfile) OnPropertyChanged(nameof(ActiveProfileLabel));
+        ScheduleSave();
+    }
+
+    private void DeleteProfile()
+    {
+        ProfileModel? profile = SelectedProfile;
+        if (profile is null || Profiles.Count <= 1) return;
+        if (profile == _activeProfile)
+        {
+            MessageBox.Show("Switch to another profile before deleting the active profile.", "Delete profile",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (MessageBox.Show($"Delete profile ‘{profile.Name}’?", "Delete profile",
+            MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        Profiles.Remove(profile);
+        _profileDocument.Profiles.Remove(profile);
+        SelectedProfile = _activeProfile;
+        DeleteProfileCommand.RaiseCanExecuteChanged();
+        ScheduleSave();
+    }
+
+    private void RaiseAllAudioProperties()
+    {
+        string[] names = [nameof(VoiceFxEnabled), nameof(VoiceFxLabel), nameof(Pitch), nameof(PitchLabel),
+            nameof(FinePitch), nameof(FinePitchLabel), nameof(Formant), nameof(FormantLabel),
+            nameof(PreserveVocalCharacter), nameof(QualityIndex), nameof(QualityLabel), nameof(MicGain),
+            nameof(MicGainLabel), nameof(SoundboardGain), nameof(SoundboardGainLabel), nameof(MasterGain),
+            nameof(MasterGainLabel), nameof(NoiseGateEnabled), nameof(GateThreshold), nameof(GateThresholdLabel),
+            nameof(CompressorEnabled), nameof(CompressorThreshold), nameof(CompressorThresholdLabel),
+            nameof(CompressorRatio), nameof(CompressorRatioLabel), nameof(LimiterEnabled), nameof(LimiterCeiling),
+            nameof(LimiterCeilingLabel), nameof(DuckingEnabled), nameof(DuckingAmount), nameof(DuckingAmountLabel),
+            nameof(ClippingProtectionEnabled), nameof(PitchWetMix), nameof(PitchWetMixLabel)];
+        foreach (string name in names) OnPropertyChanged(name);
+    }
+
+    private void RaisePreferenceProperties()
+    {
+        string[] names = [nameof(MinimizeToTray), nameof(StartMinimized), nameof(StartWithWindows), nameof(MuteHotkey),
+            nameof(StopAllHotkey), nameof(VoiceFxHotkey), nameof(PushToTalkHotkey), nameof(ShowHideHotkey),
+            nameof(MediaPlayPauseHotkey), nameof(MediaStopHotkey), nameof(MediaBackHotkey), nameof(MediaForwardHotkey),
+            nameof(MediaVolume), nameof(MediaMonitorEnabled), nameof(MediaSendEnabled)];
+        foreach (string name in names) OnPropertyChanged(name);
+    }
+
+    private void SubscribePreset(UserPresetModel preset) => preset.PropertyChanged += OnUserPresetPropertyChanged;
+
+    private void OnUserPresetPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        ScheduleSave();
+        if (e.PropertyName == nameof(UserPresetModel.Hotkey)) RefreshHotkeys();
+    }
+
+    private void OnUserPresetsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        RaisePresetCommandStates();
+        ScheduleSave();
+    }
+
+    private void RaisePresetCommandStates()
+    {
+        ApplyUserPresetCommand.RaiseCanExecuteChanged();
+        UpdateUserPresetCommand.RaiseCanExecuteChanged();
+        DuplicateUserPresetCommand.RaiseCanExecuteChanged();
+        RenameUserPresetCommand.RaiseCanExecuteChanged();
+        DeleteUserPresetCommand.RaiseCanExecuteChanged();
+    }
+
+    private void SaveProfiles()
+    {
+        CaptureActiveProfile();
+        _profileStore.Save(_profileDocument);
+    }
+
     private string BuildDiagnostics()
     {
         var text = new StringBuilder();
@@ -1095,8 +1831,13 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         text.AppendLine($"Buffers: capture {_statistics.CaptureBufferFrames}, render {_statistics.RenderBufferFrames}");
         text.AppendLine($"Ring fill: {_statistics.RingBufferFillFrames} frames");
         text.AppendLine($"Pitch latency: {_statistics.PitchLatencySamples} samples ({PitchLatencyMilliseconds:0.0} ms)");
+        text.AppendLine($"Reported total latency: {EstimatedTotalLatencyMilliseconds:0.0} ms");
         text.AppendLine($"Dropouts: U {_statistics.UnderrunCount} · O {_statistics.OverrunCount} · D {_statistics.DiscontinuityCount}");
         text.AppendLine($"Active Sound Pads: {_statistics.ActiveSoundCount}");
+        text.AppendLine($"Media: {(_mediaDeck.IsPlaying ? "Playing" : "Stopped")} · buffer {_statistics.MediaBufferFillFrames}/{_statistics.MediaBufferCapacityFrames} · underruns {_statistics.MediaUnderrunCount}");
+        text.AppendLine($"Media monitor: {MediaMonitorEnabled} · send: {MediaSendEnabled} · device: {SelectedMonitorOutput?.Name ?? "not selected"}");
+        text.AppendLine($"Profile: {_activeProfile.Name} · user presets {UserPresets.Count}");
+        text.AppendLine($"Hotkeys: {HotkeyStatus.Replace(Environment.NewLine, " | ")}");
         text.AppendLine($"Microphone muted: {MicrophoneMuted}");
         text.AppendLine($"Input endpoint: {SelectedInput?.Name ?? "not selected"}");
         text.AppendLine($"Input ID: {SelectedInput?.Id ?? "not selected"}");
@@ -1111,6 +1852,11 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         ? 0.0
         : _statistics.PitchLatencySamples * 1000.0 / _statistics.SampleRate;
 
+    public double EstimatedTotalLatencyMilliseconds => _statistics.SampleRate == 0U
+        ? 0.0
+        : (_statistics.CaptureBufferFrames + _statistics.PitchLatencySamples +
+            _statistics.RingBufferFillFrames + _statistics.RenderBufferFrames) * 1000.0 / _statistics.SampleRate;
+
     private void AddPadToCollection(SoundPadModel pad)
     {
         if (pad.Id == Guid.Empty)
@@ -1124,9 +1870,11 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     private void OnPadPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName is nameof(SoundPadModel.Title) or nameof(SoundPadModel.FilePath) or
-            nameof(SoundPadModel.Volume) or nameof(SoundPadModel.Loop) or nameof(SoundPadModel.RestartOnPress))
+            nameof(SoundPadModel.Volume) or nameof(SoundPadModel.Loop) or nameof(SoundPadModel.RestartOnPress) or
+            nameof(SoundPadModel.Hotkey))
         {
             ScheduleSave();
+            if (e.PropertyName == nameof(SoundPadModel.Hotkey)) RefreshHotkeys();
         }
     }
 
@@ -1142,6 +1890,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         try
         {
             _store.Save(Pads);
+            SaveProfiles();
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
@@ -1170,6 +1919,9 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         ResetVoiceCommand.RaiseCanExecuteChanged();
         ResetMixerCommand.RaiseCanExecuteChanged();
         ApplyPresetCommand.RaiseCanExecuteChanged();
+        ApplyProfileCommand.RaiseCanExecuteChanged();
+        DeleteProfileCommand.RaiseCanExecuteChanged();
+        RaisePresetCommandStates();
         AddPadsCommand.RaiseCanExecuteChanged();
         PlayPadCommand.RaiseCanExecuteChanged();
     }
@@ -1205,15 +1957,19 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         _disposed = true;
         _meterTimer.Stop();
         _saveTimer.Stop();
+        _presetTransition?.Cancel();
         try
         {
             _store.Save(Pads);
+            SaveProfiles();
         }
         catch (IOException)
         {
             // The application is closing; a prior successful save remains intact.
         }
         StopAllSounds();
+        _mediaDeck.Dispose();
+        _hotkeys.Dispose();
         _engine.Dispose();
     }
 }

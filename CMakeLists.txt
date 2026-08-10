@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(GrassiBoard VERSION 0.9.0 LANGUAGES CXX)
+project(GrassiBoard VERSION 0.11.0 LANGUAGES CXX)
 
 include(CTest)
 add_subdirectory(third_party/signalsmith-linear EXCLUDE_FROM_ALL SYSTEM)
@@ -12,5 +12,6 @@ if(BUILD_TESTING)
   add_subdirectory(tests/GrassiBoard.Pitch.Tests)
   add_subdirectory(tests/GrassiBoard.Soundboard.Tests)
   add_subdirectory(tests/GrassiBoard.Mixer.Tests)
+  add_subdirectory(tests/GrassiBoard.Media.Tests)
   add_subdirectory(tests/GrassiBoard.DriverTransport.Tests)
 endif()

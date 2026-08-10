@@ -55,6 +55,12 @@ struct gb_audio_statistics {
     float master_rms;
     std::uint32_t active_sound_count;
     std::uint32_t microphone_muted;
+    std::uint32_t media_buffer_fill_frames;
+    std::uint32_t media_buffer_capacity_frames;
+    std::uint64_t media_underrun_count;
+    float media_peak;
+    float media_rms;
+    std::uint32_t media_active;
 };
 
 struct gb_mixer_settings {
@@ -120,6 +126,15 @@ GB_API gb_result GB_CALL gb_play_sound_clip(
     std::uint32_t restart) noexcept;
 GB_API gb_result GB_CALL gb_stop_sound_clip(gb_engine_handle engine, std::uint64_t clip_key) noexcept;
 GB_API gb_result GB_CALL gb_stop_all_sounds(gb_engine_handle engine) noexcept;
+// Long-form media is decoded and resampled away from the real-time callback.
+// This bounded call copies as many interleaved 48 kHz stereo float frames as fit.
+GB_API gb_result GB_CALL gb_media_write(
+    gb_engine_handle engine,
+    const float* interleaved_stereo_samples,
+    std::uint32_t frame_count,
+    std::uint32_t* accepted_frames) noexcept;
+GB_API gb_result GB_CALL gb_media_set_active(gb_engine_handle engine, std::uint32_t active) noexcept;
+GB_API gb_result GB_CALL gb_media_clear(gb_engine_handle engine) noexcept;
 GB_API gb_result GB_CALL gb_set_microphone_muted(gb_engine_handle engine, std::uint32_t muted) noexcept;
 GB_API gb_result GB_CALL gb_set_mixer_settings(
     gb_engine_handle engine,

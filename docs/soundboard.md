@@ -7,9 +7,10 @@
 - Set per-pad volume and Loop.
 - Stop one Pad or use global Stop All.
 - Edit title, source file, volume, Loop, and restart-on-press behavior.
+- Optionally assign a global hotkey to each Pad.
 - Remove a Pad without deleting its original audio file.
 
-Pad definitions are restored at startup from `%APPDATA%\GrassiBoard\soundboard.json`. Source audio is referenced, not copied into the configuration. A moved, deleted, unsupported, unreadable, or empty file produces a visible Pad error that can be repaired through Edit.
+Pad definitions are restored from the active Profile in `%APPDATA%\GrassiBoard\profiles.json`; the legacy `soundboard.json` is migrated once. Source audio is referenced, not copied. A moved, deleted, unsupported, unreadable, or empty file produces a visible Pad error that can be repaired through Edit.
 
 ## Decode/cache contract
 
@@ -19,6 +20,6 @@ The native mixer supports 32 simultaneous voices and a bounded 256-command queue
 
 ## Mix contract
 
-Soundboard audio mixes after the microphone Voice DSP and is never Pitch/Formant shifted. v0.9.0 applies Soundboard Gain and optional microphone-keyed Ducking before the master bus. The microphone continues while Pads play and Mute Mic preserves Pads. Global Stop All clears Pads and safely stops the engine without deleting Pad definitions or changing Mixer/Voice configuration.
+Soundboard audio mixes after the microphone Voice DSP and is never Pitch/Formant shifted. Soundboard Gain and optional microphone-keyed Ducking apply before the master bus. The microphone continues while Pads play and Mute Mic preserves Pads. In v0.11 Global Stop All clears Pads, stops Media Deck, and safely stops the engine without deleting Profile, Pad, Voice, or Mixer configuration.
 
-Optional direct headphone monitoring is not implemented in v0.8.x because it would require a separate render route and additional latency policy. Target-application monitoring may still be used where acceptable.
+Local Media Deck has its own independent headphone monitor. Sound Pad and microphone direct monitoring behavior is unchanged.

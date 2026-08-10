@@ -62,7 +62,9 @@ void MixerDynamicsProcessor::BeginBlock() noexcept
 MixerFrame MixerDynamicsProcessor::ProcessFrame(
     const float microphone,
     const float boardLeft,
-    const float boardRight) noexcept
+    const float boardRight,
+    const float mediaLeft,
+    const float mediaRight) noexcept
 {
     mic_gain_ = Smooth(mic_gain_, target_mic_gain_, gain_smoothing_);
     board_gain_ = Smooth(board_gain_, target_board_gain_, gain_smoothing_);
@@ -103,8 +105,10 @@ MixerFrame MixerDynamicsProcessor::ProcessFrame(
 
     const float processedBoardLeft = FiniteOr(boardLeft, 0.0F) * board_gain_ * duck_gain_;
     const float processedBoardRight = FiniteOr(boardRight, 0.0F) * board_gain_ * duck_gain_;
-    float left = (mic + processedBoardLeft) * master_gain_;
-    float right = (mic + processedBoardRight) * master_gain_;
+    const float processedMediaLeft = FiniteOr(mediaLeft, 0.0F);
+    const float processedMediaRight = FiniteOr(mediaRight, 0.0F);
+    float left = (mic + processedBoardLeft + processedMediaLeft) * master_gain_;
+    float right = (mic + processedBoardRight + processedMediaRight) * master_gain_;
 
     const float peak = std::max(std::abs(left), std::abs(right));
     const float targetLimiter = limiter_enabled_block_ && peak > limiter_ceiling_
@@ -121,7 +125,8 @@ MixerFrame MixerDynamicsProcessor::ProcessFrame(
         right = SoftProtect(right);
     }
 
-    return {mic, processedBoardLeft, processedBoardRight, left, right};
+    return {mic, processedBoardLeft, processedBoardRight,
+        processedMediaLeft, processedMediaRight, left, right};
 }
 
 void MixerDynamicsProcessor::SetMicGainDb(const float value) noexcept

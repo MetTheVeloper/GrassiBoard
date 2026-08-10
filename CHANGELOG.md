@@ -2,6 +2,31 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.11.0] - 2026-08-10
+
+### Added
+
+- Add versioned Profiles that restore devices, Pads, user presets, hotkeys, app/tray preferences, and Voice/Mixer state.
+- Add persistent user-created Voice + Mixer presets with Save As, apply, update, duplicate, rename, delete, optional global hotkeys, and approximately 200 ms live parameter transitions.
+- Add global hotkeys for Pads, presets, Mic Mute, Stop All, Voice FX, Push-to-Talk, Show/Hide, and Media Deck transport, including duplicate/Windows-registration conflict reporting.
+- Add System Tray operation, Start Minimized, and an optional reversible per-user Start with Windows setting.
+- Add a streaming Local Media Deck with load, play/pause/resume, stop, seek/timeline, ±10 seconds, volume, meter, independent headphone monitoring and virtual-mic send, missing-file safety, and persisted controls.
+- Add a bounded preallocated native Media ring, ABI version 7, Media fill/underrun/meter diagnostics, and regression tests.
+
+### Improved
+
+- Keep the accepted event-driven shared-mode WASAPI worker, MMCSS `Pro Audio` scheduling, 48 kHz float pipeline, prewarmed latency modes, and callback allocation/lock/file-I/O rules.
+- Report capture/render buffers, Pitch latency, ring fill, Media fill/underruns, and estimated total processing latency together in Diagnostics.
+- Isolate malformed Profile, Pad, or Preset JSON items so valid siblings remain available.
+
+### Preserved
+
+- Preserve the user-accepted v0.9.0 Voice, Mixer, Soundboard, UI/theme, external VB-CABLE routing, meters, custom window, and Stop All behavior. Stop All additionally stops Media Deck playback.
+
+### Verified
+
+- Record complete Windows 10 manual acceptance of v0.9.0 as the regression baseline. v0.11.0 remains pending its required manual acceptance test.
+
 ## [0.9.0] - 2026-08-10
 
 ### Added
