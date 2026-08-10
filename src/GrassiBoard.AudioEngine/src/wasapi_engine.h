@@ -2,6 +2,7 @@
 
 #include "grassiboard/audio_engine.h"
 #include "mixer_processor.h"
+#include "media_stream.h"
 #include "pitch_processor.h"
 #include "soundboard_mixer.h"
 
@@ -54,6 +55,12 @@ public:
     gb_result PlaySoundClip(std::uint64_t key, float volume, bool loop, bool restart) noexcept;
     gb_result StopSoundClip(std::uint64_t key) noexcept;
     gb_result StopAllSounds() noexcept;
+    gb_result WriteMedia(
+        const float* stereoSamples,
+        std::uint32_t frameCount,
+        std::uint32_t& acceptedFrames) noexcept;
+    void SetMediaActive(bool active) noexcept;
+    void ClearMedia() noexcept;
     void SetMicrophoneMuted(bool muted) noexcept;
     void SetMixerSettings(const gb_mixer_settings& settings) noexcept;
     void GetStatistics(gb_audio_statistics& statistics) const noexcept;
@@ -78,6 +85,7 @@ private:
     LivePitchProcessor pitch_processor_;
     MixerDynamicsProcessor mixer_processor_;
     SoundboardMixer soundboard_mixer_;
+    MediaStreamBuffer media_stream_;
     std::vector<float> pitch_input_buffer_;
     std::vector<float> pitch_output_buffer_;
     std::atomic<float> pitch_semitones_{0.0F};
@@ -100,6 +108,9 @@ private:
     std::atomic<float> soundboard_rms_{0.0F};
     std::atomic<float> master_peak_{0.0F};
     std::atomic<float> master_rms_{0.0F};
+    std::atomic<std::uint64_t> media_underrun_count_{0U};
+    std::atomic<float> media_peak_{0.0F};
+    std::atomic<float> media_rms_{0.0F};
     std::atomic<bool> microphone_muted_{false};
 
     void UpdatePitchTarget() noexcept;

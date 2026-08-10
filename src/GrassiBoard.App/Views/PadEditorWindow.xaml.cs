@@ -14,6 +14,7 @@ public partial class PadEditorWindow : Window
         VolumeSlider.Value = pad.Volume;
         LoopCheck.IsChecked = pad.Loop;
         RestartCheck.IsChecked = pad.RestartOnPress;
+        HotkeyBox.Text = pad.Hotkey;
         UpdateVolumeLabel();
     }
 
@@ -22,6 +23,7 @@ public partial class PadEditorWindow : Window
     public double PadVolume => VolumeSlider.Value;
     public bool Loop => LoopCheck.IsChecked == true;
     public bool RestartOnPress => RestartCheck.IsChecked == true;
+    public string Hotkey => HotkeyBox.Text.Trim();
 
     private void Browse_Click(object sender, RoutedEventArgs e)
     {
@@ -52,6 +54,12 @@ public partial class PadEditorWindow : Window
         if (string.IsNullOrWhiteSpace(PathBox.Text))
         {
             MessageBox.Show(this, "Choose a WAV or MP3 file.", "Audio file required", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        if (!string.IsNullOrWhiteSpace(HotkeyBox.Text) &&
+            !Services.GlobalHotkeyService.TryParse(HotkeyBox.Text, out _, out string error))
+        {
+            MessageBox.Show(this, error, "Invalid hotkey", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
         DialogResult = true;

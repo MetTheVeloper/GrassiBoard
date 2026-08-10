@@ -1,15 +1,26 @@
 # Current status
 
-- Version: `v0.9.0`
-- Milestone: `8 — Mixer & Dynamic Processing`
-- Status: implemented and under automated validation; final Windows 10 audio/UI acceptance pending
+- Version: `v0.11.0`
+- Milestone: combined Profiles/Hotkeys/Tray + Latency Optimization + Local Media Deck
+- Status: implementation and automated validation in progress; manual Windows 10 acceptance required
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
 - Backend: Signalsmith Stretch 1.3.2 + Signalsmith Linear 0.3.1, both pinned
 - Virtual routing: vendor-neutral external cable selected as the processed WASAPI render destination
-- UI: persistent Board/Voice/Mixer/Routing/Settings shell with shared top bar and state
+- UI: persistent Board/Voice/Mixer/Routing/Settings shell with Profiles, user presets, global hotkeys, Tray, and shared state
 - Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
+- Media Deck: streaming local-media decode with bounded read-ahead, independent headphone monitor/virtual send, transport, meter, and safe missing-file state
+
+## v0.11.0 combined implementation
+
+This build combines the former v0.10 and v0.11 milestones. Profiles restore the complete working setup; user Voice + Mixer presets are editable, persistent, hotkey-addressable, and transition over approximately 200 ms without restarting WASAPI. Global actions remain active without focus and in the System Tray. The Board now has a separate streaming Media Deck for long-form files rather than forcing them into the predecoded Sound Pad cache.
+
+The accepted shared/event-driven WASAPI and external VB-CABLE route are preserved. Native ABI 7 adds a bounded four-second stereo Media ring and Media statistics; decode, resampling, disk I/O, and monitor output stay on a managed worker, never the real-time render callback. Balanced remains the stability-first default pending the user's v0.11 Windows 10 comparison.
+
+## v0.9.0 manual acceptance
+
+On 2026-08-10 the user explicitly confirmed that all v0.9.0 UI fixes and features work without errors. This freezes Voice, Mixer/Dynamics, Soundboard, meters, custom window behavior, Light/Dark themes, and the external-cable route as the regression baseline for v0.11.0.
 
 ## v0.9.0 Mixer & Dynamic Processing
 
@@ -17,7 +28,7 @@ v0.9.0 adds live Mic, Soundboard, and Master gain; microphone Noise Gate and Com
 
 The release also restores visible meter fills through the shared WPF ProgressBar template, maps invalid/silent values safely to an empty `-60..0 dBFS` display, adds a subtle theme-aware restored-window border plus native DWM shadow, and makes custom maximize use the current monitor work area. Global Stop All now stops every Pad and the audio engine through the existing lifecycle path; it preserves configuration and permits a subsequent Start Engine.
 
-Native/managed product version is `0.9.0` and native ABI version is `6`. Automated and local UI validation do not constitute milestone acceptance: the four mandatory fixes and live Mixer behavior remain pending the user's final Windows 10 test.
+Native/managed v0.9.0 and ABI 6 are accepted. v0.11.0/ABI 7 remains pending CI and the combined manual acceptance matrix.
 
 ## v0.8.3 manual acceptance
 

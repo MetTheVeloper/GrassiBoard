@@ -3,8 +3,72 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel MaxWidth="1040" HorizontalAlignment="Left">
-            <TextBlock Text="DIAGNOSTICS" Style="{StaticResource EyebrowTextStyle}" />
-            <TextBlock Text="System and build details" Style="{StaticResource SectionTitleStyle}" Margin="0,5,0,0" />
+            <TextBlock Text="SETTINGS" Style="{StaticResource EyebrowTextStyle}" />
+            <TextBlock Text="Profiles, controls and diagnostics" Style="{StaticResource SectionTitleStyle}" Margin="0,5,0,0" />
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="PROFILES" Style="{StaticResource EyebrowTextStyle}" />
+                    <TextBlock Text="Complete working setups" FontSize="18" FontWeight="SemiBold" Margin="0,5,0,0" />
+                    <TextBlock Text="A profile restores devices, Sound Pads, user presets, hotkeys, Voice/Mixer state, and app preferences. Switching stops the current engine safely."
+                               Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,5,0,12" />
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="240" /><ColumnDefinition Width="12" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}" DisplayMemberPath="Name" />
+                        <WrapPanel Grid.Column="2">
+                            <Button Content="Apply" Command="{Binding ApplyProfileCommand}" />
+                            <Button Content="New" Command="{Binding NewProfileCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" />
+                            <Button Content="Duplicate" Command="{Binding DuplicateProfileCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" />
+                            <Button Content="Rename" Command="{Binding RenameProfileCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" />
+                            <Button Content="Delete" Command="{Binding DeleteProfileCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" />
+                        </WrapPanel>
+                    </Grid>
+                    <TextBlock Text="{Binding ActiveProfileLabel}" Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" Margin="0,10,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="APP BEHAVIOR" Style="{StaticResource EyebrowTextStyle}" />
+                    <WrapPanel Margin="0,12,0,0">
+                        <CheckBox Content="Minimize to system tray" IsChecked="{Binding MinimizeToTray, Mode=TwoWay}" Margin="0,0,28,0" />
+                        <CheckBox Content="Start minimized" IsChecked="{Binding StartMinimized, Mode=TwoWay}" Margin="0,0,28,0" />
+                        <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows, Mode=TwoWay}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Text="GLOBAL HOTKEYS" Style="{StaticResource EyebrowTextStyle}" />
+                    <TextBlock Text="Use combinations such as Ctrl+Alt+M. Sound Pad hotkeys are edited on each Pad; Preset hotkeys are edited in Mixer."
+                               Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,5,0,14" />
+                    <UniformGrid Columns="3">
+                        <StackPanel Margin="0,0,12,12"><TextBlock Text="MUTE / UNMUTE" Style="{StaticResource EyebrowTextStyle}" /><TextBox Text="{Binding MuteHotkey, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" /></StackPanel>
+                        <StackPanel Margin="0,0,12,12"><TextBlock Text="STOP ALL" Style="{StaticResource EyebrowTextStyle}" /><TextBox Text="{Binding StopAllHotkey, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" /></StackPanel>
+                        <StackPanel Margin="0,0,0,12"><TextBlock Text="VOICE FX" Style="{StaticResource EyebrowTextStyle}" /><TextBox Text="{Binding VoiceFxHotkey, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" /></StackPanel>
+                        <StackPanel Margin="0,0,12,12"><TextBlock Text="PUSH-TO-TALK (HOLD)" Style="{StaticResource EyebrowTextStyle}" /><TextBox Text="{Binding PushToTalkHotkey, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" /></StackPanel>
+                        <StackPanel Margin="0,0,12,12"><TextBlock Text="SHOW / HIDE" Style="{StaticResource EyebrowTextStyle}" /><TextBox Text="{Binding ShowHideHotkey, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" /></StackPanel>
+                        <StackPanel Margin="0,0,0,12"><TextBlock Text="MEDIA PLAY / PAUSE" Style="{StaticResource EyebrowTextStyle}" /><TextBox Text="{Binding MediaPlayPauseHotkey, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" /></StackPanel>
+                        <StackPanel Margin="0,0,12,0"><TextBlock Text="MEDIA STOP" Style="{StaticResource EyebrowTextStyle}" /><TextBox Text="{Binding MediaStopHotkey, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" /></StackPanel>
+                        <StackPanel Margin="0,0,12,0"><TextBlock Text="MEDIA -10 SEC" Style="{StaticResource EyebrowTextStyle}" /><TextBox Text="{Binding MediaBackHotkey, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" /></StackPanel>
+                        <StackPanel><TextBlock Text="MEDIA +10 SEC" Style="{StaticResource EyebrowTextStyle}" /><TextBox Text="{Binding MediaForwardHotkey, UpdateSourceTrigger=LostFocus}" Margin="0,5,0,0" /></StackPanel>
+                    </UniformGrid>
+                    <Grid Margin="0,14,0,0">
+                        <TextBlock Text="{Binding HotkeyStatus}" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" Margin="0,0,150,0" />
+                        <Button Content="Apply hotkeys" Command="{Binding ApplyHotkeysCommand}" HorizontalAlignment="Right" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <StackPanel><TextBlock Text="REPORTED PIPELINE" Style="{StaticResource EyebrowTextStyle}" /><TextBlock Text="{Binding EstimatedTotalLatencyMilliseconds, StringFormat={}{0:0.0} ms}" FontFamily="{StaticResource MonoFont}" FontSize="20" Margin="0,6,0,0" /></StackPanel>
+                    <StackPanel Grid.Column="1"><TextBlock Text="PITCH ALGORITHM" Style="{StaticResource EyebrowTextStyle}" /><TextBlock Text="{Binding PitchLatencyMilliseconds, StringFormat={}{0:0.0} ms}" FontFamily="{StaticResource MonoFont}" FontSize="20" Margin="0,6,0,0" /></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="MEDIA READ-AHEAD" Style="{StaticResource EyebrowTextStyle}" /><TextBlock Text="{Binding MediaBufferPercent, StringFormat={}{0:0}% full}" FontFamily="{StaticResource MonoFont}" FontSize="20" Margin="0,6,0,0" /></StackPanel>
+                </Grid>
+            </Border>
 
             <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
                 <Grid>

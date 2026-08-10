@@ -16,6 +16,8 @@ internal sealed class SoundboardStore
             "soundboard.json");
     }
 
+    internal string StoragePath => _path;
+
     public IReadOnlyList<SoundPadModel> Load()
     {
         if (!File.Exists(_path))

@@ -6,7 +6,7 @@ namespace GrassiBoard.Services;
 
 internal sealed partial class NativeAudioEngine : IDisposable
 {
-    internal const uint ExpectedApiVersion = 6U;
+    internal const uint ExpectedApiVersion = 7U;
     private nint _engine;
 
     public uint ApiVersion { get; private set; }
@@ -73,6 +73,8 @@ internal sealed partial class NativeAudioEngine : IDisposable
         NativeMethods.PlaySound(_engine, key, volume, loop ? 1U : 0U, restart ? 1U : 0U);
     public NativeResult StopSound(ulong key) => NativeMethods.StopSound(_engine, key);
     public NativeResult StopAllSounds() => NativeMethods.StopAllSounds(_engine);
+    public NativeResult SetMediaActive(bool active) => NativeMethods.SetMediaActive(_engine, active ? 1U : 0U);
+    public NativeResult ClearMedia() => NativeMethods.ClearMedia(_engine);
     public NativeResult GetStatistics(out AudioStatistics statistics) => NativeMethods.GetAudioStatistics(_engine, out statistics);
 
     public unsafe NativeResult LoadSound(ulong key, float[] samples, ulong frameCount)
@@ -80,6 +82,14 @@ internal sealed partial class NativeAudioEngine : IDisposable
         fixed (float* pointer = samples)
         {
             return NativeMethods.LoadSound(_engine, key, pointer, frameCount);
+        }
+    }
+
+    public unsafe NativeResult WriteMedia(float[] samples, uint frameCount, out uint acceptedFrames)
+    {
+        fixed (float* pointer = samples)
+        {
+            return NativeMethods.WriteMedia(_engine, pointer, frameCount, out acceptedFrames);
         }
     }
 
@@ -180,6 +190,16 @@ internal sealed partial class NativeAudioEngine : IDisposable
         [LibraryImport(LibraryName, EntryPoint = "gb_stop_all_sounds")]
         internal static partial NativeResult StopAllSounds(nint engine);
 
+        [LibraryImport(LibraryName, EntryPoint = "gb_media_write")]
+        internal static partial NativeResult WriteMedia(
+            nint engine, float* samples, uint frameCount, out uint acceptedFrames);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_media_set_active")]
+        internal static partial NativeResult SetMediaActive(nint engine, uint active);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_media_clear")]
+        internal static partial NativeResult ClearMedia(nint engine);
+
         [LibraryImport(LibraryName, EntryPoint = "gb_set_microphone_muted")]
         internal static partial NativeResult SetMicrophoneMuted(nint engine, uint muted);
 
@@ -267,4 +287,10 @@ internal struct AudioStatistics
     public float MasterRms;
     public uint ActiveSoundCount;
     public uint MicrophoneMuted;
+    public uint MediaBufferFillFrames;
+    public uint MediaBufferCapacityFrames;
+    public ulong MediaUnderrunCount;
+    public float MediaPeak;
+    public float MediaRms;
+    public uint MediaActive;
 }

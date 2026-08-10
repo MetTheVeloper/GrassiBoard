@@ -9,8 +9,8 @@
 #include <string>
 
 namespace {
-constexpr std::uint32_t kApiVersion = 6;
-constexpr char kEngineVersion[] = "0.9.0";
+constexpr std::uint32_t kApiVersion = 7;
+constexpr char kEngineVersion[] = "0.11.0";
 
 gb_result WriteUtf8Result(
     const std::string& value,
@@ -248,6 +248,40 @@ gb_result GB_CALL gb_stop_all_sounds(const gb_engine_handle engine) noexcept
     return engine == nullptr
         ? GB_ERROR_INVALID_ARGUMENT
         : static_cast<grassiboard::WasapiEngine*>(engine)->StopAllSounds();
+}
+
+gb_result GB_CALL gb_media_write(
+    const gb_engine_handle engine,
+    const float* const interleaved_stereo_samples,
+    const std::uint32_t frame_count,
+    std::uint32_t* const accepted_frames) noexcept
+{
+    if (engine == nullptr || interleaved_stereo_samples == nullptr ||
+        frame_count == 0U || accepted_frames == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    return static_cast<grassiboard::WasapiEngine*>(engine)->WriteMedia(
+        interleaved_stereo_samples, frame_count, *accepted_frames);
+}
+
+gb_result GB_CALL gb_media_set_active(
+    const gb_engine_handle engine,
+    const std::uint32_t active) noexcept
+{
+    if (engine == nullptr || active > 1U) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetMediaActive(active != 0U);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_media_clear(const gb_engine_handle engine) noexcept
+{
+    if (engine == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->ClearMedia();
+    return GB_OK;
 }
 
 gb_result GB_CALL gb_set_microphone_muted(

@@ -1,0 +1,91 @@
+#include "media_stream.h"
+
+#include <algorithm>
+#include <cmath>
+
+namespace grassiboard {
+
+MediaStreamBuffer::MediaStreamBuffer(const std::size_t capacityFrames)
+    : samples_(std::max<std::size_t>(capacityFrames, 1U) * 2U, 0.0F)
+    , capacity_frames_(std::max<std::size_t>(capacityFrames, 1U))
+{
+}
+
+std::uint32_t MediaStreamBuffer::Write(
+    const float* const interleavedStereoSamples,
+    const std::uint32_t frameCount) noexcept
+{
+    if (interleavedStereoSamples == nullptr || frameCount == 0U) {
+        return 0U;
+    }
+
+    const std::uint64_t write = write_frame_.load(std::memory_order_relaxed);
+    const std::uint64_t read = read_frame_.load(std::memory_order_acquire);
+    const std::uint64_t used = std::min(write - read, capacity_frames_);
+    const std::uint32_t accepted = static_cast<std::uint32_t>(
+        std::min<std::uint64_t>(frameCount, capacity_frames_ - used));
+    for (std::uint32_t frame = 0U; frame < accepted; ++frame) {
+        const std::uint64_t slot = (write + frame) % capacity_frames_;
+        samples_[slot * 2U] = Safe(interleavedStereoSamples[frame * 2U]);
+        samples_[slot * 2U + 1U] = Safe(interleavedStereoSamples[frame * 2U + 1U]);
+    }
+    write_frame_.store(write + accepted, std::memory_order_release);
+    return accepted;
+}
+
+bool MediaStreamBuffer::Pop(float& left, float& right) noexcept
+{
+    if (!active_.load(std::memory_order_relaxed)) {
+        left = 0.0F;
+        right = 0.0F;
+        return false;
+    }
+
+    const std::uint64_t read = read_frame_.load(std::memory_order_relaxed);
+    const std::uint64_t write = write_frame_.load(std::memory_order_acquire);
+    if (read >= write) {
+        left = 0.0F;
+        right = 0.0F;
+        return false;
+    }
+    const std::uint64_t slot = read % capacity_frames_;
+    left = samples_[slot * 2U];
+    right = samples_[slot * 2U + 1U];
+    read_frame_.store(read + 1U, std::memory_order_release);
+    return true;
+}
+
+void MediaStreamBuffer::Clear() noexcept
+{
+    const std::uint64_t write = write_frame_.load(std::memory_order_acquire);
+    read_frame_.store(write, std::memory_order_release);
+}
+
+void MediaStreamBuffer::SetActive(const bool active) noexcept
+{
+    active_.store(active, std::memory_order_release);
+}
+
+bool MediaStreamBuffer::IsActive() const noexcept
+{
+    return active_.load(std::memory_order_acquire);
+}
+
+std::uint32_t MediaStreamBuffer::FillFrames() const noexcept
+{
+    const std::uint64_t write = write_frame_.load(std::memory_order_acquire);
+    const std::uint64_t read = read_frame_.load(std::memory_order_acquire);
+    return static_cast<std::uint32_t>(std::min(write - read, capacity_frames_));
+}
+
+std::uint32_t MediaStreamBuffer::CapacityFrames() const noexcept
+{
+    return static_cast<std::uint32_t>(capacity_frames_);
+}
+
+float MediaStreamBuffer::Safe(const float sample) noexcept
+{
+    return std::isfinite(sample) ? std::clamp(sample, -4.0F, 4.0F) : 0.0F;
+}
+
+}

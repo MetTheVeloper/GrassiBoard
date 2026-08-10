@@ -4,16 +4,18 @@ GrassiBoard is a Windows x64 live voice-processing and Soundboard application. I
 
 ## Current milestone
 
-`v0.9.0` adds Mixer & Dynamic Processing on top of the accepted v0.8.3 UI and audio baseline. It preserves the external-cable route and Soundboard behavior while adding live bus gain, voice dynamics, ducking, output protection, Pitch Wet/Dry, and audio presets.
+`v0.11.0` combines Profiles/Hotkeys/Tray and latency work with a streaming Local Media Deck. It is built on the manually accepted v0.9.0 Voice, Mixer, Soundboard, UI, and external-cable baseline.
 
-- **Board** is the daily workspace: reusable Sound Pads plus compact Voice FX.
+- **Board** is the daily workspace: streaming Local Media Deck, reusable Sound Pads, and compact Voice FX.
 - **Voice** contains full Pitch, Fine Pitch, Formant, preservation, quality, and latency controls.
-- **Mixer** contains Mic/Soundboard/Master gain, Noise Gate, Compressor, Limiter, Ducking, Clipping Protection, Pitch Wet/Dry, and built-in presets.
+- **Mixer** contains Mic/Soundboard/Master gain, dynamics, protection, Pitch Wet/Dry, built-in presets, and persistent user presets.
 - **Routing** selects the physical microphone and external virtual-cable playback endpoint.
-- **Settings** contains copy-safe diagnostics and build information.
+- **Settings** contains Profiles, tray/startup behavior, global hotkeys, latency diagnostics, and build information.
 - The persistent top bar exposes Mic/Soundboard/Master meters, Mic Mute, and a global Stop All that stops Pads and the audio engine without resetting configuration.
 
 Sound Pads support WAV and MP3, volume, Loop, per-pad stop, simultaneous playback, drag/drop, edit/delete, and JSON persistence. Files are referenced in their original locations. They are decoded and resampled to stereo 48 kHz float away from the real-time audio callback, then cached in the native engine.
+
+The Local Media Deck streams long audio (and supported local video audio tracks) with bounded read-ahead instead of loading the whole file. Headphone monitoring and virtual-microphone send are independent; microphone audio is never sent to the monitor route.
 
 ## Audio route
 
@@ -21,9 +23,10 @@ Sound Pads support WAV and MP3, volume, Loop, per-pad stop, simultaneous playbac
 Physical microphone -> Voice DSP -> Mic dynamics ---+
                                                       +-> Master gain/protection -> cable -> target app
 Cached Sound Pads -> Board gain -> Ducking ----------+
+Streaming Local Media --------------------------------+
 ```
 
-Voice Pitch/Formant affects only the microphone branch. Mic Mute leaves Sound Pads active. Global Stop All stops Pads and the engine while retaining routing, Voice, Mixer, presets, and Board configuration so the engine can be started again.
+Voice Pitch/Formant affects only the microphone branch. Mic Mute leaves Sound Pads and Media active. Global Stop All stops Pads, Media, and the engine while retaining configuration so the engine can be started again.
 
 ## External cable
 
@@ -53,6 +56,10 @@ GitHub Actions publishes a self-contained portable Windows package, symbols, and
 - [Audio pipeline](docs/audio-pipeline.md)
 - [UI architecture](docs/ui-architecture.md)
 - [Soundboard behavior](docs/soundboard.md)
+- [Profiles and presets](docs/profiles-and-presets.md)
+- [Global hotkeys and tray](docs/hotkeys-and-tray.md)
+- [Local Media Deck](docs/media-deck.md)
+- [Latency benchmark policy](docs/latency-benchmark.md)
 - [Manual test plan](docs/test-plan.md)
 
 ## License

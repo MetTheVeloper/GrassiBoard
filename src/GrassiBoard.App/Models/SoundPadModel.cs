@@ -10,6 +10,7 @@ internal sealed class SoundPadModel : ObservableObject
     private double _volume = 1.0;
     private bool _loop;
     private bool _restartOnPress = true;
+    private string _hotkey = string.Empty;
     private bool _isLoaded;
     private bool _isLoading;
     private bool _isPlaying;
@@ -45,6 +46,12 @@ internal sealed class SoundPadModel : ObservableObject
     {
         get => _restartOnPress;
         set => SetProperty(ref _restartOnPress, value);
+    }
+
+    public string Hotkey
+    {
+        get => _hotkey;
+        set => SetProperty(ref _hotkey, value?.Trim() ?? string.Empty);
     }
 
     [JsonIgnore]

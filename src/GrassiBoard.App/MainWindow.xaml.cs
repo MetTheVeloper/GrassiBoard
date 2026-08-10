@@ -13,6 +13,8 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
     private HwndSource? _windowSource;
+    private TrayService? _tray;
+    private bool _exiting;
 
     public MainWindow() : this(new MainViewModel())
     {
@@ -34,6 +36,11 @@ public partial class MainWindow : Window
     private async void OnLoaded(object sender, RoutedEventArgs e)
     {
         await _viewModel.InitializeAsync();
+        _tray?.SetMuted(_viewModel.MicrophoneMuted);
+        if (_viewModel.StartMinimized || Environment.GetCommandLineArgs().Contains("--minimized", StringComparer.OrdinalIgnoreCase))
+        {
+            HideToTray();
+        }
     }
 
     private void OnClosing(object? sender, CancelEventArgs e)
@@ -45,6 +52,8 @@ public partial class MainWindow : Window
         }
         _viewModel.EditPadRequested -= OnEditPadRequested;
         StateChanged -= OnWindowStateChanged;
+        _tray?.Dispose();
+        _tray = null;
         _viewModel.Dispose();
     }
 
@@ -53,6 +62,13 @@ public partial class MainWindow : Window
         nint handle = new WindowInteropHelper(this).Handle;
         _windowSource = HwndSource.FromHwnd(handle);
         _windowSource?.AddHook(WindowMessageHook);
+        _viewModel.AttachWindowServices(handle, ToggleWindowVisibility);
+        _tray = new TrayService(
+            Dispatcher,
+            ShowFromTray,
+            () => { _viewModel.MicrophoneMuted = !_viewModel.MicrophoneMuted; _tray?.SetMuted(_viewModel.MicrophoneMuted); },
+            _viewModel.TriggerStopAll,
+            ExitFromTray);
 
         int renderingPolicy = 2; // DWMNCRP_ENABLED
         _ = DwmSetWindowAttribute(handle, 2, ref renderingPolicy, sizeof(int));
@@ -60,13 +76,19 @@ public partial class MainWindow : Window
         _ = DwmExtendFrameIntoClientArea(handle, ref margins);
     }
 
-    private static nint WindowMessageHook(
+    private nint WindowMessageHook(
         nint hwnd,
         int message,
         nint wParam,
         nint lParam,
         ref bool handled)
     {
+        if (_viewModel.HandleWindowMessage(message, wParam))
+        {
+            handled = true;
+            return nint.Zero;
+        }
+
         const int WmGetMinMaxInfo = 0x0024;
         if (message != WmGetMinMaxInfo || lParam == nint.Zero)
         {
@@ -106,9 +128,48 @@ public partial class MainWindow : Window
     private void OnMaximizeRestoreClick(object sender, RoutedEventArgs e) =>
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
 
-    private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
+    private void OnCloseClick(object sender, RoutedEventArgs e)
+    {
+        _exiting = true;
+        Close();
+    }
 
-    private void OnWindowStateChanged(object? sender, EventArgs e) => UpdateChromeButtons();
+    private void OnWindowStateChanged(object? sender, EventArgs e)
+    {
+        UpdateChromeButtons();
+        if (WindowState == WindowState.Minimized && _viewModel.MinimizeToTray && !_exiting)
+        {
+            HideToTray();
+        }
+    }
+
+    private void HideToTray()
+    {
+        WindowState = WindowState.Minimized;
+        Hide();
+    }
+
+    private void ShowFromTray()
+    {
+        Show();
+        WindowState = WindowState.Normal;
+        Activate();
+        Topmost = true;
+        Topmost = false;
+        Focus();
+    }
+
+    private void ToggleWindowVisibility()
+    {
+        if (IsVisible && WindowState != WindowState.Minimized) HideToTray();
+        else ShowFromTray();
+    }
+
+    private void ExitFromTray()
+    {
+        _exiting = true;
+        Close();
+    }
 
     private void UpdateChromeButtons()
     {
@@ -135,7 +196,8 @@ public partial class MainWindow : Window
                 dialog.AudioPath,
                 dialog.PadVolume,
                 dialog.Loop,
-                dialog.RestartOnPress);
+                dialog.RestartOnPress,
+                dialog.Hotkey);
         }
     }
 

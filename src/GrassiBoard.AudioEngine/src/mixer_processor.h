@@ -9,6 +9,8 @@ struct MixerFrame final {
     float microphone = 0.0F;
     float board_left = 0.0F;
     float board_right = 0.0F;
+    float media_left = 0.0F;
+    float media_right = 0.0F;
     float left = 0.0F;
     float right = 0.0F;
 };
@@ -18,7 +20,12 @@ public:
     void Prepare(std::uint32_t sampleRate) noexcept;
     void Reset() noexcept;
     void BeginBlock() noexcept;
-    MixerFrame ProcessFrame(float microphone, float boardLeft, float boardRight) noexcept;
+    MixerFrame ProcessFrame(
+        float microphone,
+        float boardLeft,
+        float boardRight,
+        float mediaLeft = 0.0F,
+        float mediaRight = 0.0F) noexcept;
 
     void SetMicGainDb(float value) noexcept;
     void SetSoundboardGainDb(float value) noexcept;

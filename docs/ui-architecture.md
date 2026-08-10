@@ -2,7 +2,7 @@
 
 ## Application shell
 
-v0.8.x establishes the persistent GrassiBoard shell extended by v0.9.0:
+The accepted v0.8/v0.9 shell is extended in v0.11 without replacing its design system:
 
 - left sidebar: Board, Voice, Mixer, Routing, Settings;
 - top bar: engine health, Mic/Soundboard/Master meters, Mute Mic, Stop All;
@@ -13,11 +13,11 @@ The design target is 1280×800 and the minimum supported layout is 1024×700. Pa
 
 ## Page ownership
 
-- **Board**: Sound Pad grid, empty/drop state, and compact Voice FX.
+- **Board**: streaming Local Media Deck, Sound Pad grid, empty/drop state, and compact Voice FX.
 - **Voice**: full Pitch, Fine Pitch, Formant, preservation, quality, and DSP latency.
-- **Mixer**: live bus gain, voice dynamics, ducking, output protection, Wet/Dry, and presets.
+- **Mixer**: live bus gain, voice dynamics, ducking, output protection, Wet/Dry, built-in presets, and editable user presets.
 - **Routing**: physical input, virtual output, paired target microphone, refresh, and engine lifecycle.
-- **Settings**: copy-safe diagnostics and About/build information.
+- **Settings**: Profiles, app/Tray behavior, global hotkeys, latency diagnostics, and About/build information.
 
 All pages bind to the same `MainViewModel`. Views do not own or recreate audio services. `MainWindow` code-behind is limited to lifecycle and opening the Pad editor; Board code-behind is limited to file drag/drop.
 
