@@ -854,7 +854,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         catch (Exception exception) when (exception is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
             EngineStatus = $"Native engine unavailable · {exception.GetType().Name}";
-            EngineDetail = "Use the complete v0.11.1 portable package.";
+            EngineDetail = "Use the complete v0.11.2 portable package.";
         }
     }
 

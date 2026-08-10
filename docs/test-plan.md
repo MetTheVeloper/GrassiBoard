@@ -1,10 +1,10 @@
-# v0.11.1 Media synchronization hotfix test plan
+# v0.11.2 startup, icon, and Media synchronization hotfix test plan
 
-The user has manually accepted v0.9.0. That build is the regression baseline. v0.11.1 is not complete until CI is green, a downloadable package exists, and the user explicitly approves the v0.11 combined matrix plus the hotfix checks below on the Windows 10 / Microsoft LifeChat / VB-CABLE setup.
+The user has manually accepted v0.9.0. That build is the regression baseline. v0.11.2 is not complete until CI is green, a downloadable package exists, and the user explicitly approves startup/icon checks plus the v0.11 combined matrix and Media hotfix checks below on the Windows 10 / Microsoft LifeChat / VB-CABLE setup.
 
 ## Automated gates
 
-- Build native x64 Release with `/W4 /WX`; require product `0.11.1`, native ABI 7, and matching 144-byte managed/native statistics layout.
+- Build native x64 Release with `/W4 /WX`; require product `0.11.2`, native ABI 7, and matching 144-byte managed/native statistics layout.
 - Retain all accepted Pitch/Formant mode, benchmark, device pairing, Soundboard, Mixer/Dynamics, lifecycle, UI/XAML, package-isolation, and persistence tests.
 - Test the bounded Media SPSC ring: inactive silence, FIFO, capacity, clear, and finite-sample protection; test its exported ABI and statistics.
 - Test managed Profile migration/round-trip, malformed item isolation, full Profile cloning, hotkey parsing, Pad decode/persistence, crash reporting, and UI contracts.
@@ -12,9 +12,10 @@ The user has manually accepted v0.9.0. That build is the regression baseline. v0
 
 ## Manual setup
 
-1. Extract the complete v0.11.1 portable ZIP into a new folder and run `GrassiBoard.exe`.
-2. In Routing select the physical microphone and working VB-CABLE playback/input endpoint. Select the paired cable recording endpoint in Voice Recorder/Telegram/OBS.
-3. Start at low headphone volume. Media monitoring routes only Media to the selected headphone endpoint; it must never monitor the microphone.
+1. Extract the complete v0.11.2 portable ZIP into a new folder and run `GrassiBoard.exe`; confirm no startup crash appears.
+2. Confirm the supplied GrassiBoard icon appears on the EXE, window/custom title bar, taskbar or Alt+Tab, and system tray.
+3. In Routing select the physical microphone and working VB-CABLE playback/input endpoint. Select the paired cable recording endpoint in Voice Recorder/Telegram/OBS.
+4. Start at low headphone volume. Media monitoring routes only Media to the selected headphone endpoint; it must never monitor the microphone.
 
 ## Regression
 
@@ -96,4 +97,4 @@ OTHER
 UI issues / crashes / logs / screenshots:
 ```
 
-Stop after delivering v0.11.1. Do not begin Stability/Packaging until the user explicitly accepts this build.
+Stop after delivering v0.11.2. Do not begin Stability/Packaging until the user explicitly accepts this build.

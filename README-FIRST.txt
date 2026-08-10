@@ -1,4 +1,4 @@
-GrassiBoard v0.11.1 — Local Media Sync Hotfix
+GrassiBoard v0.11.2 — Startup & Application Icon Hotfix
 
 PREREQUISITE: Keep the known working external virtual audio cable installed.
 

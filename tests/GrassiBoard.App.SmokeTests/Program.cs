@@ -96,7 +96,7 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "0.11.1" || NativeAudioEngine.ExpectedApiVersion != 7U)
+if (BuildInfo.CurrentVersion != "0.11.2" || NativeAudioEngine.ExpectedApiVersion != 7U)
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -105,7 +105,7 @@ if (BuildInfo.CurrentVersion != "0.11.1" || NativeAudioEngine.ExpectedApiVersion
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "0.11.1",
+      "Version": "0.11.2",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -114,7 +114,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "0.11.1" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "0.11.2" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -274,6 +274,31 @@ foreach (string meterView in meterViews)
 }
 
 string appSource = Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.App");
+var staticResourceKeys = new HashSet<string>(StringComparer.Ordinal);
+XNamespace xamlNamespace = "http://schemas.microsoft.com/winfx/2006/xaml";
+foreach (string xamlPath in Directory.EnumerateFiles(appSource, "*.xaml", SearchOption.AllDirectories))
+{
+    XDocument resourceDocument = XDocument.Load(xamlPath);
+    foreach (XAttribute key in resourceDocument.Descendants().Attributes(xamlNamespace + "Key"))
+    {
+        staticResourceKeys.Add(key.Value);
+    }
+}
+foreach (string xamlPath in Directory.EnumerateFiles(appSource, "*.xaml", SearchOption.AllDirectories))
+{
+    string xaml = File.ReadAllText(xamlPath);
+    foreach (System.Text.RegularExpressions.Match match in
+        System.Text.RegularExpressions.Regex.Matches(xaml, @"\{StaticResource\s+([A-Za-z_][A-Za-z0-9_.-]*)\}"))
+    {
+        string key = match.Groups[1].Value;
+        if (!staticResourceKeys.Contains(key))
+        {
+            Console.Error.WriteLine($"Unknown WPF StaticResource: {xamlPath} · {key}");
+            return 18;
+        }
+    }
+}
+
 foreach (string xamlPath in Directory.EnumerateFiles(appSource, "*.xaml", SearchOption.AllDirectories))
 {
     XDocument document = XDocument.Load(xamlPath);
@@ -301,6 +326,9 @@ string mixerXaml = File.ReadAllText(Path.Combine(appSource, "Views", "MixerView.
 string mainWindowXaml = File.ReadAllText(Path.Combine(appSource, "MainWindow.xaml"));
 string mainWindowCode = File.ReadAllText(Path.Combine(appSource, "MainWindow.xaml.cs"));
 string mainViewModelCode = File.ReadAllText(Path.Combine(appSource, "ViewModels", "MainViewModel.cs"));
+string appProject = File.ReadAllText(Path.Combine(appSource, "GrassiBoard.App.csproj"));
+string trayServiceCode = File.ReadAllText(Path.Combine(appSource, "Services", "TrayService.cs"));
+string iconPath = Path.Combine(appSource, "Assets", "GrassiBoard.ico");
 string[] requiredUiContracts =
 [
     "GbSoundPadCardStyle",
@@ -321,6 +349,11 @@ if (requiredUiContracts.Any(contract => !boardXaml.Contains(contract, StringComp
     !mixerXaml.Contains("PitchWetMix", StringComparison.Ordinal) ||
     !mainWindowXaml.Contains("IsMixerPage", StringComparison.Ordinal) ||
     !mainWindowXaml.Contains("GlassFrameThickness=\"1\"", StringComparison.Ordinal) ||
+    !mainWindowXaml.Contains("Icon=\"Assets/GrassiBoard.ico\"", StringComparison.Ordinal) ||
+    !mainWindowXaml.Contains("Source=\"Assets/GrassiBoard.png\"", StringComparison.Ordinal) ||
+    !appProject.Contains("<ApplicationIcon>Assets\\GrassiBoard.ico</ApplicationIcon>", StringComparison.Ordinal) ||
+    !trayServiceCode.Contains("Icon.ExtractAssociatedIcon", StringComparison.Ordinal) ||
+    !File.Exists(iconPath) || new FileInfo(iconPath).Length < 10_000L ||
     !mainWindowCode.Contains("WmGetMinMaxInfo", StringComparison.Ordinal) ||
     !mainWindowCode.Contains("MonitorFromWindow", StringComparison.Ordinal) ||
     !mainWindowCode.Contains("WorkArea", StringComparison.Ordinal) ||

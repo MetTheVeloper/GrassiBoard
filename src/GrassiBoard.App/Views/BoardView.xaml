@@ -43,7 +43,7 @@
                         </Grid.ColumnDefinitions>
                         <Button Command="{Binding MediaBackCommand}" Style="{StaticResource GbTransportButtonStyle}"
                                 AutomationProperties.Name="Seek media back 10 seconds" ToolTip="Seek back 10 seconds">
-                            <TextBlock Text="−10s" FontFamily="{StaticResource UiFont}" FontSize="10" />
+                            <TextBlock Text="−10s" FontSize="10" />
                         </Button>
                         <Button Grid.Column="2" Content="{Binding MediaPlayPauseLabel}" Command="{Binding MediaPlayPauseCommand}" />
                         <Button Grid.Column="4" Command="{Binding MediaStopCommand}" Style="{StaticResource GbTransportButtonStyle}"
@@ -52,7 +52,7 @@
                         </Button>
                         <Button Grid.Column="6" Command="{Binding MediaForwardCommand}" Style="{StaticResource GbTransportButtonStyle}"
                                 AutomationProperties.Name="Seek media forward 10 seconds" ToolTip="Seek forward 10 seconds">
-                            <TextBlock Text="+10s" FontFamily="{StaticResource UiFont}" FontSize="10" />
+                            <TextBlock Text="+10s" FontSize="10" />
                         </Button>
                         <StackPanel Grid.Column="8">
                             <TextBlock Text="{Binding MediaTimeLabel}" HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}" FontSize="10" />

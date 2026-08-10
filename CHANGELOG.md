@@ -2,6 +2,17 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.11.2] - 2026-08-10
+
+### Fixed
+
+- Remove the undefined `UiFont` StaticResource that caused v0.11.1 to fail during `MainWindow.InitializeComponent` with a fatal startup `XamlParseException`.
+- Add a managed smoke-test contract that rejects unknown simple `StaticResource` keys before packaging.
+
+### Changed
+
+- Use the user-supplied GrassiBoard artwork as a multi-resolution 16–256 px Windows icon for the executable, WPF window, custom title bar, Alt+Tab/taskbar, and system tray.
+
 ## [0.11.1] - 2026-08-10
 
 ### Fixed

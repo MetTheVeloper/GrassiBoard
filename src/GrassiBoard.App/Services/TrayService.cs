@@ -1,4 +1,6 @@
 using System.Drawing;
+using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Threading;
 using Forms = System.Windows.Forms;
 
@@ -8,6 +10,7 @@ internal sealed class TrayService : IDisposable
 {
     private readonly Forms.NotifyIcon _icon;
     private readonly Forms.ToolStripMenuItem _muteItem;
+    private readonly Icon? _applicationIcon;
 
     public TrayService(
         Dispatcher dispatcher,
@@ -27,10 +30,11 @@ internal sealed class TrayService : IDisposable
         exitItem.Click += (_, _) => dispatcher.BeginInvoke(exit);
         menu.Items.AddRange([showItem, _muteItem, stopItem, new Forms.ToolStripSeparator(), exitItem]);
 
+        _applicationIcon = TryLoadApplicationIcon();
         _icon = new Forms.NotifyIcon
         {
             Text = "GrassiBoard",
-            Icon = SystemIcons.Application,
+            Icon = _applicationIcon ?? SystemIcons.Application,
             ContextMenuStrip = menu,
             Visible = true
         };
@@ -43,5 +47,21 @@ internal sealed class TrayService : IDisposable
     {
         _icon.Visible = false;
         _icon.Dispose();
+        _applicationIcon?.Dispose();
+    }
+
+    private static Icon? TryLoadApplicationIcon()
+    {
+        try
+        {
+            string? executablePath = Environment.ProcessPath;
+            return string.IsNullOrWhiteSpace(executablePath)
+                ? null
+                : Icon.ExtractAssociatedIcon(executablePath);
+        }
+        catch (Exception exception) when (exception is ArgumentException or ExternalException or IOException)
+        {
+            return null;
+        }
     }
 }

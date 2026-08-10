@@ -8,12 +8,15 @@
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <SelfContained>false</SelfContained>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <ApplicationIcon>Assets\GrassiBoard.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
     <PackageReference Include="NAudio" Version="2.3.0" />
     <ProjectReference Include="..\GrassiBoard.Shared\GrassiBoard.Shared.csproj" />
+    <Resource Include="Assets\GrassiBoard.ico" />
+    <Resource Include="Assets\GrassiBoard.png" />
     <Content Include="BuildInfo.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>

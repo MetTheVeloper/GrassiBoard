@@ -1,7 +1,7 @@
 # Current status
 
-- Version: `v0.11.1`
-- Milestone: Local Media synchronization and transport hotfix for the combined Profiles/Hotkeys/Tray + Media Deck build
+- Version: `v0.11.2`
+- Milestone: startup crash and application icon hotfix after the Local Media synchronization build
 - Status: implementation and automated validation in progress; manual Windows 10 acceptance required
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
@@ -11,6 +11,10 @@
 - UI: persistent Board/Voice/Mixer/Routing/Settings shell with Profiles, user presets, global hotkeys, Tray, and shared state
 - Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
 - Media Deck: streaming local-media decode with bounded read-ahead, direct independent headphone monitor, Pitch-latency-aligned virtual send, transport, meter, and safe missing-file state
+
+## v0.11.2 startup and icon hotfix
+
+The v0.11.1 Windows 10 startup crash report identified an undefined `UiFont` StaticResource in the Media ±10 controls. v0.11.2 removes that invalid reference, inherits the normal themed UI font, and adds a smoke-test scanner that fails CI when a simple StaticResource key is not declared. The supplied GrassiBoard artwork is embedded as a multi-resolution Windows icon and is reused by the EXE, main window, custom title bar, taskbar/Alt+Tab, and tray icon.
 
 ## v0.11.1 Media synchronization hotfix
 
@@ -34,7 +38,7 @@ v0.9.0 adds live Mic, Soundboard, and Master gain; microphone Noise Gate and Com
 
 The release also restores visible meter fills through the shared WPF ProgressBar template, maps invalid/silent values safely to an empty `-60..0 dBFS` display, adds a subtle theme-aware restored-window border plus native DWM shadow, and makes custom maximize use the current monitor work area. Global Stop All now stops every Pad and the audio engine through the existing lifecycle path; it preserves configuration and permits a subsequent Start Engine.
 
-Native/managed v0.9.0 and ABI 6 are accepted. v0.11.1/ABI 7 remains pending CI and the combined manual acceptance matrix plus the Media synchronization hotfix checks.
+Native/managed v0.9.0 and ABI 6 are accepted. v0.11.2/ABI 7 remains pending CI and the combined manual acceptance matrix plus startup, icon, and Media synchronization hotfix checks.
 
 ## v0.8.3 manual acceptance
 

@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         xmlns:views="clr-namespace:GrassiBoard.Views"
-        Title="GrassiBoard" Height="800" Width="1280"
+        Title="GrassiBoard" Icon="Assets/GrassiBoard.ico" Height="800" Width="1280"
         MinHeight="700" MinWidth="1024"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" ResizeMode="CanResize"
@@ -42,9 +42,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
                     <Border Width="20" Height="20" CornerRadius="5"
                             Background="{DynamicResource AccentDarkBrush}">
-                        <TextBlock Text="G" Foreground="{DynamicResource AccentBrush}"
-                                   FontWeight="Bold" FontSize="12"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Image Source="Assets/GrassiBoard.png" Stretch="UniformToFill" />
                     </Border>
                     <TextBlock Text="GrassiBoard" FontWeight="SemiBold" FontSize="12"
                                VerticalAlignment="Center" Margin="9,0,0,0" />

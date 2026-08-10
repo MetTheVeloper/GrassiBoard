@@ -4,7 +4,7 @@ GrassiBoard is a Windows x64 live voice-processing and Soundboard application. I
 
 ## Current milestone
 
-`v0.11.1` is the Local Media synchronization hotfix for the combined Profiles/Hotkeys/Tray and Media Deck milestone. It is built on the manually accepted v0.9.0 Voice, Mixer, Soundboard, UI, and external-cable baseline.
+`v0.11.2` repairs the v0.11.1 startup XAML failure, adds automated StaticResource validation, and applies the official GrassiBoard application icon. It retains the v0.11.1 Local Media synchronization fixes and the manually accepted v0.9.0 Voice, Mixer, Soundboard, UI, and external-cable baseline.
 
 - **Board** is the daily workspace: streaming Local Media Deck, reusable Sound Pads, and compact Voice FX.
 - **Voice** contains full Pitch, Fine Pitch, Formant, preservation, quality, and latency controls.
