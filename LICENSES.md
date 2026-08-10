@@ -30,6 +30,10 @@ The project source is licensed under the Apache License 2.0; see `LICENSE`.
 
 The complete MIT notice is included in `THIRD-PARTY-NOTICES.txt` and in the portable package.
 
+## External virtual cable
+
+VB-CABLE and other virtual-cable products are independent optional prerequisites. They are not linked, embedded, or redistributed by GrassiBoard. The installer may display the publisher's official download link when no compatible endpoint is detected; the user downloads and licenses that software directly from its publisher.
+
 ## Microsoft Windows Driver Samples (SysVAD extraction)
 
 - Source: `src/GrassiBoard.Driver/Sysvad`

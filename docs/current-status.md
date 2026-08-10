@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v0.11.2`
-- Milestone: startup crash and application icon hotfix after the Local Media synchronization build
-- Status: implementation and automated validation in progress; manual Windows 10 acceptance required
+- Version: `v1.0.0` release candidate
+- Milestone: final stability, device recovery, Media synchronization, and branded packaging
+- Status: implementation and automated validation in progress; long-running Windows 10 and installer acceptance required before stable promotion
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -10,7 +10,15 @@
 - Virtual routing: vendor-neutral external cable selected as the processed WASAPI render destination
 - UI: persistent Board/Voice/Mixer/Routing/Settings shell with Profiles, user presets, global hotkeys, Tray, and shared state
 - Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
-- Media Deck: streaming local-media decode with bounded read-ahead, direct independent headphone monitor, Pitch-latency-aligned virtual send, transport, meter, and safe missing-file state
+- Media Deck: streaming local-media decode with bounded read-ahead, buffered independent headphone monitor, full microphone-path-aligned virtual send, transport, meter, and safe missing-file state
+
+## v1.0.0 final release candidate
+
+The final candidate corrects remaining humanized labels, green-button foregrounds, and Media transport text. Native ABI 8 reports the total Media Vocal Sync delay and aligns the virtual Media send to capture, active Pitch, current microphone ring, and the estimated local-monitor path so a vocal recorded over a monitored beat shares the same time base.
+
+If the active physical microphone disappears, the app now rebuilds the route on the next usable physical input and reapplies the current Voice and Mixer state. With no usable microphone it keeps the process and cable output alive safely, force-mutes only the microphone branch, and retries without changing the user's stored Mute choice.
+
+CI now produces both the portable ZIP and a branded single-file per-user installer. Setup embeds the verified portable payload, supports path selection/progress/finish/open, registers safe manifest-based uninstall, and offers the official VB-CABLE link when no compatible cable is active without blocking installation. The v1.0.0 tag remains a prerelease until the user accepts the long-duration Windows 10 matrix.
 
 ## v0.11.2 startup and icon hotfix
 
@@ -38,7 +46,7 @@ v0.9.0 adds live Mic, Soundboard, and Master gain; microphone Noise Gate and Com
 
 The release also restores visible meter fills through the shared WPF ProgressBar template, maps invalid/silent values safely to an empty `-60..0 dBFS` display, adds a subtle theme-aware restored-window border plus native DWM shadow, and makes custom maximize use the current monitor work area. Global Stop All now stops every Pad and the audio engine through the existing lifecycle path; it preserves configuration and permits a subsequent Start Engine.
 
-Native/managed v0.9.0 and ABI 6 are accepted. v0.11.2/ABI 7 remains pending CI and the combined manual acceptance matrix plus startup, icon, and Media synchronization hotfix checks.
+Native/managed v0.9.0 and the v0.11.2 functional baseline are accepted. v1.0.0/ABI 8 remains pending CI plus the final recovery, Media synchronization, installer, uninstall, and long-duration matrix.
 
 ## v0.8.3 manual acceptance
 

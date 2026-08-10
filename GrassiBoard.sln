@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -11,6 +11,10 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GrassiBoard.DeviceTool", "src\GrassiBoard.DeviceTool\GrassiBoard.DeviceTool.vcxproj", "{73E9189E-F850-4AC3-ACFF-59AB3936473E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrassiBoard.App.SmokeTests", "tests\GrassiBoard.App.SmokeTests\GrassiBoard.App.SmokeTests.csproj", "{E51A53D7-6F65-470B-8028-CDE88B39EBEF}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{E01B7BCD-73EA-43CC-86B5-5779AED7130E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrassiBoard.Installer", "src\GrassiBoard.Installer\GrassiBoard.Installer.csproj", "{45690958-34B6-428B-BB00-C4C8967163AA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -38,8 +42,15 @@ Global
 		{E51A53D7-6F65-470B-8028-CDE88B39EBEF}.Debug|x64.Build.0 = Debug|Any CPU
 		{E51A53D7-6F65-470B-8028-CDE88B39EBEF}.Release|x64.ActiveCfg = Release|Any CPU
 		{E51A53D7-6F65-470B-8028-CDE88B39EBEF}.Release|x64.Build.0 = Release|Any CPU
+		{45690958-34B6-428B-BB00-C4C8967163AA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{45690958-34B6-428B-BB00-C4C8967163AA}.Debug|x64.Build.0 = Debug|Any CPU
+		{45690958-34B6-428B-BB00-C4C8967163AA}.Release|x64.ActiveCfg = Release|Any CPU
+		{45690958-34B6-428B-BB00-C4C8967163AA}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{45690958-34B6-428B-BB00-C4C8967163AA} = {E01B7BCD-73EA-43CC-86B5-5779AED7130E}
 	EndGlobalSection
 EndGlobal

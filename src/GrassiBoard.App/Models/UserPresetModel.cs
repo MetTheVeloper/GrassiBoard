@@ -30,4 +30,6 @@ internal sealed class UserPresetModel : ObservableObject
         Hotkey = string.Empty,
         State = State.Clone()
     };
+
+    public override string ToString() => Name;
 }

@@ -8,12 +8,12 @@
 int main()
 {
     static_assert(sizeof(gb_audio_statistics) == 144U, "Native statistics ABI layout changed unexpectedly.");
-    if (gb_get_api_version() != 7U) {
+    if (gb_get_api_version() != 8U) {
         std::cerr << "Unexpected native API version.\n";
         return 1;
     }
 
-    if (std::strcmp(gb_get_version(), "0.11.2") != 0) {
+    if (std::strcmp(gb_get_version(), "1.0.0") != 0) {
         std::cerr << "Unexpected native engine version.\n";
         return 2;
     }
@@ -25,7 +25,7 @@ int main()
     }
 
     gb_engine_handle engine = nullptr;
-    if (gb_engine_create(7U, &engine) != GB_OK || engine == nullptr) {
+    if (gb_engine_create(8U, &engine) != GB_OK || engine == nullptr) {
         std::cerr << "Engine creation failed.\n";
         return 4;
     }
@@ -94,12 +94,14 @@ int main()
     std::uint32_t acceptedMediaFrames = 0U;
     if (gb_media_write(engine, clip, 2U, &acceptedMediaFrames) != GB_OK ||
         acceptedMediaFrames != 2U ||
+        gb_media_set_monitor_latency(engine, 2'400U) != GB_OK ||
         gb_media_set_active(engine, 1U) != GB_OK ||
         gb_media_set_active(engine, 2U) != GB_ERROR_INVALID_ARGUMENT ||
         gb_get_audio_statistics(engine, &statistics) != GB_OK ||
         statistics.media_buffer_fill_frames != 2U ||
         statistics.media_buffer_capacity_frames < 2U ||
         statistics.media_active != 1U ||
+        statistics.media_alignment_frames < 2'400U ||
         gb_media_clear(engine) != GB_OK ||
         gb_get_audio_statistics(engine, &statistics) != GB_OK ||
         statistics.media_buffer_fill_frames != 0U) {

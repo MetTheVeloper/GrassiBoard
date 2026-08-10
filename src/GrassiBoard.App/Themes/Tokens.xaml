@@ -58,6 +58,7 @@
     <Thickness x:Key="CardPadding">18</Thickness>
     <CornerRadius x:Key="CardRadius">12</CornerRadius>
     <CornerRadius x:Key="ControlRadius">7</CornerRadius>
+    <FontFamily x:Key="UiFont">Segoe UI</FontFamily>
     <FontFamily x:Key="MonoFont">Consolas</FontFamily>
     <FontFamily x:Key="IconFont">Segoe MDL2 Assets</FontFamily>
 </ResourceDictionary>

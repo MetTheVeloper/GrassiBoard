@@ -61,6 +61,7 @@ struct gb_audio_statistics {
     float media_peak;
     float media_rms;
     std::uint32_t media_active;
+    std::uint32_t media_alignment_frames;
 };
 
 struct gb_mixer_settings {
@@ -135,6 +136,9 @@ GB_API gb_result GB_CALL gb_media_write(
     std::uint32_t* accepted_frames) noexcept;
 GB_API gb_result GB_CALL gb_media_set_active(gb_engine_handle engine, std::uint32_t active) noexcept;
 GB_API gb_result GB_CALL gb_media_clear(gb_engine_handle engine) noexcept;
+GB_API gb_result GB_CALL gb_media_set_monitor_latency(
+    gb_engine_handle engine,
+    std::uint32_t latency_frames) noexcept;
 GB_API gb_result GB_CALL gb_set_microphone_muted(gb_engine_handle engine, std::uint32_t muted) noexcept;
 GB_API gb_result GB_CALL gb_set_mixer_settings(
     gb_engine_handle engine,

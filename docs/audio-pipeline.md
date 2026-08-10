@@ -1,6 +1,6 @@
 # Audio pipeline
 
-## v0.11.2 live route
+## v1.0.0 live route
 
 ```text
 Selected physical microphone
@@ -52,4 +52,15 @@ It must not:
 
 The WPF timer samples native statistics every 100 ms rather than repainting at audio-block frequency. Linear peaks are mapped to a clamped `-60..0 dBFS` display range; silence, NaN, and infinity map to an empty meter.
 
-Diagnostics additionally expose Media ring fill/capacity/underruns and an estimated processing total. The estimate is not a physical loopback measurement.
+Diagnostics additionally expose Media ring fill/capacity/underruns, Media Vocal Sync, and an estimated processing total. The estimates are not a physical loopback measurement.
+
+## Local Media vocal synchronization
+
+The performer hears Media through a bounded local-monitor queue. The Media frames sent to the virtual microphone are delayed by the corresponding microphone path before render:
+
+```text
+capture buffer + active Pitch latency + current microphone ring fill
++ estimated local monitor output latency + monitor queue target
+```
+
+The delay is recomputed when Media starts or Voice quality changes and is capped by the fixed native Media ring capacity. This aligns what the target application records with the beat heard in headphones; it does not route microphone audio to the headphones.

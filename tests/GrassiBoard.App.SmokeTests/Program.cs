@@ -96,7 +96,7 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "0.11.2" || NativeAudioEngine.ExpectedApiVersion != 7U)
+if (BuildInfo.CurrentVersion != "1.0.0" || NativeAudioEngine.ExpectedApiVersion != 8U)
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -105,7 +105,7 @@ if (BuildInfo.CurrentVersion != "0.11.2" || NativeAudioEngine.ExpectedApiVersion
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "0.11.2",
+      "Version": "1.0.0",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -114,7 +114,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "0.11.2" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "1.0.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -231,6 +231,26 @@ try
     {
         Console.Error.WriteLine("Audio device display-name contract failed.");
         return 17;
+    }
+
+    if (new ProfileModel { Name = "Studio" }.ToString() != "Studio" ||
+        new UserPresetModel { Name = "Radio voice" }.ToString() != "Radio voice")
+    {
+        Console.Error.WriteLine("Profile or user-preset display-name contract failed.");
+        return 21;
+    }
+
+    AudioDevice failedInput = new() { Id = "failed", Name = "USB Microphone", IsDefault = true };
+    AudioDevice fallbackInput = new() { Id = "fallback", Name = "Webcam Microphone" };
+    AudioDevice cableInput = new() { Id = "cable", Name = "CABLE Output (VB-Audio Virtual Cable)" };
+    AudioDevice? recoveryInput = DeviceRecoveryPolicy.SelectNextInput(
+        [failedInput, cableInput, fallbackInput],
+        failedInput.Id);
+    if (recoveryInput?.Id != fallbackInput.Id ||
+        DeviceRecoveryPolicy.SelectNextInput([cableInput], failedInput.Id) is not null)
+    {
+        Console.Error.WriteLine("Automatic microphone recovery selection contract failed.");
+        return 22;
     }
 
     string crashPath = CrashReporter.Report(

@@ -1,5 +1,7 @@
 # Recovery
 
-No kernel driver, Windows service, test certificate, test-signing setting, or audio endpoint is installed by Milestone 3. Recovery consists of stopping/closing the app and deleting its extracted folder. If monitoring remains active after an abnormal exit, close the process in Task Manager; WASAPI streams are released when the process ends.
+GrassiBoard installs no kernel driver, Windows service, certificate, or test-signing setting. WASAPI streams are process-owned and are released on normal exit or process termination.
 
-Full Safe Mode, PnPUtil, Driver Verifier, Windows Audio service, certificate, and test-signing recovery procedures will be added before the first driver test package is distributed.
+While the engine is live, loss of the selected physical microphone triggers an in-process route rebuild. GrassiBoard excludes known virtual-cable endpoints, selects the next available physical/default capture device, reapplies the existing Voice and Mixer state, and resumes the same virtual output. If no physical microphone is available, the microphone branch is force-muted and recovery is retried without changing the user's persisted Mute setting. Reconnecting a usable microphone permits automatic recovery.
+
+The installed build can be removed through Windows Apps & features or `GrassiBoard.Uninstall.exe`. Uninstall deletes only manifest-owned application files, shortcuts, and the uninstall registration. It deliberately preserves `%APPDATA%\GrassiBoard`, `%LOCALAPPDATA%\GrassiBoard`, original Sound Pad/Media files, and any independently installed virtual cable.

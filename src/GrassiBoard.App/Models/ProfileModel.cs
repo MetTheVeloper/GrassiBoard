@@ -66,4 +66,6 @@ internal sealed class ProfileModel : ObservableObject
             LastMediaPath = Preferences.LastMediaPath
         }
     };
+
+    public override string ToString() => Name;
 }

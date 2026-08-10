@@ -1,0 +1,35 @@
+<Application x:Class="GrassiBoard.Installer.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Application.Resources>
+        <SolidColorBrush x:Key="PanelBrush" Color="#08152F" />
+        <SolidColorBrush x:Key="TextBrush" Color="#F7FAFF" />
+        <SolidColorBrush x:Key="MutedBrush" Color="#A9BCD9" />
+        <SolidColorBrush x:Key="AccentBrush" Color="#168B68" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#294C78" />
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="FontFamily" Value="Segoe UI" />
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="Padding" Value="20,10" />
+            <Setter Property="MinWidth" Value="110" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+        <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="#11274A" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="Foreground" Value="{StaticResource TextBrush}" />
+            <Setter Property="Background" Value="#071126" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Padding" Value="12,9" />
+            <Setter Property="CaretBrush" Value="White" />
+        </Style>
+    </Application.Resources>
+</Application>

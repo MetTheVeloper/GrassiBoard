@@ -238,6 +238,7 @@ void WasapiEngine::SetFormantPreservation(const bool preserve) noexcept
 void WasapiEngine::SetPitchQuality(const PitchQualityMode mode) noexcept
 {
     pitch_processor_.SetQualityMode(mode);
+    UpdateMediaAlignment();
 }
 
 gb_result WasapiEngine::LoadSoundClip(
@@ -282,12 +283,22 @@ gb_result WasapiEngine::WriteMedia(
 
 void WasapiEngine::SetMediaActive(const bool active) noexcept
 {
+    if (active) {
+        UpdateMediaAlignment();
+    }
     media_stream_.SetActive(active);
 }
 
 void WasapiEngine::ClearMedia() noexcept
 {
     media_stream_.Clear();
+}
+
+void WasapiEngine::SetMediaMonitorLatency(const std::uint32_t latencyFrames) noexcept
+{
+    media_monitor_latency_frames_.store(
+        std::min<std::uint32_t>(latencyFrames, kSampleRate), std::memory_order_release);
+    UpdateMediaAlignment();
 }
 
 void WasapiEngine::SetMicrophoneMuted(const bool muted) noexcept
@@ -316,6 +327,20 @@ void WasapiEngine::UpdatePitchTarget() noexcept
     const float semitones = pitch_semitones_.load(std::memory_order_acquire);
     const float cents = pitch_cents_.load(std::memory_order_acquire);
     pitch_processor_.SetPitchSemitones(semitones + cents / 100.0F);
+}
+
+void WasapiEngine::UpdateMediaAlignment() noexcept
+{
+    const std::uint32_t pitchLatency = pitch_processor_.GetLatencySamples();
+    const std::uint64_t microphonePath =
+        static_cast<std::uint64_t>(capture_buffer_frames_.load(std::memory_order_relaxed)) +
+        pitchLatency +
+        ring_buffer_fill_frames_.load(std::memory_order_relaxed);
+    const std::uint64_t monitorPath = media_monitor_latency_frames_.load(std::memory_order_relaxed);
+    const std::uint64_t aligned = std::min<std::uint64_t>(
+        microphonePath + monitorPath, static_cast<std::uint64_t>(kMediaCapacityFrames - 1U));
+    media_alignment_pitch_frames_.store(pitchLatency, std::memory_order_release);
+    media_alignment_frames_.store(static_cast<std::uint32_t>(aligned), std::memory_order_release);
 }
 
 void WasapiEngine::GetStatistics(gb_audio_statistics& statistics) const noexcept
@@ -349,6 +374,7 @@ void WasapiEngine::GetStatistics(gb_audio_statistics& statistics) const noexcept
     statistics.media_peak = media_peak_.load(std::memory_order_relaxed);
     statistics.media_rms = media_rms_.load(std::memory_order_relaxed);
     statistics.media_active = media_stream_.IsActive() ? 1U : 0U;
+    statistics.media_alignment_frames = media_alignment_frames_.load(std::memory_order_relaxed);
 }
 
 std::string WasapiEngine::GetLastError() const
@@ -406,6 +432,8 @@ void WasapiEngine::ResetStatistics() noexcept
     media_underrun_count_.store(0U, std::memory_order_relaxed);
     media_peak_.store(0.0F, std::memory_order_relaxed);
     media_rms_.store(0.0F, std::memory_order_relaxed);
+    media_alignment_frames_.store(0U, std::memory_order_relaxed);
+    media_alignment_pitch_frames_.store(0U, std::memory_order_relaxed);
     media_stream_.Clear();
     media_stream_.SetActive(false);
     soundboard_mixer_.ResetPlayback();
@@ -618,7 +646,13 @@ void WasapiEngine::Worker() noexcept
                         bool underrun = false;
                         bool mediaUnderrun = false;
                         mixer_processor_.BeginBlock();
-                        media_stream_.SynchronizeDelay(pitch_processor_.GetLatencySamples());
+                        if (media_stream_.IsActive() &&
+                            pitch_processor_.GetLatencySamples() !=
+                                media_alignment_pitch_frames_.load(std::memory_order_relaxed)) {
+                            UpdateMediaAlignment();
+                        }
+                        media_stream_.SynchronizeDelay(
+                            media_alignment_frames_.load(std::memory_order_relaxed));
                         for (UINT32 frame = 0; frame < available; ++frame) {
                             float microphoneSample = 0.0F;
                             if (!ring_buffer_.Pop(microphoneSample)) {

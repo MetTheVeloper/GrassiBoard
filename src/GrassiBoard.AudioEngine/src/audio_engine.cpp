@@ -9,8 +9,8 @@
 #include <string>
 
 namespace {
-constexpr std::uint32_t kApiVersion = 7;
-constexpr char kEngineVersion[] = "0.11.2";
+constexpr std::uint32_t kApiVersion = 8;
+constexpr char kEngineVersion[] = "1.0.0";
 
 gb_result WriteUtf8Result(
     const std::string& value,
@@ -281,6 +281,17 @@ gb_result GB_CALL gb_media_clear(const gb_engine_handle engine) noexcept
         return GB_ERROR_INVALID_ARGUMENT;
     }
     static_cast<grassiboard::WasapiEngine*>(engine)->ClearMedia();
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_media_set_monitor_latency(
+    const gb_engine_handle engine,
+    const std::uint32_t latency_frames) noexcept
+{
+    if (engine == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetMediaMonitorLatency(latency_frames);
     return GB_OK;
 }
 

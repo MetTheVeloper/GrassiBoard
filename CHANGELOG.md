@@ -2,6 +2,26 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [1.0.0] - 2026-08-10
+
+### Added
+
+- Add automatic live-route recovery when the selected physical microphone disappears: switch to the next usable physical capture device while preserving Voice/Mixer/Media state, or force-mute the microphone branch and retry safely when none exists.
+- Add a branded single-file per-user Windows installer using the supplied GrassiBoard poster, destination selection, progress/completion states, launch action, shortcuts, Apps & features registration, and manifest-based uninstall.
+- Detect common external cable endpoints during Setup and show the official VB-CABLE Windows download link when missing without blocking installation.
+- Extend native ABI 8 with explicit Media alignment reporting and managed control of the local-monitor path estimate.
+
+### Fixed
+
+- Render Profile and user-preset selectors by their human-readable names instead of CLR type names.
+- Keep text and icons white on green action buttons in both themes.
+- Replace font-fragile Media ±10 controls with stable `-10s` and `+10s` labels.
+- Align the Media virtual-send branch to the complete microphone pre-render path and account for the buffered local headphone monitor, rather than delaying by Pitch latency alone.
+
+### Release state
+
+- This build is published as a prerelease pending the final Windows 10 long-duration and installer/uninstaller acceptance pass.
+
 ## [0.11.2] - 2026-08-10
 
 ### Fixed

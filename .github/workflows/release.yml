@@ -30,10 +30,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $archives = Get-ChildItem ./artifacts/release -Filter '*.zip' -File
+          $installers = Get-ChildItem ./artifacts/release -Filter 'GrassiBoard-Setup-*.exe' -File
           if ($archives.Count -ne 3) {
             throw "Expected three release ZIPs, found $($archives.Count)."
           }
-          gh release create $env:GITHUB_REF_NAME $archives.FullName `
+          if ($installers.Count -ne 1) {
+            throw "Expected one setup executable, found $($installers.Count)."
+          }
+          $assets = @($archives) + @($installers)
+          gh release create $env:GITHUB_REF_NAME $assets.FullName `
             --repo $env:GITHUB_REPOSITORY `
             --title "GrassiBoard $env:GITHUB_REF_NAME" `
             --prerelease `

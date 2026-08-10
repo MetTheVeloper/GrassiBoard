@@ -6,7 +6,7 @@ namespace GrassiBoard.Services;
 
 internal sealed partial class NativeAudioEngine : IDisposable
 {
-    internal const uint ExpectedApiVersion = 7U;
+    internal const uint ExpectedApiVersion = 8U;
     private nint _engine;
 
     public uint ApiVersion { get; private set; }
@@ -75,6 +75,8 @@ internal sealed partial class NativeAudioEngine : IDisposable
     public NativeResult StopAllSounds() => NativeMethods.StopAllSounds(_engine);
     public NativeResult SetMediaActive(bool active) => NativeMethods.SetMediaActive(_engine, active ? 1U : 0U);
     public NativeResult ClearMedia() => NativeMethods.ClearMedia(_engine);
+    public NativeResult SetMediaMonitorLatency(uint latencyFrames) =>
+        NativeMethods.SetMediaMonitorLatency(_engine, latencyFrames);
     public NativeResult GetStatistics(out AudioStatistics statistics) => NativeMethods.GetAudioStatistics(_engine, out statistics);
 
     public unsafe NativeResult LoadSound(ulong key, float[] samples, ulong frameCount)
@@ -200,6 +202,9 @@ internal sealed partial class NativeAudioEngine : IDisposable
         [LibraryImport(LibraryName, EntryPoint = "gb_media_clear")]
         internal static partial NativeResult ClearMedia(nint engine);
 
+        [LibraryImport(LibraryName, EntryPoint = "gb_media_set_monitor_latency")]
+        internal static partial NativeResult SetMediaMonitorLatency(nint engine, uint latencyFrames);
+
         [LibraryImport(LibraryName, EntryPoint = "gb_set_microphone_muted")]
         internal static partial NativeResult SetMicrophoneMuted(nint engine, uint muted);
 
@@ -293,4 +298,5 @@ internal struct AudioStatistics
     public float MediaPeak;
     public float MediaRms;
     public uint MediaActive;
+    public uint MediaAlignmentFrames;
 }

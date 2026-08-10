@@ -46,7 +46,7 @@
     </Style>
 
     <Style TargetType="Button">
-        <Setter Property="Foreground" Value="#07110D" />
+        <Setter Property="Foreground" Value="White" />
         <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="BorderThickness" Value="1" />
@@ -127,6 +127,11 @@
         <Setter Property="Padding" Value="0" />
         <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
         <Setter Property="FontSize" Value="14" />
+    </Style>
+    <Style x:Key="GbTransportTextButtonStyle" TargetType="Button" BasedOn="{StaticResource GbTransportButtonStyle}">
+        <Setter Property="FontFamily" Value="{StaticResource UiFont}" />
+        <Setter Property="FontSize" Value="10" />
+        <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
     <Style x:Key="TitleBarButtonStyle" TargetType="Button" BasedOn="{StaticResource GbIconButtonStyle}">
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />

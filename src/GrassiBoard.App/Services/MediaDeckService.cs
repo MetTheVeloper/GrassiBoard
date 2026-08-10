@@ -12,6 +12,10 @@ internal sealed class MediaDeckService : IDisposable
     private const int Channels = 2;
     private const int BlockFrames = 960;
     private const uint ReadAheadFrames = 9_600U;
+    private const int MonitorDesiredLatencyMilliseconds = 50;
+    private const uint MonitorQueueFrames = 2_880U;
+    private const uint MonitorPathLatencyFrames =
+        (uint)(SampleRate * MonitorDesiredLatencyMilliseconds / 1000) + MonitorQueueFrames;
     private readonly NativeAudioEngine _engine;
     private readonly Func<bool> _engineRunning;
     private readonly CancellationTokenSource _shutdown = new();
@@ -265,11 +269,16 @@ internal sealed class MediaDeckService : IDisposable
                             };
                             using var enumerator = new MMDeviceEnumerator();
                             MMDevice device = enumerator.GetDevice(monitorId);
-                            monitorOutput = new WasapiOut(device, AudioClientShareMode.Shared, true, 100);
+                            monitorOutput = new WasapiOut(
+                                device,
+                                AudioClientShareMode.Shared,
+                                true,
+                                MonitorDesiredLatencyMilliseconds);
                             monitorOutput.Init(monitorBuffer);
                             monitorOutput.Play();
                         }
                         activeGeneration = generation;
+                        _engine.SetMediaMonitorLatency(monitor ? MonitorPathLatencyFrames : 0U);
                         _engine.ClearMedia();
                         _engine.SetMediaActive(false);
                     }
@@ -297,13 +306,12 @@ internal sealed class MediaDeckService : IDisposable
                 uint alignmentFrames = 0U;
                 if (canSend && _engine.GetStatistics(out AudioStatistics statistics) == NativeResult.Ok)
                 {
-                    alignmentFrames = statistics.PitchLatencySamples;
+                    alignmentFrames = statistics.MediaAlignmentFrames;
                     uint alignedReadAhead = ReadAheadFrames + alignmentFrames;
                     nativeFull = statistics.MediaBufferFillFrames >= alignedReadAhead;
                 }
-                double alignedReadAheadMilliseconds = (ReadAheadFrames + alignmentFrames) * 1000.0 / SampleRate;
                 bool monitorFull = monitorBuffer is not null &&
-                    monitorBuffer.BufferedDuration >= TimeSpan.FromMilliseconds(alignedReadAheadMilliseconds);
+                    monitorBuffer.BufferedBytes >= checked((int)(MonitorQueueFrames * Channels * sizeof(float)));
                 if ((canSend && nativeFull) || (canMonitor && monitorFull))
                 {
                     await Task.Delay(10, cancellationToken);

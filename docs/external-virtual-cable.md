@@ -16,7 +16,7 @@ GrassiBoard opens only the physical microphone and the cable playback endpoint. 
 
 ## Recommended reference
 
-[VB-CABLE](https://vb-audio.com/Cable/) is the reference test dependency. Its publisher describes it as a Windows virtual audio driver where audio sent to the cable input is forwarded to the cable output. It is donationware with separate licensing; GrassiBoard does not download, bundle, modify, or silently install it.
+[VB-CABLE](https://vb-audio.com/Cable/) is the reference test dependency. Its publisher describes it as a Windows virtual audio driver where audio sent to the cable input is forwarded to the cable output. It is donationware with separate licensing; GrassiBoard does not bundle, modify, or silently install it. When no compatible cable is detected, the v1 installer completes normally and shows the publisher's current [direct Windows package](https://download.vb-audio.com/Download_CABLE/VBCABLE_Driver_Pack45.zip).
 
 Download only from the publisher, extract the complete archive, run the x64 setup as Administrator, and reboot after installation as instructed by the publisher. Other external cables can work if they expose an active playback/recording pair.
 
@@ -30,6 +30,6 @@ Download only from the publisher, extract the complete archive, run the x64 setu
 
 If the installed `AMM Virtual Audio Device` exposes a working paired playback/recording endpoint, it can be tested before installing another cable. GrassiBoard is not tied to VB-CABLE.
 
-## Current limitation
+## Product boundary
 
-`v0.7.0` sends one processed stream to the cable. Separate low-latency headphone monitoring is intentionally deferred so system-wide microphone routing can be accepted independently. Monitoring supplied by a target application may be used for testing, but can add latency.
+The cable remains an independent prerequisite with its own installer, reboot requirements, and license. GrassiBoard's installer only detects active endpoints and offers the official link; it never treats a missing cable as an installation failure.

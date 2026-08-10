@@ -61,6 +61,7 @@ public:
         std::uint32_t& acceptedFrames) noexcept;
     void SetMediaActive(bool active) noexcept;
     void ClearMedia() noexcept;
+    void SetMediaMonitorLatency(std::uint32_t latencyFrames) noexcept;
     void SetMicrophoneMuted(bool muted) noexcept;
     void SetMixerSettings(const gb_mixer_settings& settings) noexcept;
     void GetStatistics(gb_audio_statistics& statistics) const noexcept;
@@ -111,9 +112,13 @@ private:
     std::atomic<std::uint64_t> media_underrun_count_{0U};
     std::atomic<float> media_peak_{0.0F};
     std::atomic<float> media_rms_{0.0F};
+    std::atomic<std::uint32_t> media_monitor_latency_frames_{0U};
+    std::atomic<std::uint32_t> media_alignment_frames_{0U};
+    std::atomic<std::uint32_t> media_alignment_pitch_frames_{0U};
     std::atomic<bool> microphone_muted_{false};
 
     void UpdatePitchTarget() noexcept;
+    void UpdateMediaAlignment() noexcept;
 };
 
 }

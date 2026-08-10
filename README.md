@@ -4,7 +4,7 @@ GrassiBoard is a Windows x64 live voice-processing and Soundboard application. I
 
 ## Current milestone
 
-`v0.11.2` repairs the v0.11.1 startup XAML failure, adds automated StaticResource validation, and applies the official GrassiBoard application icon. It retains the v0.11.1 Local Media synchronization fixes and the manually accepted v0.9.0 Voice, Mixer, Soundboard, UI, and external-cable baseline.
+`v1.0.0` is the final release candidate for long-running Windows 10 acceptance. It preserves the accepted v0.11.2 baseline, fixes humanized selector labels and transport rendering, aligns Local Media to the complete live microphone path, recovers automatically when the active physical microphone disappears, and adds a branded per-user installer. The tag remains a prerelease until the final manual soak test is accepted.
 
 - **Board** is the daily workspace: streaming Local Media Deck, reusable Sound Pads, and compact Voice FX.
 - **Voice** contains full Pitch, Fine Pitch, Formant, preservation, quality, and latency controls.
@@ -15,7 +15,7 @@ GrassiBoard is a Windows x64 live voice-processing and Soundboard application. I
 
 Sound Pads support WAV and MP3, volume, Loop, per-pad stop, simultaneous playback, drag/drop, edit/delete, and JSON persistence. Files are referenced in their original locations. They are decoded and resampled to stereo 48 kHz float away from the real-time audio callback, then cached in the native engine.
 
-The Local Media Deck streams long audio (and supported local video audio tracks) with bounded read-ahead instead of loading the whole file. Headphone monitoring stays direct, while virtual-microphone Media send is delayed by the active Pitch algorithm latency so singing over a monitored beat reaches the target application in sync. Microphone audio is never sent to the monitor route.
+The Local Media Deck streams long audio (and supported local video audio tracks) with bounded read-ahead instead of loading the whole file. Headphone monitoring is deliberately buffered and the virtual-microphone Media branch is aligned to the microphone's capture, Pitch, ring, and monitor path so singing over a monitored beat reaches the target application in sync. Microphone audio is never sent to the monitor route.
 
 ## Audio route
 
@@ -30,7 +30,7 @@ Voice Pitch/Formant affects only the microphone branch. Mic Mute leaves Sound Pa
 
 ## External cable
 
-GrassiBoard does not bundle or install a virtual driver. Any Windows virtual cable exposing a paired playback and recording endpoint can work. VB-CABLE is the documented reference. Download and license it directly from its publisher.
+GrassiBoard does not bundle or install a virtual driver. Any Windows virtual cable exposing a paired playback and recording endpoint can work. VB-CABLE is the documented reference. The installer detects common cable endpoints and, when none is found, shows the publisher's direct download link without blocking installation.
 
 See [external virtual cable setup](docs/external-virtual-cable.md). Do not select the cable's recording endpoint as GrassiBoard's physical input, because that creates a routing loop.
 
@@ -48,6 +48,8 @@ dotnet build src/GrassiBoard.App/GrassiBoard.App.csproj -c Release -p:Platform=x
 ```
 
 GitHub Actions publishes a self-contained portable Windows package, symbols, and test results. A user does not need local build tools to test the milestone artifact.
+
+It also builds `GrassiBoard-Setup-win-x64-*.exe`, a single-file branded installer containing the portable payload. Installation is per-user under `%LOCALAPPDATA%\Programs\GrassiBoard`, requires no elevation, creates an uninstall entry, and never bundles the third-party cable driver.
 
 ## Documentation
 

@@ -89,6 +89,11 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     private bool _mediaSeeking;
     private bool _mediaTimelineSeeking;
     private long _mediaPositionHoldUntil;
+    private bool _automaticRecoveryArmed;
+    private bool _automaticRecoveryInProgress;
+    private bool _forcedRecoveryMute;
+    private string _failedInputDeviceId = string.Empty;
+    private DateTimeOffset _nextRecoveryAttemptUtc;
 
     public MainViewModel(SoundboardStore? store = null, ProfileStore? profileStore = null)
     {
@@ -409,7 +414,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
                 return 0.0;
             }
 
-            uint alignmentFrames = _statistics.MediaActive != 0U ? _statistics.PitchLatencySamples : 0U;
+            uint alignmentFrames = _statistics.MediaActive != 0U ? _statistics.MediaAlignmentFrames : 0U;
             uint readAheadFrames = _statistics.MediaBufferFillFrames > alignmentFrames
                 ? _statistics.MediaBufferFillFrames - alignmentFrames
                 : 0U;
@@ -552,7 +557,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         {
             if (SetProperty(ref _microphoneMuted, value) && NativeReady)
             {
-                _engine.SetMicrophoneMuted(value);
+                ApplyEffectiveMicrophoneMute();
                 OnPropertyChanged(nameof(MuteButtonLabel));
                 ScheduleSave();
             }
@@ -854,7 +859,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         catch (Exception exception) when (exception is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
             EngineStatus = $"Native engine unavailable · {exception.GetType().Name}";
-            EngineDetail = "Use the complete v0.11.2 portable package.";
+            EngineDetail = "Use the complete v1.0.0 package.";
         }
     }
 
@@ -1016,6 +1021,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         }
 
         IsBusy = true;
+        _automaticRecoveryArmed = false;
         try
         {
             _mediaDeck.Stop();
@@ -1083,12 +1089,17 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
                     return;
                 }
                 IsRunning = true;
+                _forcedRecoveryMute = false;
+                _failedInputDeviceId = string.Empty;
+                _automaticRecoveryArmed = true;
+                ApplyEffectiveMicrophoneMute();
                 _mediaDeck.SetEngineRunning(true);
                 EngineStatus = "Virtual microphone is live";
                 EngineDetail = $"48 kHz · {QualityLabel} · Media/Soundboard mixer ready";
             }
             else
             {
+                _automaticRecoveryArmed = false;
                 _mediaDeck.Stop();
                 StopAllSounds();
                 NativeResult result = await Task.Run(_engine.Stop);
@@ -1186,8 +1197,11 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         _engine.SetFormant((float)Formant);
         _engine.SetFormantPreservation(PreserveVocalCharacter);
         _engine.SetQuality((uint)QualityIndex);
-        _engine.SetMicrophoneMuted(MicrophoneMuted);
+        ApplyEffectiveMicrophoneMute();
     }
+
+    private void ApplyEffectiveMicrophoneMute() =>
+        _engine.SetMicrophoneMuted(MicrophoneMuted || _forcedRecoveryMute);
 
     private void ApplyMixerState()
     {
@@ -1536,6 +1550,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         MasterDb = FormatDb(_statistics.MasterPeak);
         RefreshMediaState();
         OnPropertyChanged(nameof(PitchLatencyMilliseconds));
+        OnPropertyChanged(nameof(MediaAlignmentMilliseconds));
         OnPropertyChanged(nameof(EstimatedTotalLatencyMilliseconds));
 
         if (IsRunning && _statistics.Running == 0U)
@@ -1544,6 +1559,16 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             EngineStatus = "Audio stream stopped unexpectedly";
             EngineDetail = _engine.ReadLastError();
             StopAllSounds();
+            if (_automaticRecoveryArmed)
+            {
+                _failedInputDeviceId = SelectedInput?.Id ?? string.Empty;
+                _ = RecoverAudioRouteAsync();
+            }
+        }
+        else if (!IsRunning && _automaticRecoveryArmed &&
+                 !_automaticRecoveryInProgress && DateTimeOffset.UtcNow >= _nextRecoveryAttemptUtc)
+        {
+            _ = RecoverAudioRouteAsync();
         }
 
         DateTimeOffset now = DateTimeOffset.UtcNow;
@@ -1567,6 +1592,104 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         _hotkeys.Attach(window);
         _showHideAction = showHide;
         RefreshHotkeys();
+    }
+
+    private async Task RecoverAudioRouteAsync()
+    {
+        if (_automaticRecoveryInProgress || !_automaticRecoveryArmed || _disposed)
+        {
+            return;
+        }
+
+        _automaticRecoveryInProgress = true;
+        IsBusy = true;
+        try
+        {
+            _mediaDeck.SetEngineRunning(false);
+            await Task.Run(_engine.Stop);
+
+            (IReadOnlyList<AudioDevice> inputs, IReadOnlyList<AudioDevice> outputs) = await Task.Run(() =>
+                (_engine.EnumerateDevices(true), _engine.EnumerateDevices(false)));
+
+            _captureDevices = inputs;
+            AudioDevice? previousOutput = SelectedOutput;
+            AudioDevice? previousMonitor = SelectedMonitorOutput;
+            InputDevices.Clear();
+            foreach (AudioDevice device in inputs)
+            {
+                InputDevices.Add(device);
+            }
+            OutputDevices.Clear();
+            foreach (AudioDevice device in outputs)
+            {
+                OutputDevices.Add(device);
+            }
+
+            AudioDevice? recoveredInput = DeviceRecoveryPolicy.SelectNextInput(inputs, _failedInputDeviceId);
+            AudioDevice? recoveredOutput = outputs.FirstOrDefault(device => device.Id == previousOutput?.Id) ??
+                outputs.FirstOrDefault(output => FindPairedCaptureEndpoint(output) is not null) ??
+                outputs.FirstOrDefault(device => device.IsDefault) ??
+                outputs.FirstOrDefault();
+
+            SelectedInput = recoveredInput;
+            SelectedOutput = recoveredOutput;
+            SelectedMonitorOutput = outputs.FirstOrDefault(device => device.Id == previousMonitor?.Id) ??
+                outputs.FirstOrDefault(device => device.Id != recoveredOutput?.Id && !IsExternalVirtualEndpoint(device)) ??
+                outputs.FirstOrDefault(device => device.IsDefault) ??
+                outputs.FirstOrDefault();
+
+            if (recoveredInput is null || recoveredOutput is null)
+            {
+                _forcedRecoveryMute = true;
+                ApplyEffectiveMicrophoneMute();
+                IsRunning = false;
+                EngineStatus = recoveredInput is null
+                    ? "Waiting for an available microphone"
+                    : "Waiting for the virtual output";
+                EngineDetail = "The virtual microphone is safely muted. GrassiBoard will retry automatically without changing Voice or Mixer settings.";
+                _nextRecoveryAttemptUtc = DateTimeOffset.UtcNow.AddSeconds(2);
+                return;
+            }
+
+            EngineStatus = $"Recovering with {recoveredInput.Name}...";
+            NativeResult result = await Task.Run(() => _engine.Start(recoveredInput.Id, recoveredOutput.Id));
+            if (result != NativeResult.Ok)
+            {
+                _forcedRecoveryMute = true;
+                ApplyEffectiveMicrophoneMute();
+                IsRunning = false;
+                EngineStatus = "Automatic microphone recovery is retrying";
+                EngineDetail = $"{result} · {_engine.ReadLastError()}";
+                _failedInputDeviceId = recoveredInput.Id;
+                _nextRecoveryAttemptUtc = DateTimeOffset.UtcNow.AddSeconds(2);
+                return;
+            }
+
+            _forcedRecoveryMute = false;
+            ApplyVoiceState();
+            ApplyMixerState();
+            IsRunning = true;
+            _mediaDeck.SetEngineRunning(true);
+            EngineStatus = "Virtual microphone recovered";
+            EngineDetail = $"Switched automatically to {recoveredInput.Name} · Voice and Mixer settings preserved";
+            _failedInputDeviceId = string.Empty;
+            _nextRecoveryAttemptUtc = DateTimeOffset.MinValue;
+        }
+        catch (Exception exception)
+        {
+            _forcedRecoveryMute = true;
+            ApplyEffectiveMicrophoneMute();
+            IsRunning = false;
+            EngineStatus = "Automatic microphone recovery is retrying";
+            EngineDetail = exception.Message;
+            _nextRecoveryAttemptUtc = DateTimeOffset.UtcNow.AddSeconds(2);
+            CrashReporter.Report(exception, "Automatic audio device recovery", false);
+        }
+        finally
+        {
+            IsBusy = false;
+            _automaticRecoveryInProgress = false;
+        }
     }
 
     internal bool HandleWindowMessage(int message, nint wParam) => _hotkeys.HandleMessage(message, wParam);
@@ -1866,7 +1989,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         text.AppendLine($"Buffers: capture {_statistics.CaptureBufferFrames}, render {_statistics.RenderBufferFrames}");
         text.AppendLine($"Ring fill: {_statistics.RingBufferFillFrames} frames");
         text.AppendLine($"Pitch latency: {_statistics.PitchLatencySamples} samples ({PitchLatencyMilliseconds:0.0} ms)");
-        text.AppendLine($"Media alignment: {_statistics.PitchLatencySamples} samples ({PitchLatencyMilliseconds:0.0} ms) on virtual send; headphone monitor remains direct");
+        text.AppendLine($"Media alignment: {_statistics.MediaAlignmentFrames} samples ({MediaAlignmentMilliseconds:0.0} ms) on virtual send; includes the measured microphone pre-render path and local monitor estimate");
         text.AppendLine($"Reported total latency: {EstimatedTotalLatencyMilliseconds:0.0} ms");
         text.AppendLine($"Dropouts: U {_statistics.UnderrunCount} · O {_statistics.OverrunCount} · D {_statistics.DiscontinuityCount}");
         text.AppendLine($"Active Sound Pads: {_statistics.ActiveSoundCount}");
@@ -1887,6 +2010,10 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public double PitchLatencyMilliseconds => _statistics.SampleRate == 0U
         ? 0.0
         : _statistics.PitchLatencySamples * 1000.0 / _statistics.SampleRate;
+
+    public double MediaAlignmentMilliseconds => _statistics.SampleRate == 0U
+        ? 0.0
+        : _statistics.MediaAlignmentFrames * 1000.0 / _statistics.SampleRate;
 
     public double EstimatedTotalLatencyMilliseconds => _statistics.SampleRate == 0U
         ? 0.0
@@ -1991,6 +2118,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             return;
         }
         _disposed = true;
+        _automaticRecoveryArmed = false;
         _meterTimer.Stop();
         _saveTimer.Stop();
         _presetTransition?.Cancel();

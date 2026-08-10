@@ -1,12 +1,13 @@
 # Architecture
 
-## v0.11 product boundary
+## v1 product boundary
 
 The active product has three layers:
 
 1. `GrassiBoard.App`: WPF `net8.0-windows` x64 shell, Profiles/persistence, hotkeys/Tray, background Pad decode, streaming Media decode/monitoring, and Voice/Mixer controls.
-2. `GrassiBoard.AudioEngine`: native C++20 x64 DLL exposing C ABI version 7 and owning WASAPI, Voice DSP, Mixer/Dynamics, the predecoded Soundboard mixer, bounded streaming Media ring, and meters.
-3. An independently installed external virtual cable providing the Windows render/capture endpoint pair.
+2. `GrassiBoard.AudioEngine`: native C++20 x64 DLL exposing C ABI version 8 and owning WASAPI, Voice DSP, Mixer/Dynamics, the predecoded Soundboard mixer, bounded streaming Media ring, alignment, and meters.
+3. `GrassiBoard.Installer`: branded per-user WPF bootstrapper embedding the portable payload and registering safe manifest-based uninstall.
+4. An independently installed external virtual cable providing the Windows render/capture endpoint pair.
 
 `GrassiBoard.Driver` and `GrassiBoard.DeviceTool` remain historical experimental source. They are not built, installed, or published by the product workflow.
 
@@ -44,8 +45,8 @@ Playback control uses a fixed 256-command single-producer/single-consumer queue.
 
 ## Version contract
 
-- Product version: `0.11.2`
-- Native ABI version: `7`
+- Product version: `1.0.0`
+- Native ABI version: `8`
 - Architecture: `x64`
 - Processing/mix format: `48,000 Hz`, 32-bit float; mono Voice DSP and stereo master output
 - Cached Sound Pad limit: WAV/MP3, mono or stereo, at most ten minutes per file

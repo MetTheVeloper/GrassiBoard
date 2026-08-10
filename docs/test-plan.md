@@ -1,100 +1,68 @@
-# v0.11.2 startup, icon, and Media synchronization hotfix test plan
+# v1.0.0 final release-candidate test plan
 
-The user has manually accepted v0.9.0. That build is the regression baseline. v0.11.2 is not complete until CI is green, a downloadable package exists, and the user explicitly approves startup/icon checks plus the v0.11 combined matrix and Media hotfix checks below on the Windows 10 / Microsoft LifeChat / VB-CABLE setup.
+The user has accepted v0.11.2 as the functional regression baseline. v1.0.0 remains a prerelease until CI is green and the Windows 10 / Microsoft LifeChat / external-cable installation and long-duration matrix below is explicitly approved.
 
-## Automated gates
+## Automated release gate
 
-- Build native x64 Release with `/W4 /WX`; require product `0.11.2`, native ABI 7, and matching 144-byte managed/native statistics layout.
-- Retain all accepted Pitch/Formant mode, benchmark, device pairing, Soundboard, Mixer/Dynamics, lifecycle, UI/XAML, package-isolation, and persistence tests.
-- Test the bounded Media SPSC ring: inactive silence, FIFO, capacity, clear, and finite-sample protection; test its exported ABI and statistics.
-- Test managed Profile migration/round-trip, malformed item isolation, full Profile cloning, hotkey parsing, Pad decode/persistence, crash reporting, and UI contracts.
-- Publish self-contained Windows x64 portable/symbol/test packages; include no experimental driver/certificate or external cable installer.
+- Build native x64 Release with `/W4 /WX`; require product `1.0.0`, native ABI 8, and the matching 144-byte managed/native statistics layout.
+- Pass native DSP, Mixer, Pad, Media ring/alignment, lifecycle, and version tests.
+- Pass managed persistence, selector-label, device-recovery policy, XAML/resource, icon, decode, and packaging smoke tests.
+- Publish and verify portable, symbols, tests, and exactly one self-contained Setup EXE containing the portable payload.
+- Keep the tagged GitHub release marked prerelease until this manual matrix passes.
 
-## Manual setup
+## A. UI regression
 
-1. Extract the complete v0.11.2 portable ZIP into a new folder and run `GrassiBoard.exe`; confirm no startup crash appears.
-2. Confirm the supplied GrassiBoard icon appears on the EXE, window/custom title bar, taskbar or Alt+Tab, and system tray.
-3. In Routing select the physical microphone and working VB-CABLE playback/input endpoint. Select the paired cable recording endpoint in Voice Recorder/Telegram/OBS.
-4. Start at low headphone volume. Media monitoring routes only Media to the selected headphone endpoint; it must never monitor the microphone.
+1. Open Board, Mixer, Routing, and Settings in Light and Dark themes.
+2. Confirm Profile, user-preset, input/output, and monitor selectors show human-readable names only.
+3. Confirm text and icons on every green action button are white in both themes.
+4. Confirm Media Deck shows legible `-10s`, Stop, and `+10s` controls with no square/tofu glyphs.
+5. Seek while paused and while playing; the timeline must stay at the chosen position.
 
-## Regression
+## B. Media vocal synchronization
 
-1. Confirm microphone routing, Pitch, Fine Pitch, Formant/preservation, quality switching, Mixer/Dynamics, Pads, meters, themes, custom window behavior, and Start/Stop.
-2. Navigate every page while live; require no engine restart/interruption.
-3. Use Stop All during multiple/looped Pads and again while idle; require safe engine restart and no deleted configuration.
+1. Select headphones as Media Monitor, enable Monitor and Send, and start the engine.
+2. Play a beat and record the GrassiBoard virtual microphone in a target app.
+3. Sing or clap on the monitored beat in High quality, Balanced, and Low latency.
+4. Confirm the recorded voice and beat remain acceptably aligned in each mode. Settings must show a non-zero Media Vocal Sync that follows the active route/quality.
+5. Repeat Play/Pause/seek/±10 and a live quality change; no stale Media or progressive drift is allowed.
+6. Confirm the physical microphone is never audible in the independent Media monitor.
 
-## Profiles and presets
+## C. Microphone disappearance and recovery
 
-1. Create, duplicate, rename, apply, and delete Profiles. Restart and verify selected devices, Pads, hotkeys, user presets, Voice/Mixer values, and preferences.
-2. Save the current Voice + Mixer state as a named preset. Apply, update, duplicate, rename, delete, and restart.
-3. Apply contrasting presets while speaking and while a Pad/Media plays. Require an immediate but smooth ~200 ms change, no click/pop, no stream restart, and no Pad/Media interruption.
-4. Temporarily corrupt one preset entry in a backup test JSON only; valid siblings must still load.
+1. Start on microphone A with distinctive Voice FX, Mixer values, Pads, Media settings, and user Mute state.
+2. Disconnect/disable microphone A while the engine is live and microphone B is available.
+3. Confirm GrassiBoard stays open, switches automatically to B, resumes the virtual route, and preserves every Voice/Mixer/Pad/Media setting.
+4. Disconnect every physical microphone. Confirm the process does not crash and the virtual microphone receives no microphone signal.
+5. Reconnect one physical microphone. Confirm automatic retry restores the route without changing the user's stored Mute choice.
+6. Confirm a virtual cable is never selected as the recovery microphone.
 
-## Global hotkeys and Tray
+## D. Installer and uninstall
 
-1. Assign Pad and user-preset hotkeys. Trigger them with another application focused and while GrassiBoard is hidden in Tray.
-2. Test Mic Mute, Stop All, Voice FX, Show/Hide, Media Play/Pause/Stop/±10 globally.
-3. Configure Push-to-Talk: hold must open the mic; release must mute; the engine must remain running.
-4. Assign the same gesture twice and a Windows-reserved/unavailable gesture; Settings must report failure rather than silently ignore it.
-5. Test minimize/restore, Tray Show/Mute/Stop All/Exit, Start Minimized, and optional Start with Windows. Disable Start with Windows afterward if not wanted.
+1. On a machine with a compatible cable, run Setup and verify the poster, destination picker, optional Desktop shortcut, progress, Finish, and Open GrassiBoard states.
+2. Confirm Start Menu/Desktop shortcuts, the application icon, launch, and Windows Apps & features entry.
+3. Repeat without a compatible cable. Installation must complete and the final screen must show the official VB-CABLE download link and instruction; it must not install a driver.
+4. Install over the same destination and confirm an update succeeds without deleting unknown/user files.
+5. Uninstall through Apps & features. Confirm manifest-owned program files and shortcuts are removed while `%APPDATA%\GrassiBoard`, `%LOCALAPPDATA%\GrassiBoard`, original audio files, and the external cable remain.
 
-## Local Media Deck
+## E. Long-duration acceptance
 
-1. Load a long MP3, then a WAV and any locally available M4A/MP4 audio track. Unsupported codecs must fail visibly without crashing.
-2. Test Play, Pause, Resume, Stop-to-zero, timeline drag, -10, +10, current/total time, volume, activity meter, and hotkeys.
-3. Test Monitor/Send combinations ON/ON, ON/OFF, OFF/ON, OFF/OFF.
-4. With Monitor ON, require Media in the USB headphones and no microphone echo. With Send ON, require Media at the target app microphone.
-5. Speak over Media and trigger Pads/presets. Require microphone + Pad + Media in the cable mix; only microphone character changes with Pitch/Formant.
-6. Move the remembered file, restart, verify a safe missing-file state, then locate another file or Clear. Require no autoplay at startup.
-7. Run Media 30–60 minutes while occasionally speaking/triggering Pads. Inspect Media fill/underruns and U/O/D for growth, crackling, memory growth, UI blocking, or desynchronization.
+1. Run microphone processing plus looping/overlapping Pads and streamed Media for at least two hours.
+2. Exercise theme/page changes, Tray, global hotkeys, seek, quality and preset changes, Mute, and Stop All.
+3. Record dropout counters, Media underruns, memory growth, CPU behavior, and any `%LOCALAPPDATA%\GrassiBoard\CrashReports\latest.txt`.
+4. Restart and verify Profiles, Pads, presets, hotkeys, routing, Media preferences, and app behavior persist without autoplay.
 
-## Latency and combined load
-
-1. Record perceived latency and Diagnostics in Balanced before changing mode.
-2. Compare Low, Balanced, and High with the same microphone/headset. Record capture/render frames, Pitch ms, ring fill, estimated total, U/O/D, and Media underruns.
-3. While Media plays, speak, trigger Pads, and apply presets repeatedly. Stability wins; do not accept a lower number with crackling/dropouts/artifacts.
-
-## Required report
+## Acceptance report
 
 ```text
-Version:
-Commit:
 Windows version:
-USB headset:
-
-PRESETS
-Save / survives restart / Apply / smooth transition:
-Rename / Update / Duplicate / Delete / preset hotkey:
-
-PROFILES
-Create / Duplicate / Rename / Apply / Delete / survives restart:
-Devices / Pads / presets / hotkeys / preferences restored:
-
-HOTKEYS
-Pad / Mute / Stop All / Voice FX / Push-to-Talk / Show-Hide:
-Conflicts reported / survive restart:
-
-TRAY
-Minimize / Restore / menu / Start minimized / Start with Windows / clean Exit:
-
-MEDIA DECK
-Long audio Load / Play / Pause / Resume / Stop / Seek / ±10 / Timeline:
-Volume / Meter / hotkeys:
-Monitor ON-OFF / Send ON-OFF / all four combinations:
-Speak over media / Media in headphones / Mic NOT in headphones:
-Missing file safety / no autoplay / 30–60 min stability:
-
-LATENCY
-Low / Balanced / High perceived and reported latency:
-Capture / Render / Pitch / Ring / Media fill:
-Crackling / Dropouts / Underruns / Overruns / CPU issues:
-
-REGRESSION
-Voice / Mixer / Soundboard / VB-CABLE / themes / custom window / meters:
-Stop All stops Pads + Media + engine and engine restarts:
-
-OTHER
-UI issues / crashes / logs / screenshots:
+Installer path/custom path:
+Cable present/missing flow:
+UI labels/colors/icons:
+Media sync High/Balanced/Low:
+Mic A -> Mic B recovery:
+No-microphone mute/reconnect recovery:
+Two-hour stability/dropouts:
+Uninstall/preserved settings:
+Result: PASS / FAIL
+Crash report or diagnostics (if any):
 ```
-
-Stop after delivering v0.11.2. Do not begin Stability/Packaging until the user explicitly accepts this build.

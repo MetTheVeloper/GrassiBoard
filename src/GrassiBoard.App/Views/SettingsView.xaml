@@ -63,10 +63,11 @@
 
             <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
                 <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                     <StackPanel><TextBlock Text="REPORTED PIPELINE" Style="{StaticResource EyebrowTextStyle}" /><TextBlock Text="{Binding EstimatedTotalLatencyMilliseconds, StringFormat={}{0:0.0} ms}" FontFamily="{StaticResource MonoFont}" FontSize="20" Margin="0,6,0,0" /></StackPanel>
                     <StackPanel Grid.Column="1"><TextBlock Text="PITCH ALGORITHM" Style="{StaticResource EyebrowTextStyle}" /><TextBlock Text="{Binding PitchLatencyMilliseconds, StringFormat={}{0:0.0} ms}" FontFamily="{StaticResource MonoFont}" FontSize="20" Margin="0,6,0,0" /></StackPanel>
-                    <StackPanel Grid.Column="2"><TextBlock Text="MEDIA READ-AHEAD" Style="{StaticResource EyebrowTextStyle}" /><TextBlock Text="{Binding MediaBufferPercent, StringFormat={}{0:0}% full}" FontFamily="{StaticResource MonoFont}" FontSize="20" Margin="0,6,0,0" /></StackPanel>
+                    <StackPanel Grid.Column="2"><TextBlock Text="MEDIA VOCAL SYNC" Style="{StaticResource EyebrowTextStyle}" /><TextBlock Text="{Binding MediaAlignmentMilliseconds, StringFormat={}{0:0.0} ms}" FontFamily="{StaticResource MonoFont}" FontSize="20" Margin="0,6,0,0" /></StackPanel>
+                    <StackPanel Grid.Column="3"><TextBlock Text="MEDIA READ-AHEAD" Style="{StaticResource EyebrowTextStyle}" /><TextBlock Text="{Binding MediaBufferPercent, StringFormat={}{0:0}% full}" FontFamily="{StaticResource MonoFont}" FontSize="20" Margin="0,6,0,0" /></StackPanel>
                 </Grid>
             </Border>
 
@@ -87,7 +88,7 @@
                                 Command="{Binding CopyDiagnosticsCommand}" ToolTip="Copy diagnostics to the clipboard">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE8C8;" Style="{StaticResource GbIconTextStyle}" Margin="0,0,7,0" />
-                                <TextBlock Text="Copy diagnostics" Foreground="#07110D" />
+                                <TextBlock Text="Copy diagnostics" />
                             </StackPanel>
                         </Button>
                     </Grid>
