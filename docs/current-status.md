@@ -1,15 +1,27 @@
 # Current status
 
-- Version: `v0.8.3`
-- Milestone: `7 — Soundboard + UI architecture foundation`
-- Status: v0.8.2 functionality manually accepted on Windows 10; presentation-only v0.8.3 UI/UX refresh implemented; local and GitHub Actions validation passed; manual visual/functional acceptance pending
+- Version: `v0.9.0`
+- Milestone: `8 — Mixer & Dynamic Processing`
+- Status: implemented and under automated validation; final Windows 10 audio/UI acceptance pending
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
 - Backend: Signalsmith Stretch 1.3.2 + Signalsmith Linear 0.3.1, both pinned
 - Virtual routing: vendor-neutral external cable selected as the processed WASAPI render destination
-- UI: persistent Board/Voice/Routing/Settings shell with shared top bar and state
+- UI: persistent Board/Voice/Mixer/Routing/Settings shell with shared top bar and state
 - Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
+
+## v0.9.0 Mixer & Dynamic Processing
+
+v0.9.0 adds live Mic, Soundboard, and Master gain; microphone Noise Gate and Compressor; microphone-keyed Soundboard Ducking; a stereo-linked Limiter; Clipping Protection; a latency-aligned Pitch Wet/Dry mix; and Clean, Broadcast, Streaming, and Voice Chat presets. Parameters cross the native ABI as one validated settings structure and are consumed without allocation or locking in the render callback.
+
+The release also restores visible meter fills through the shared WPF ProgressBar template, maps invalid/silent values safely to an empty `-60..0 dBFS` display, adds a subtle theme-aware restored-window border plus native DWM shadow, and makes custom maximize use the current monitor work area. Global Stop All now stops every Pad and the audio engine through the existing lifecycle path; it preserves configuration and permits a subsequent Start Engine.
+
+Native/managed product version is `0.9.0` and native ABI version is `6`. Automated and local UI validation do not constitute milestone acceptance: the four mandatory fixes and live Mixer behavior remain pending the user's final Windows 10 test.
+
+## v0.8.3 manual acceptance
+
+On 2026-08-10 the user completed the v0.8.3 test and explicitly asked that it be treated as confirmed. This accepts the refreshed Light/Dark UI and the already accepted v0.8.2 functional behavior as the regression baseline for v0.9.0.
 
 ## v0.8.3 UI/UX refresh
 

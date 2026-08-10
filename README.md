@@ -4,25 +4,26 @@ GrassiBoard is a Windows x64 live voice-processing and Soundboard application. I
 
 ## Current milestone
 
-`v0.8.3` is a presentation-only UI/UX refresh over the fully accepted `v0.8.2` functionality. It keeps the microphone route and Soundboard behavior unchanged while introducing a cohesive Light/Dark design system, compact Sound Pads, consistent icons and restyled WPF controls.
+`v0.9.0` adds Mixer & Dynamic Processing on top of the accepted v0.8.3 UI and audio baseline. It preserves the external-cable route and Soundboard behavior while adding live bus gain, voice dynamics, ducking, output protection, Pitch Wet/Dry, and audio presets.
 
 - **Board** is the daily workspace: reusable Sound Pads plus compact Voice FX.
 - **Voice** contains full Pitch, Fine Pitch, Formant, preservation, quality, and latency controls.
+- **Mixer** contains Mic/Soundboard/Master gain, Noise Gate, Compressor, Limiter, Ducking, Clipping Protection, Pitch Wet/Dry, and built-in presets.
 - **Routing** selects the physical microphone and external virtual-cable playback endpoint.
 - **Settings** contains copy-safe diagnostics and build information.
-- The persistent top bar exposes Mic/Soundboard/Master meters, Mic Mute, and Soundboard-only Stop All.
+- The persistent top bar exposes Mic/Soundboard/Master meters, Mic Mute, and a global Stop All that stops Pads and the audio engine without resetting configuration.
 
 Sound Pads support WAV and MP3, volume, Loop, per-pad stop, simultaneous playback, drag/drop, edit/delete, and JSON persistence. Files are referenced in their original locations. They are decoded and resampled to stereo 48 kHz float away from the real-time audio callback, then cached in the native engine.
 
 ## Audio route
 
 ```text
-Physical microphone -> Voice DSP ----┐
-                                     ├-> Master mix -> external cable playback endpoint
-Cached Sound Pads -------------------┘                    -> target app microphone
+Physical microphone -> Voice DSP -> Mic dynamics ---+
+                                                      +-> Master gain/protection -> cable -> target app
+Cached Sound Pads -> Board gain -> Ducking ----------+
 ```
 
-Voice Pitch/Formant affects only the microphone branch. Mic Mute leaves Sound Pads active; Stop All stops Sound Pads without stopping the microphone or engine.
+Voice Pitch/Formant affects only the microphone branch. Mic Mute leaves Sound Pads active. Global Stop All stops Pads and the engine while retaining routing, Voice, Mixer, presets, and Board configuration so the engine can be started again.
 
 ## External cable
 

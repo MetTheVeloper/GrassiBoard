@@ -1,27 +1,32 @@
 # Audio pipeline
 
-## Live route
+## v0.9.0 live route
 
 ```text
 Selected physical microphone
-    -> WASAPI shared/event-driven capture
-    -> 48 kHz mono float
-    -> prewarmed Signalsmith Voice DSP
-       Pitch + Fine Pitch + Formant + preservation + quality crossfade
-    -> existing preallocated mono ring buffer
-    -> Mic Mute gate --------------------------------------┐
-                                                          ├-> bounded stereo master sum
-WAV / MP3 file                                            │       -> WASAPI render
-    -> background decode + channel conversion + resample  │       -> external cable playback endpoint
-    -> immutable cached 48 kHz stereo float clip           │       -> paired cable recording endpoint
-    -> fixed command queue + 32-voice Soundboard mixer ----┘       -> target application microphone
+  -> WASAPI shared/event-driven capture (48 kHz mono float)
+  -> prewarmed Signalsmith Pitch/Fine Pitch/Formant processors
+  -> latency-aligned Pitch Wet/Dry mix
+  -> preallocated mono ring
+  -> Mic Mute
+  -> Mic Gain -> Noise Gate -> Compressor -------------------+
+                                                               |
+WAV / MP3 -> background decode/resample -> immutable cache      |
+  -> fixed command queue + 32-voice Soundboard mixer            |
+  -> Soundboard Gain -> microphone-keyed Ducking ---------------+
+                                                               |
+                     stereo sum -> Master Gain -> Limiter
+                                -> Clipping Protection -> safety clamp
+                                -> WASAPI external-cable render
+                                -> paired recording endpoint
+                                -> target application microphone
 ```
 
-The Voice branch is the accepted v0.7.0 path. Soundboard enters after Pitch/Formant processing, so Pad audio stays at its original pitch. Mic Mute gates only the Voice branch. Stop All clears only Soundboard voices.
+Sound Pads enter after Voice Pitch/Formant and remain unpitched. Mic Mute gates only the microphone branch. Global Stop All clears every Pad voice and stops the engine through the normal lifecycle path, but does not change routing, Voice, Mixer, presets, or Board configuration.
 
 ## Real-time rules
 
-The render callback may pop processed microphone samples, drain bounded playback commands, read cached PCM, mix active voices, update atomic meters/counters, and write the WASAPI buffer.
+The render callback may pop processed microphone samples, drain bounded playback commands, read cached PCM, process fixed-size Mixer/Dynamics state, update atomic meters/counters, and write the WASAPI buffer. UI changes publish one validated settings structure through atomics; the callback reads it at block boundaries. Gain targets and dynamics envelopes are smoothed.
 
 It must not:
 
@@ -35,12 +40,12 @@ It must not:
 
 ## Meter definitions
 
-- **Mic**: physical microphone peak received by capture. It may continue moving while Mic Mute is active.
-- **Soundboard**: summed Pad peak before the master clamp.
-- **Master**: final stereo signal written to the external virtual-cable playback endpoint.
+- **MIC**: post-Pitch Wet/Dry, post-Mic Mute, post-Mic Gain/Gate/Compressor; before the stereo master bus.
+- **BOARD**: post-Pad volume, post-Soundboard Gain and post-Ducking; before the stereo master bus.
+- **MASTER**: final stereo output after Master Gain, Limiter, Clipping Protection, and safety clamp.
 
-The WPF timer samples native statistics every 100 ms rather than repainting at audio-block frequency.
+The WPF timer samples native statistics every 100 ms rather than repainting at audio-block frequency. Linear peaks are mapped to a clamped `-60..0 dBFS` display range; silence, NaN, and infinity map to an empty meter.
 
 ## Deferred work
 
-Separate low-latency headphone monitoring, gain stages, dynamics, ducking, and configurable clipping protection remain future milestones. The current master uses bounded float clamping only when Voice and Soundboard sums exceed the output range; the accepted microphone-only route remains unchanged below that boundary.
+Separate low-latency headphone monitoring remains deferred. It requires a second render route and a separate latency policy and is intentionally outside v0.9.0.

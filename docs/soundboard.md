@@ -19,6 +19,6 @@ The native mixer supports 32 simultaneous voices and a bounded 256-command queue
 
 ## Mix contract
 
-Soundboard audio mixes after the microphone Voice DSP and before the existing virtual output. It is never Pitch/Formant shifted. The microphone continues while Pads play. Mute Mic preserves Pads; Stop All preserves the microphone and engine.
+Soundboard audio mixes after the microphone Voice DSP and is never Pitch/Formant shifted. v0.9.0 applies Soundboard Gain and optional microphone-keyed Ducking before the master bus. The microphone continues while Pads play and Mute Mic preserves Pads. Global Stop All clears Pads and safely stops the engine without deleting Pad definitions or changing Mixer/Voice configuration.
 
 Optional direct headphone monitoring is not implemented in v0.8.x because it would require a separate render route and additional latency policy. Target-application monitoring may still be used where acceptable.

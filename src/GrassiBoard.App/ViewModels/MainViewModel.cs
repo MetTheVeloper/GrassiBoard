@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -360,7 +361,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    public string FormantLabel => $"{Formant:+0.0;-0.0;0} st";
+    public string FormantLabel => $"{Formant.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture)} st";
 
     public bool PreserveVocalCharacter
     {
@@ -431,7 +432,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         set => SetMixerValue(ref _gateThreshold, value, -80.0, -20.0, nameof(GateThreshold), nameof(GateThresholdLabel));
     }
 
-    public string GateThresholdLabel => $"{GateThreshold:0} dB";
+    public string GateThresholdLabel => $"{GateThreshold.ToString("0", CultureInfo.InvariantCulture)} dB";
 
     public bool CompressorEnabled
     {
@@ -445,7 +446,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         set => SetMixerValue(ref _compressorThreshold, value, -40.0, -3.0, nameof(CompressorThreshold), nameof(CompressorThresholdLabel));
     }
 
-    public string CompressorThresholdLabel => $"{CompressorThreshold:0} dB";
+    public string CompressorThresholdLabel => $"{CompressorThreshold.ToString("0", CultureInfo.InvariantCulture)} dB";
 
     public double CompressorRatio
     {
@@ -453,7 +454,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         set => SetMixerValue(ref _compressorRatio, value, 1.0, 20.0, nameof(CompressorRatio), nameof(CompressorRatioLabel));
     }
 
-    public string CompressorRatioLabel => $"{CompressorRatio:0.0}:1";
+    public string CompressorRatioLabel => $"{CompressorRatio.ToString("0.0", CultureInfo.InvariantCulture)}:1";
 
     public bool LimiterEnabled
     {
@@ -467,7 +468,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         set => SetMixerValue(ref _limiterCeiling, value, -12.0, 0.0, nameof(LimiterCeiling), nameof(LimiterCeilingLabel));
     }
 
-    public string LimiterCeilingLabel => $"{LimiterCeiling:0.0} dB";
+    public string LimiterCeilingLabel => $"{LimiterCeiling.ToString("0.0", CultureInfo.InvariantCulture)} dB";
 
     public bool DuckingEnabled
     {
@@ -481,7 +482,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         set => SetMixerValue(ref _duckingAmount, value, 0.0, 30.0, nameof(DuckingAmount), nameof(DuckingAmountLabel));
     }
 
-    public string DuckingAmountLabel => $"{DuckingAmount:0} dB";
+    public string DuckingAmountLabel => $"{DuckingAmount.ToString("0", CultureInfo.InvariantCulture)} dB";
 
     public bool ClippingProtectionEnabled
     {
@@ -946,7 +947,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void ApplyPreset(int index)
+    internal void ApplyPreset(int index)
     {
         _applyingPreset = true;
         try
@@ -1032,7 +1033,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    private static string FormatSignedDb(double value) => $"{value:+0.0;-0.0;0.0} dB";
+    private static string FormatSignedDb(double value) =>
+        $"{value.ToString("+0.0;-0.0;0.0", CultureInfo.InvariantCulture)} dB";
 
     private void ResetVoice()
     {
@@ -1192,7 +1194,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     private static string FormatDb(float linear) =>
         !float.IsFinite(linear) || linear <= 0.000001F
             ? "−∞ dBFS"
-            : $"{20.0 * Math.Log10(linear):0.0} dBFS";
+            : $"{(20.0 * Math.Log10(linear)).ToString("0.0", CultureInfo.InvariantCulture)} dBFS";
 
     public void Dispose()
     {

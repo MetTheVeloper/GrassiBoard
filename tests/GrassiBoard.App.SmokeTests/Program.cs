@@ -297,6 +297,32 @@ if (MainViewModel.ToMeter(float.NegativeInfinity) != 0.0 ||
     return 10;
 }
 
+string presetRoot = Path.Combine(Path.GetTempPath(), $"GrassiBoard-preset-{Guid.NewGuid():N}");
+Directory.CreateDirectory(presetRoot);
+try
+{
+    using var presetViewModel = new MainViewModel(
+        new SoundboardStore(Path.Combine(presetRoot, "soundboard.json")));
+    presetViewModel.ApplyPreset(2);
+    if (presetViewModel.MicGain != 3.0 ||
+        presetViewModel.SoundboardGain != -2.0 ||
+        !presetViewModel.NoiseGateEnabled ||
+        !presetViewModel.CompressorEnabled ||
+        !presetViewModel.DuckingEnabled ||
+        presetViewModel.DuckingAmount != 6.0 ||
+        !presetViewModel.LimiterEnabled ||
+        !presetViewModel.ClippingProtectionEnabled ||
+        presetViewModel.PitchWetMix != 100.0)
+    {
+        Console.Error.WriteLine("Broadcast preset contract failed.");
+        return 12;
+    }
+}
+finally
+{
+    Directory.Delete(presetRoot, true);
+}
+
 Console.WriteLine("Managed app, decode, persistence, binding, and XAML layout smoke tests passed.");
 return 0;
 

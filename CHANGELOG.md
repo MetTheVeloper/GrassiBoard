@@ -2,6 +2,30 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.9.0] - 2026-08-10
+
+### Added
+
+- Add live Mic, Soundboard, and Master gain stages.
+- Add microphone Noise Gate and Compressor, microphone-keyed Soundboard Ducking, a stereo-linked Limiter, and Clipping Protection.
+- Add latency-aligned Pitch Wet/Dry and Clean, Broadcast, Streaming, and Voice Chat presets.
+- Add a dedicated Mixer page and native callback-safe Mixer/Dynamics processor through ABI version 6.
+
+### Fixed
+
+- Restore animated MIC, BOARD, MASTER, and Board Quick Levels fills in the shared meter template, with safe `-60..0 dBFS` mapping.
+- Add a subtle theme-aware restored-window border and native DWM shadow.
+- Make custom maximize respect the current monitor work area and Windows taskbar.
+- Make global Stop All stop every Sound Pad and the audio engine, reset runtime meters/state, remain safe while already stopped, and allow a later restart.
+
+### Preserved
+
+- Preserve the accepted v0.8.3 external-cable route, Pitch/Formant behavior, Soundboard playback/persistence, Light/Dark themes, and custom application shell.
+
+### Verified
+
+- Record complete Windows 10 manual acceptance of v0.8.3 as the regression baseline for this milestone.
+
 ## [0.8.3] - 2026-08-10
 
 ### Changed
