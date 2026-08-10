@@ -96,7 +96,7 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "0.8.3")
+if (BuildInfo.CurrentVersion != "0.9.0")
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -105,7 +105,7 @@ if (BuildInfo.CurrentVersion != "0.8.3")
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "0.8.3",
+      "Version": "0.9.0",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -114,7 +114,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "0.8.3" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "0.9.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -241,6 +241,10 @@ foreach (string xamlPath in Directory.EnumerateFiles(appSource, "*.xaml", Search
 
 string boardXaml = File.ReadAllText(Path.Combine(appSource, "Views", "BoardView.xaml"));
 string controlsXaml = File.ReadAllText(Path.Combine(appSource, "Themes", "Controls.xaml"));
+string mixerXaml = File.ReadAllText(Path.Combine(appSource, "Views", "MixerView.xaml"));
+string mainWindowXaml = File.ReadAllText(Path.Combine(appSource, "MainWindow.xaml"));
+string mainWindowCode = File.ReadAllText(Path.Combine(appSource, "MainWindow.xaml.cs"));
+string mainViewModelCode = File.ReadAllText(Path.Combine(appSource, "ViewModels", "MainViewModel.cs"));
 string[] requiredUiContracts =
 [
     "GbSoundPadCardStyle",
@@ -253,10 +257,44 @@ if (requiredUiContracts.Any(contract => !boardXaml.Contains(contract, StringComp
     boardXaml.Contains("StateLabel", StringComparison.Ordinal) ||
     !controlsXaml.Contains("<Style TargetType=\"ToolTip\">", StringComparison.Ordinal) ||
     !controlsXaml.Contains("<Style TargetType=\"Slider\"", StringComparison.Ordinal) ||
-    !controlsXaml.Contains("<Style TargetType=\"CheckBox\"", StringComparison.Ordinal))
+    !controlsXaml.Contains("<Style TargetType=\"CheckBox\"", StringComparison.Ordinal) ||
+    !controlsXaml.Contains("x:Name=\"PART_Track\"", StringComparison.Ordinal) ||
+    !controlsXaml.Contains("x:Name=\"PART_Indicator\"", StringComparison.Ordinal) ||
+    !mixerXaml.Contains("MicGain", StringComparison.Ordinal) ||
+    !mixerXaml.Contains("DuckingEnabled", StringComparison.Ordinal) ||
+    !mixerXaml.Contains("PitchWetMix", StringComparison.Ordinal) ||
+    !mainWindowXaml.Contains("IsMixerPage", StringComparison.Ordinal) ||
+    !mainWindowXaml.Contains("GlassFrameThickness=\"1\"", StringComparison.Ordinal) ||
+    !mainWindowCode.Contains("WmGetMinMaxInfo", StringComparison.Ordinal) ||
+    !mainWindowCode.Contains("MonitorFromWindow", StringComparison.Ordinal) ||
+    !mainWindowCode.Contains("WorkArea", StringComparison.Ordinal) ||
+    !mainViewModelCode.Contains("StopAllAsync", StringComparison.Ordinal) ||
+    !mainViewModelCode.Contains("await Task.Run(_engine.Stop)", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("UI refresh contract failed.");
     return 9;
+}
+
+MixerSettings defaultMixer = MixerSettings.CreateDefault();
+if (System.Runtime.InteropServices.Marshal.SizeOf<MixerSettings>() != 60 ||
+    defaultMixer.StructSize != 60U ||
+    defaultMixer.LimiterEnabled != 1U ||
+    defaultMixer.ClippingProtectionEnabled != 1U ||
+    Math.Abs(defaultMixer.PitchWetMix - 1.0F) > 0.0001F)
+{
+    Console.Error.WriteLine("Managed mixer ABI layout failed.");
+    return 11;
+}
+
+if (MainViewModel.ToMeter(float.NegativeInfinity) != 0.0 ||
+    MainViewModel.ToMeter(float.NaN) != 0.0 ||
+    MainViewModel.ToMeter(0.0F) != 0.0 ||
+    Math.Abs(MainViewModel.ToMeter(0.001F) - 0.0) > 0.001 ||
+    Math.Abs(MainViewModel.ToMeter(1.0F) - 100.0) > 0.001 ||
+    MainViewModel.ToMeter(0.1F) is < 66.0 or > 67.0)
+{
+    Console.Error.WriteLine("dBFS meter mapping contract failed.");
+    return 10;
 }
 
 Console.WriteLine("Managed app, decode, persistence, binding, and XAML layout smoke tests passed.");

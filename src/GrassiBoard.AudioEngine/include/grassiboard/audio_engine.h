@@ -57,6 +57,24 @@ struct gb_audio_statistics {
     std::uint32_t microphone_muted;
 };
 
+struct gb_mixer_settings {
+    std::uint32_t struct_size;
+    float mic_gain_db;
+    float soundboard_gain_db;
+    float master_gain_db;
+    float gate_threshold_db;
+    float compressor_threshold_db;
+    float compressor_ratio;
+    float limiter_ceiling_db;
+    float ducking_amount_db;
+    float pitch_wet_mix;
+    std::uint32_t gate_enabled;
+    std::uint32_t compressor_enabled;
+    std::uint32_t limiter_enabled;
+    std::uint32_t ducking_enabled;
+    std::uint32_t clipping_protection_enabled;
+};
+
 GB_API std::uint32_t GB_CALL gb_get_api_version() noexcept;
 GB_API const char* GB_CALL gb_get_version() noexcept;
 GB_API std::uint32_t GB_CALL gb_engine_ping(std::uint32_t value) noexcept;
@@ -103,6 +121,9 @@ GB_API gb_result GB_CALL gb_play_sound_clip(
 GB_API gb_result GB_CALL gb_stop_sound_clip(gb_engine_handle engine, std::uint64_t clip_key) noexcept;
 GB_API gb_result GB_CALL gb_stop_all_sounds(gb_engine_handle engine) noexcept;
 GB_API gb_result GB_CALL gb_set_microphone_muted(gb_engine_handle engine, std::uint32_t muted) noexcept;
+GB_API gb_result GB_CALL gb_set_mixer_settings(
+    gb_engine_handle engine,
+    const gb_mixer_settings* settings) noexcept;
 GB_API gb_result GB_CALL gb_get_audio_statistics(
     gb_engine_handle engine,
     gb_audio_statistics* statistics) noexcept;

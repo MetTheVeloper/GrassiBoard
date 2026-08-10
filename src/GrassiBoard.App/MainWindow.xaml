@@ -11,9 +11,21 @@
         Foreground="{DynamicResource TextBrush}">
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="42" ResizeBorderThickness="6"
-                            CornerRadius="0" GlassFrameThickness="0"
+                            CornerRadius="0" GlassFrameThickness="1"
                             UseAeroCaptionButtons="False" />
     </shell:WindowChrome.WindowChrome>
+    <Border x:Name="WindowFrame" BorderBrush="{DynamicResource BorderBrush}">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="BorderThickness" Value="1" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}"
+                                 Value="Maximized">
+                        <Setter Property="BorderThickness" Value="0" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="40" />
@@ -108,6 +120,23 @@
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="&#xE720;" Style="{StaticResource GbIconTextStyle}" Width="22" />
                             <TextBlock Text="Voice" Margin="8,0,0,0" />
+                        </StackPanel>
+                    </Button>
+                    <Button Command="{Binding NavigateCommand}" CommandParameter="Mixer" AutomationProperties.Name="Mixer">
+                        <Button.Style>
+                            <Style TargetType="Button" BasedOn="{StaticResource SidebarButtonStyle}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsMixerPage}" Value="True">
+                                        <Setter Property="Background" Value="{DynamicResource AccentDarkBrush}" />
+                                        <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                        <Setter Property="FontWeight" Value="SemiBold" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE9D9;" Style="{StaticResource GbIconTextStyle}" Width="22" />
+                            <TextBlock Text="Mixer" Margin="8,0,0,0" />
                         </StackPanel>
                     </Button>
                     <Button Command="{Binding NavigateCommand}" CommandParameter="Routing" AutomationProperties.Name="Routing">
@@ -227,7 +256,8 @@
                         <Button Content="{Binding MuteButtonLabel}" Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding ToggleMuteCommand}" Margin="0,0,10,0" MinWidth="104" />
                         <Button Content="Stop All" Style="{StaticResource DangerButtonStyle}"
-                                Command="{Binding StopAllCommand}" MinWidth="92" ToolTip="Stop all Sound Pads; microphone stays live" />
+                                Command="{Binding StopAllCommand}" MinWidth="92"
+                                ToolTip="Stop every Sound Pad and the audio engine" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -247,10 +277,12 @@
             <Grid Grid.Row="2" Margin="24,0,24,24">
                 <views:BoardView Visibility="{Binding IsBoardPage, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <views:VoiceView Visibility="{Binding IsVoicePage, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <views:MixerView Visibility="{Binding IsMixerPage, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <views:RoutingView Visibility="{Binding IsRoutingPage, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <views:SettingsView Visibility="{Binding IsSettingsPage, Converter={StaticResource BooleanToVisibilityConverter}}" />
             </Grid>
         </Grid>
         </Grid>
     </Grid>
+    </Border>
 </Window>

@@ -7,12 +7,12 @@
 
 int main()
 {
-    if (gb_get_api_version() != 5U) {
+    if (gb_get_api_version() != 6U) {
         std::cerr << "Unexpected native API version.\n";
         return 1;
     }
 
-    if (std::strcmp(gb_get_version(), "0.8.3") != 0) {
+    if (std::strcmp(gb_get_version(), "0.9.0") != 0) {
         std::cerr << "Unexpected native engine version.\n";
         return 2;
     }
@@ -24,7 +24,7 @@ int main()
     }
 
     gb_engine_handle engine = nullptr;
-    if (gb_engine_create(5U, &engine) != GB_OK || engine == nullptr) {
+    if (gb_engine_create(6U, &engine) != GB_OK || engine == nullptr) {
         std::cerr << "Engine creation failed.\n";
         return 4;
     }
@@ -57,6 +57,28 @@ int main()
         return 6;
     }
 
+    gb_mixer_settings mixerSettings{};
+    mixerSettings.struct_size = static_cast<std::uint32_t>(sizeof(gb_mixer_settings));
+    mixerSettings.gate_threshold_db = -55.0F;
+    mixerSettings.compressor_threshold_db = -18.0F;
+    mixerSettings.compressor_ratio = 3.0F;
+    mixerSettings.limiter_ceiling_db = -1.0F;
+    mixerSettings.ducking_amount_db = 9.0F;
+    mixerSettings.pitch_wet_mix = 0.75F;
+    mixerSettings.limiter_enabled = 1U;
+    mixerSettings.clipping_protection_enabled = 1U;
+    if (gb_set_mixer_settings(engine, &mixerSettings) != GB_OK) {
+        std::cerr << "Mixer parameter contract failed.\n";
+        gb_engine_destroy(engine);
+        return 7;
+    }
+    mixerSettings.struct_size = 0U;
+    if (gb_set_mixer_settings(engine, &mixerSettings) != GB_ERROR_INVALID_ARGUMENT) {
+        std::cerr << "Mixer structure-size validation failed.\n";
+        gb_engine_destroy(engine);
+        return 8;
+    }
+
     constexpr float clip[]{0.25F, -0.25F, 0.5F, -0.5F};
     if (gb_load_sound_clip(engine, 42U, clip, 2U) != GB_OK ||
         gb_load_sound_clip(engine, 0U, clip, 2U) != GB_ERROR_INVALID_ARGUMENT ||
@@ -65,13 +87,13 @@ int main()
         gb_stop_all_sounds(engine) != GB_OK) {
         std::cerr << "Soundboard ABI contract failed.\n";
         gb_engine_destroy(engine);
-        return 7;
+        return 9;
     }
 
     if (gb_engine_stop(engine) != GB_OK) {
         std::cerr << "Stopping an idle engine failed.\n";
         gb_engine_destroy(engine);
-        return 8;
+        return 10;
     }
     gb_engine_destroy(engine);
 

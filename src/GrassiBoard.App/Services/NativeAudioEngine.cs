@@ -6,7 +6,7 @@ namespace GrassiBoard.Services;
 
 internal sealed partial class NativeAudioEngine : IDisposable
 {
-    internal const uint ExpectedApiVersion = 5U;
+    internal const uint ExpectedApiVersion = 6U;
     private nint _engine;
 
     public uint ApiVersion { get; private set; }
@@ -68,6 +68,7 @@ internal sealed partial class NativeAudioEngine : IDisposable
     public NativeResult SetFormantPreservation(bool preserve) => NativeMethods.SetFormantPreservation(_engine, preserve ? 1U : 0U);
     public NativeResult SetQuality(uint quality) => NativeMethods.SetPitchQuality(_engine, quality);
     public NativeResult SetMicrophoneMuted(bool muted) => NativeMethods.SetMicrophoneMuted(_engine, muted ? 1U : 0U);
+    public NativeResult SetMixerSettings(in MixerSettings settings) => NativeMethods.SetMixerSettings(_engine, in settings);
     public NativeResult PlaySound(ulong key, float volume, bool loop, bool restart) =>
         NativeMethods.PlaySound(_engine, key, volume, loop ? 1U : 0U, restart ? 1U : 0U);
     public NativeResult StopSound(ulong key) => NativeMethods.StopSound(_engine, key);
@@ -182,12 +183,48 @@ internal sealed partial class NativeAudioEngine : IDisposable
         [LibraryImport(LibraryName, EntryPoint = "gb_set_microphone_muted")]
         internal static partial NativeResult SetMicrophoneMuted(nint engine, uint muted);
 
+        [LibraryImport(LibraryName, EntryPoint = "gb_set_mixer_settings")]
+        internal static partial NativeResult SetMixerSettings(nint engine, in MixerSettings settings);
+
         [LibraryImport(LibraryName, EntryPoint = "gb_get_audio_statistics")]
         internal static partial NativeResult GetAudioStatistics(nint engine, out AudioStatistics statistics);
 
         [LibraryImport(LibraryName, EntryPoint = "gb_get_last_error")]
         internal static partial NativeResult GetLastError(nint engine, nint buffer, uint capacity, out uint required);
     }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct MixerSettings
+{
+    public uint StructSize;
+    public float MicGainDb;
+    public float SoundboardGainDb;
+    public float MasterGainDb;
+    public float GateThresholdDb;
+    public float CompressorThresholdDb;
+    public float CompressorRatio;
+    public float LimiterCeilingDb;
+    public float DuckingAmountDb;
+    public float PitchWetMix;
+    public uint GateEnabled;
+    public uint CompressorEnabled;
+    public uint LimiterEnabled;
+    public uint DuckingEnabled;
+    public uint ClippingProtectionEnabled;
+
+    public static MixerSettings CreateDefault() => new()
+    {
+        StructSize = (uint)Marshal.SizeOf<MixerSettings>(),
+        GateThresholdDb = -55.0F,
+        CompressorThresholdDb = -18.0F,
+        CompressorRatio = 3.0F,
+        LimiterCeilingDb = -1.0F,
+        DuckingAmountDb = 9.0F,
+        PitchWetMix = 1.0F,
+        LimiterEnabled = 1U,
+        ClippingProtectionEnabled = 1U
+    };
 }
 
 internal enum NativeResult

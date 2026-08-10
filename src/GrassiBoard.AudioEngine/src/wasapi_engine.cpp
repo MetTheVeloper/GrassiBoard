@@ -270,6 +270,22 @@ void WasapiEngine::SetMicrophoneMuted(const bool muted) noexcept
     microphone_muted_.store(muted, std::memory_order_release);
 }
 
+void WasapiEngine::SetMixerSettings(const gb_mixer_settings& settings) noexcept
+{
+    mixer_processor_.SetMicGainDb(settings.mic_gain_db);
+    mixer_processor_.SetSoundboardGainDb(settings.soundboard_gain_db);
+    mixer_processor_.SetMasterGainDb(settings.master_gain_db);
+    mixer_processor_.SetNoiseGate(settings.gate_enabled != 0U, settings.gate_threshold_db);
+    mixer_processor_.SetCompressor(
+        settings.compressor_enabled != 0U,
+        settings.compressor_threshold_db,
+        settings.compressor_ratio);
+    mixer_processor_.SetLimiter(settings.limiter_enabled != 0U, settings.limiter_ceiling_db);
+    mixer_processor_.SetDucking(settings.ducking_enabled != 0U, settings.ducking_amount_db);
+    mixer_processor_.SetClippingProtection(settings.clipping_protection_enabled != 0U);
+    pitch_processor_.SetWetDryMix(settings.pitch_wet_mix);
+}
+
 void WasapiEngine::UpdatePitchTarget() noexcept
 {
     const float semitones = pitch_semitones_.load(std::memory_order_acquire);
@@ -357,6 +373,7 @@ void WasapiEngine::ResetStatistics() noexcept
     master_peak_.store(0.0F, std::memory_order_relaxed);
     master_rms_.store(0.0F, std::memory_order_relaxed);
     soundboard_mixer_.ResetPlayback();
+    mixer_processor_.Reset();
 }
 
 void WasapiEngine::SignalStart(const gb_result result, const HRESULT detail) noexcept
@@ -438,6 +455,7 @@ void WasapiEngine::Worker() noexcept
             if (!pitch_processor_.Prepare(kSampleRate, kCaptureChannels, captureFrames)) {
                 result = E_FAIL;
             }
+            mixer_processor_.Prepare(kSampleRate);
         }
         catch (...) {
             result = E_OUTOFMEMORY;
@@ -516,14 +534,10 @@ void WasapiEngine::Worker() noexcept
 
                 const bool silent = (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0U || data == nullptr;
                 const float* samples = reinterpret_cast<const float*>(data);
-                float peak = 0.0F;
-                double squareSum = 0.0;
                 bool overrun = false;
                 for (UINT32 frame = 0; frame < packetFrames; ++frame) {
                     const float sample = silent ? 0.0F : SafeSample(samples[frame]);
                     pitch_input_buffer_[frame] = sample;
-                    peak = std::max(peak, std::abs(sample));
-                    squareSum += static_cast<double>(sample) * static_cast<double>(sample);
                 }
 
                 pitch_processor_.Process(
@@ -536,11 +550,6 @@ void WasapiEngine::Worker() noexcept
                 if (overrun) {
                     overrun_count_.fetch_add(1U, std::memory_order_relaxed);
                 }
-                const float rms = packetFrames == 0U
-                    ? 0.0F
-                    : static_cast<float>(std::sqrt(squareSum / static_cast<double>(packetFrames)));
-                input_peak_.store(peak, std::memory_order_relaxed);
-                input_rms_.store(rms, std::memory_order_relaxed);
                 captured_frames_.fetch_add(packetFrames, std::memory_order_relaxed);
                 ring_buffer_fill_frames_.store(
                     static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
@@ -563,10 +572,13 @@ void WasapiEngine::Worker() noexcept
                     if (SUCCEEDED(result)) {
                         float* samples = reinterpret_cast<float*>(data);
                         float boardPeak = 0.0F;
+                        float microphonePeak = 0.0F;
                         float masterPeak = 0.0F;
+                        double microphoneSquareSum = 0.0;
                         double boardSquareSum = 0.0;
                         double masterSquareSum = 0.0;
                         bool underrun = false;
+                        mixer_processor_.BeginBlock();
                         for (UINT32 frame = 0; frame < available; ++frame) {
                             float microphoneSample = 0.0F;
                             if (!ring_buffer_.Pop(microphoneSample)) {
@@ -579,13 +591,17 @@ void WasapiEngine::Worker() noexcept
                             float boardLeft = 0.0F;
                             float boardRight = 0.0F;
                             soundboard_mixer_.MixFrame(boardLeft, boardRight);
-                            const float masterLeft = SafeSample(microphoneSample + boardLeft);
-                            const float masterRight = SafeSample(microphoneSample + boardRight);
+                            const MixerFrame mixed = mixer_processor_.ProcessFrame(
+                                microphoneSample, boardLeft, boardRight);
+                            const float masterLeft = SafeSample(mixed.left);
+                            const float masterRight = SafeSample(mixed.right);
 
-                            boardPeak = std::max({boardPeak, std::abs(boardLeft), std::abs(boardRight)});
+                            microphonePeak = std::max(microphonePeak, std::abs(mixed.microphone));
+                            boardPeak = std::max({boardPeak, std::abs(mixed.board_left), std::abs(mixed.board_right)});
                             masterPeak = std::max({masterPeak, std::abs(masterLeft), std::abs(masterRight)});
-                            boardSquareSum += (static_cast<double>(boardLeft) * boardLeft +
-                                static_cast<double>(boardRight) * boardRight) * 0.5;
+                            microphoneSquareSum += static_cast<double>(mixed.microphone) * mixed.microphone;
+                            boardSquareSum += (static_cast<double>(mixed.board_left) * mixed.board_left +
+                                static_cast<double>(mixed.board_right) * mixed.board_right) * 0.5;
                             masterSquareSum += (static_cast<double>(masterLeft) * masterLeft +
                                 static_cast<double>(masterRight) * masterRight) * 0.5;
                             samples[frame * kRenderChannels] = masterLeft;
@@ -600,6 +616,12 @@ void WasapiEngine::Worker() noexcept
                         const float masterRms = available == 0U
                             ? 0.0F
                             : static_cast<float>(std::sqrt(masterSquareSum / static_cast<double>(available)));
+                        const float microphoneRms = available == 0U
+                            ? 0.0F
+                            : static_cast<float>(std::sqrt(
+                                microphoneSquareSum / static_cast<double>(available)));
+                        input_peak_.store(microphonePeak, std::memory_order_relaxed);
+                        input_rms_.store(microphoneRms, std::memory_order_relaxed);
                         output_peak_.store(masterPeak, std::memory_order_relaxed);
                         output_rms_.store(masterRms, std::memory_order_relaxed);
                         soundboard_peak_.store(boardPeak, std::memory_order_relaxed);

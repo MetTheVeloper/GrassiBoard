@@ -38,8 +38,8 @@ Playback control uses a fixed 256-command single-producer/single-consumer queue.
 
 ## Version contract
 
-- Product version: `0.8.3`
-- Native ABI version: `5`
+- Product version: `0.9.0`
+- Native ABI version: `6`
 - Architecture: `x64`
 - Processing/mix format: `48,000 Hz`, 32-bit float; mono Voice DSP and stereo master output
 - Cached Sound Pad limit: WAV/MP3, mono or stereo, at most ten minutes per file

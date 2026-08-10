@@ -70,7 +70,9 @@ void SignalsmithPitchProcessor::Reset()
     current_pitch_semitones_ = target_pitch_semitones_.load(std::memory_order_acquire);
     current_formant_semitones_ = target_formant_semitones_.load(std::memory_order_acquire);
     current_preservation_mix_ = preserve_formants_.load(std::memory_order_acquire) ? 1.0F : 0.0F;
-    wet_mix_ = bypass_.load(std::memory_order_acquire) ? 0.0F : 1.0F;
+    wet_mix_ = bypass_.load(std::memory_order_acquire)
+        ? 0.0F
+        : target_wet_mix_.load(std::memory_order_acquire);
     stretch_.setTransposeSemitones(current_pitch_semitones_);
     stretch_.setFormantSemitones(
         current_formant_semitones_ - current_pitch_semitones_ * current_preservation_mix_, false);
@@ -109,7 +111,9 @@ void SignalsmithPitchProcessor::Process(
         float* outputChannels[1]{output + offset};
         stretch_.process(inputChannels, static_cast<int>(chunkFrames), outputChannels, static_cast<int>(chunkFrames));
 
-        const float targetWet = bypass_.load(std::memory_order_relaxed) ? 0.0F : 1.0F;
+        const float targetWet = bypass_.load(std::memory_order_relaxed)
+            ? 0.0F
+            : target_wet_mix_.load(std::memory_order_relaxed);
         const float wetStep = 1.0F /
             std::max(1.0F, kBypassCrossfadeSeconds * static_cast<float>(sample_rate_));
         for (std::uint32_t frame = 0U; frame < chunkFrames; ++frame) {
@@ -160,6 +164,12 @@ void SignalsmithPitchProcessor::SetBypass(const bool bypass) noexcept
     bypass_.store(bypass, std::memory_order_release);
 }
 
+void SignalsmithPitchProcessor::SetWetDryMix(const float wetMix) noexcept
+{
+    const float safeMix = std::isfinite(wetMix) ? wetMix : 1.0F;
+    target_wet_mix_.store(std::clamp(safeMix, 0.0F, 1.0F), std::memory_order_release);
+}
+
 std::uint32_t SignalsmithPitchProcessor::GetLatencySamples() const noexcept
 {
     return latency_samples_;
@@ -199,6 +209,7 @@ bool LivePitchProcessor::Prepare(
         processor.SetFormantSemitones(formant_semitones_.load(std::memory_order_acquire));
         processor.SetFormantPreservation(preserve_formants_.load(std::memory_order_acquire));
         processor.SetBypass(bypass_.load(std::memory_order_acquire));
+        processor.SetWetDryMix(wet_mix_.load(std::memory_order_acquire));
         if (!processor.Prepare(sampleRate, channels, maximumBlockFrames)) {
             return false;
         }
@@ -317,6 +328,16 @@ void LivePitchProcessor::SetBypass(const bool bypass) noexcept
     bypass_.store(bypass, std::memory_order_release);
     for (auto& processor : processors_) {
         processor.SetBypass(bypass);
+    }
+}
+
+void LivePitchProcessor::SetWetDryMix(const float wetMix) noexcept
+{
+    const float safeMix = std::isfinite(wetMix) ? wetMix : 1.0F;
+    const float clamped = std::clamp(safeMix, 0.0F, 1.0F);
+    wet_mix_.store(clamped, std::memory_order_release);
+    for (auto& processor : processors_) {
+        processor.SetWetDryMix(clamped);
     }
 }
 

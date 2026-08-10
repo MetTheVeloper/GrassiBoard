@@ -3,6 +3,8 @@ add_library(GrassiBoard.AudioEngine SHARED
   src/audio_engine.cpp
   src/device_enumerator.cpp
   src/device_enumerator.h
+  src/mixer_processor.cpp
+  src/mixer_processor.h
   src/pitch_processor.cpp
   src/pitch_processor.h
   src/soundboard_mixer.cpp
@@ -30,7 +32,7 @@ endif()
 
 set_target_properties(GrassiBoard.AudioEngine PROPERTIES
   OUTPUT_NAME "GrassiBoard.AudioEngine"
-  VERSION "0.8.3"
+  VERSION "0.9.0"
 )
 
 install(TARGETS GrassiBoard.AudioEngine

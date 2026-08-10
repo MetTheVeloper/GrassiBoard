@@ -28,6 +28,7 @@ public:
     virtual void SetFormantPreservation(bool preserve) noexcept = 0;
     virtual void SetQualityMode(PitchQualityMode mode) noexcept = 0;
     virtual void SetBypass(bool bypass) noexcept = 0;
+    virtual void SetWetDryMix(float wetMix) noexcept = 0;
     virtual std::uint32_t GetLatencySamples() const noexcept = 0;
 };
 
@@ -43,6 +44,7 @@ public:
     void SetFormantPreservation(bool preserve) noexcept override;
     void SetQualityMode(PitchQualityMode mode) noexcept override;
     void SetBypass(bool bypass) noexcept override;
+    void SetWetDryMix(float wetMix) noexcept override;
     std::uint32_t GetLatencySamples() const noexcept override;
 
 private:
@@ -52,6 +54,7 @@ private:
     std::atomic<float> target_formant_semitones_{0.0F};
     std::atomic<bool> preserve_formants_{true};
     std::atomic<bool> bypass_{true};
+    std::atomic<float> target_wet_mix_{1.0F};
     std::atomic<PitchQualityMode> quality_mode_{PitchQualityMode::Balanced};
     std::uint32_t sample_rate_ = 0;
     std::uint32_t latency_samples_ = 0;
@@ -73,6 +76,7 @@ public:
     void SetFormantPreservation(bool preserve) noexcept override;
     void SetQualityMode(PitchQualityMode mode) noexcept override;
     void SetBypass(bool bypass) noexcept override;
+    void SetWetDryMix(float wetMix) noexcept override;
     std::uint32_t GetLatencySamples() const noexcept override;
 
 private:
@@ -86,6 +90,7 @@ private:
     std::atomic<float> formant_semitones_{0.0F};
     std::atomic<bool> preserve_formants_{true};
     std::atomic<bool> bypass_{true};
+    std::atomic<float> wet_mix_{1.0F};
     std::atomic<PitchQualityMode> requested_mode_{PitchQualityMode::Balanced};
     std::atomic<std::uint32_t> reported_latency_samples_{0U};
     std::uint32_t sample_rate_ = 0U;

@@ -9,8 +9,8 @@
 #include <string>
 
 namespace {
-constexpr std::uint32_t kApiVersion = 5;
-constexpr char kEngineVersion[] = "0.8.3";
+constexpr std::uint32_t kApiVersion = 6;
+constexpr char kEngineVersion[] = "0.9.0";
 
 gb_result WriteUtf8Result(
     const std::string& value,
@@ -258,6 +258,29 @@ gb_result GB_CALL gb_set_microphone_muted(
         return GB_ERROR_INVALID_ARGUMENT;
     }
     static_cast<grassiboard::WasapiEngine*>(engine)->SetMicrophoneMuted(muted != 0U);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_set_mixer_settings(
+    const gb_engine_handle engine,
+    const gb_mixer_settings* const settings) noexcept
+{
+    if (engine == nullptr || settings == nullptr || settings->struct_size != sizeof(gb_mixer_settings) ||
+        !std::isfinite(settings->mic_gain_db) ||
+        !std::isfinite(settings->soundboard_gain_db) ||
+        !std::isfinite(settings->master_gain_db) ||
+        !std::isfinite(settings->gate_threshold_db) ||
+        !std::isfinite(settings->compressor_threshold_db) ||
+        !std::isfinite(settings->compressor_ratio) ||
+        !std::isfinite(settings->limiter_ceiling_db) ||
+        !std::isfinite(settings->ducking_amount_db) ||
+        !std::isfinite(settings->pitch_wet_mix) ||
+        settings->gate_enabled > 1U || settings->compressor_enabled > 1U ||
+        settings->limiter_enabled > 1U || settings->ducking_enabled > 1U ||
+        settings->clipping_protection_enabled > 1U) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetMixerSettings(*settings);
     return GB_OK;
 }
 

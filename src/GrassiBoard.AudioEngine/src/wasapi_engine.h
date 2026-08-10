@@ -1,6 +1,7 @@
 #pragma once
 
 #include "grassiboard/audio_engine.h"
+#include "mixer_processor.h"
 #include "pitch_processor.h"
 #include "soundboard_mixer.h"
 
@@ -54,6 +55,7 @@ public:
     gb_result StopSoundClip(std::uint64_t key) noexcept;
     gb_result StopAllSounds() noexcept;
     void SetMicrophoneMuted(bool muted) noexcept;
+    void SetMixerSettings(const gb_mixer_settings& settings) noexcept;
     void GetStatistics(gb_audio_statistics& statistics) const noexcept;
     std::string GetLastError() const;
 
@@ -74,6 +76,7 @@ private:
 
     FloatRingBuffer ring_buffer_;
     LivePitchProcessor pitch_processor_;
+    MixerDynamicsProcessor mixer_processor_;
     SoundboardMixer soundboard_mixer_;
     std::vector<float> pitch_input_buffer_;
     std::vector<float> pitch_output_buffer_;

@@ -17,6 +17,7 @@ internal enum AppPage
 {
     Board,
     Voice,
+    Mixer,
     Routing,
     Settings
 }
@@ -43,6 +44,22 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     private double _finePitch;
     private double _formant;
     private int _qualityIndex = 1;
+    private double _micGain;
+    private double _soundboardGain;
+    private double _masterGain;
+    private bool _noiseGateEnabled;
+    private double _gateThreshold = -55.0;
+    private bool _compressorEnabled;
+    private double _compressorThreshold = -18.0;
+    private double _compressorRatio = 3.0;
+    private bool _limiterEnabled = true;
+    private double _limiterCeiling = -1.0;
+    private bool _duckingEnabled;
+    private double _duckingAmount = 9.0;
+    private bool _clippingProtectionEnabled = true;
+    private double _pitchWetMix = 100.0;
+    private int _presetIndex;
+    private bool _applyingPreset;
     private string _engineStatus = "Loading audio engine...";
     private string _engineDetail = "Preparing native API";
     private string _virtualMicrophoneStatus = "Checking virtual microphone...";
@@ -79,8 +96,10 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         RefreshDevicesCommand = new RelayCommand(_ => RefreshDevices(), _ => CanConfigureRouting);
         ToggleMuteCommand = new RelayCommand(_ => MicrophoneMuted = !MicrophoneMuted, _ => NativeReady);
         ToggleVoiceFxCommand = new RelayCommand(_ => VoiceFxEnabled = !VoiceFxEnabled, _ => NativeReady);
-        StopAllCommand = new RelayCommand(_ => StopAllSounds(), _ => NativeReady);
+        StopAllCommand = new AsyncRelayCommand(_ => StopAllAsync(), _ => NativeReady && !IsBusy);
         ResetVoiceCommand = new RelayCommand(_ => ResetVoice(), _ => NativeReady);
+        ResetMixerCommand = new RelayCommand(_ => ResetMixer(), _ => NativeReady);
+        ApplyPresetCommand = new RelayCommand(_ => ApplySelectedPreset(), _ => NativeReady && PresetIndex > 0);
         AddPadsCommand = new AsyncRelayCommand(_ => ChooseAndAddPadsAsync(), _ => NativeReady);
         PlayPadCommand = new AsyncRelayCommand(parameter => PlayPadAsync(parameter as SoundPadModel), _ => NativeReady);
         StopPadCommand = new RelayCommand(parameter => StopPad(parameter as SoundPadModel));
@@ -111,8 +130,10 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public RelayCommand RefreshDevicesCommand { get; }
     public RelayCommand ToggleMuteCommand { get; }
     public RelayCommand ToggleVoiceFxCommand { get; }
-    public RelayCommand StopAllCommand { get; }
+    public AsyncRelayCommand StopAllCommand { get; }
     public RelayCommand ResetVoiceCommand { get; }
+    public RelayCommand ResetMixerCommand { get; }
+    public RelayCommand ApplyPresetCommand { get; }
     public AsyncRelayCommand AddPadsCommand { get; }
     public AsyncRelayCommand PlayPadCommand { get; }
     public RelayCommand StopPadCommand { get; }
@@ -127,6 +148,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public bool HasPads => Pads.Count > 0;
     public bool IsBoardPage => CurrentPage == AppPage.Board;
     public bool IsVoicePage => CurrentPage == AppPage.Voice;
+    public bool IsMixerPage => CurrentPage == AppPage.Mixer;
     public bool IsRoutingPage => CurrentPage == AppPage.Routing;
     public bool IsSettingsPage => CurrentPage == AppPage.Settings;
 
@@ -139,6 +161,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             {
                 OnPropertyChanged(nameof(IsBoardPage));
                 OnPropertyChanged(nameof(IsVoicePage));
+                OnPropertyChanged(nameof(IsMixerPage));
                 OnPropertyChanged(nameof(IsRoutingPage));
                 OnPropertyChanged(nameof(IsSettingsPage));
                 OnPropertyChanged(nameof(PageTitle));
@@ -151,6 +174,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public string PageTitle => CurrentPage switch
     {
         AppPage.Voice => "Voice",
+        AppPage.Mixer => "Mixer",
         AppPage.Routing => "Routing",
         AppPage.Settings => "Settings",
         _ => "Board"
@@ -159,6 +183,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public string PageSubtitle => CurrentPage switch
     {
         AppPage.Voice => "Shape the microphone voice without affecting Sound Pads.",
+        AppPage.Mixer => "Balance buses and control dynamics in the live output path.",
         AppPage.Routing => "Choose the physical microphone and virtual microphone route.",
         AppPage.Settings => "Diagnostics, build information, and support details.",
         _ => "Trigger sounds and keep essential voice controls close."
@@ -370,6 +395,121 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         _ => "Balanced"
     };
 
+    public double MicGain
+    {
+        get => _micGain;
+        set => SetMixerValue(ref _micGain, value, -24.0, 24.0, nameof(MicGain), nameof(MicGainLabel));
+    }
+
+    public string MicGainLabel => FormatSignedDb(MicGain);
+
+    public double SoundboardGain
+    {
+        get => _soundboardGain;
+        set => SetMixerValue(ref _soundboardGain, value, -24.0, 24.0, nameof(SoundboardGain), nameof(SoundboardGainLabel));
+    }
+
+    public string SoundboardGainLabel => FormatSignedDb(SoundboardGain);
+
+    public double MasterGain
+    {
+        get => _masterGain;
+        set => SetMixerValue(ref _masterGain, value, -24.0, 12.0, nameof(MasterGain), nameof(MasterGainLabel));
+    }
+
+    public string MasterGainLabel => FormatSignedDb(MasterGain);
+
+    public bool NoiseGateEnabled
+    {
+        get => _noiseGateEnabled;
+        set => SetMixerToggle(ref _noiseGateEnabled, value, nameof(NoiseGateEnabled));
+    }
+
+    public double GateThreshold
+    {
+        get => _gateThreshold;
+        set => SetMixerValue(ref _gateThreshold, value, -80.0, -20.0, nameof(GateThreshold), nameof(GateThresholdLabel));
+    }
+
+    public string GateThresholdLabel => $"{GateThreshold:0} dB";
+
+    public bool CompressorEnabled
+    {
+        get => _compressorEnabled;
+        set => SetMixerToggle(ref _compressorEnabled, value, nameof(CompressorEnabled));
+    }
+
+    public double CompressorThreshold
+    {
+        get => _compressorThreshold;
+        set => SetMixerValue(ref _compressorThreshold, value, -40.0, -3.0, nameof(CompressorThreshold), nameof(CompressorThresholdLabel));
+    }
+
+    public string CompressorThresholdLabel => $"{CompressorThreshold:0} dB";
+
+    public double CompressorRatio
+    {
+        get => _compressorRatio;
+        set => SetMixerValue(ref _compressorRatio, value, 1.0, 20.0, nameof(CompressorRatio), nameof(CompressorRatioLabel));
+    }
+
+    public string CompressorRatioLabel => $"{CompressorRatio:0.0}:1";
+
+    public bool LimiterEnabled
+    {
+        get => _limiterEnabled;
+        set => SetMixerToggle(ref _limiterEnabled, value, nameof(LimiterEnabled));
+    }
+
+    public double LimiterCeiling
+    {
+        get => _limiterCeiling;
+        set => SetMixerValue(ref _limiterCeiling, value, -12.0, 0.0, nameof(LimiterCeiling), nameof(LimiterCeilingLabel));
+    }
+
+    public string LimiterCeilingLabel => $"{LimiterCeiling:0.0} dB";
+
+    public bool DuckingEnabled
+    {
+        get => _duckingEnabled;
+        set => SetMixerToggle(ref _duckingEnabled, value, nameof(DuckingEnabled));
+    }
+
+    public double DuckingAmount
+    {
+        get => _duckingAmount;
+        set => SetMixerValue(ref _duckingAmount, value, 0.0, 30.0, nameof(DuckingAmount), nameof(DuckingAmountLabel));
+    }
+
+    public string DuckingAmountLabel => $"{DuckingAmount:0} dB";
+
+    public bool ClippingProtectionEnabled
+    {
+        get => _clippingProtectionEnabled;
+        set => SetMixerToggle(ref _clippingProtectionEnabled, value, nameof(ClippingProtectionEnabled));
+    }
+
+    public double PitchWetMix
+    {
+        get => _pitchWetMix;
+        set => SetMixerValue(ref _pitchWetMix, value, 0.0, 100.0, nameof(PitchWetMix), nameof(PitchWetMixLabel));
+    }
+
+    public string PitchWetMixLabel => $"{PitchWetMix:0}% wet";
+
+    public int PresetIndex
+    {
+        get => _presetIndex;
+        set
+        {
+            int clamped = Math.Clamp(value, 0, 4);
+            if (SetProperty(ref _presetIndex, clamped))
+            {
+                ApplyPresetCommand.RaiseCanExecuteChanged();
+            }
+        }
+    }
+
     public double MicrophoneMeter
     {
         get => _microphoneMeter;
@@ -424,6 +564,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             }
 
             ApplyVoiceState();
+            ApplyMixerState();
             RefreshDevices();
             EngineStatus = "Audio workspace ready";
             EngineDetail = $"Native API {_engine.ApiVersion} · engine v{_engine.NativeVersion}";
@@ -443,7 +584,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         catch (Exception exception) when (exception is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
             EngineStatus = $"Native engine unavailable · {exception.GetType().Name}";
-                EngineDetail = "Use the complete v0.8.3 portable package.";
+                EngineDetail = "Use the complete v0.9.0 portable package.";
         }
     }
 
@@ -595,6 +736,29 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         }
     }
 
+    private async Task StopAllAsync()
+    {
+        if (IsBusy || !NativeReady)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            StopAllSounds();
+            NativeResult result = await Task.Run(_engine.Stop);
+            IsRunning = false;
+            EngineStatus = result == NativeResult.Ok ? "Audio engine stopped" : $"Stop failed · {result}";
+            EngineDetail = result == NativeResult.Ok ? "All audio stopped · ready to start again" : _engine.ReadLastError();
+            ResetMeters();
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
     private void DeletePad(SoundPadModel? pad)
     {
         if (pad is null)
@@ -743,6 +907,133 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         _engine.SetMicrophoneMuted(MicrophoneMuted);
     }
 
+    private void ApplyMixerState()
+    {
+        if (!NativeReady)
+        {
+            return;
+        }
+
+        MixerSettings settings = MixerSettings.CreateDefault();
+        settings.MicGainDb = (float)MicGain;
+        settings.SoundboardGainDb = (float)SoundboardGain;
+        settings.MasterGainDb = (float)MasterGain;
+        settings.GateThresholdDb = (float)GateThreshold;
+        settings.CompressorThresholdDb = (float)CompressorThreshold;
+        settings.CompressorRatio = (float)CompressorRatio;
+        settings.LimiterCeilingDb = (float)LimiterCeiling;
+        settings.DuckingAmountDb = (float)DuckingAmount;
+        settings.PitchWetMix = (float)(PitchWetMix / 100.0);
+        settings.GateEnabled = NoiseGateEnabled ? 1U : 0U;
+        settings.CompressorEnabled = CompressorEnabled ? 1U : 0U;
+        settings.LimiterEnabled = LimiterEnabled ? 1U : 0U;
+        settings.DuckingEnabled = DuckingEnabled ? 1U : 0U;
+        settings.ClippingProtectionEnabled = ClippingProtectionEnabled ? 1U : 0U;
+        _engine.SetMixerSettings(in settings);
+    }
+
+    private void ResetMixer()
+    {
+        ApplyPreset(1);
+        PresetIndex = 1;
+    }
+
+    private void ApplySelectedPreset()
+    {
+        if (PresetIndex > 0)
+        {
+            ApplyPreset(PresetIndex);
+        }
+    }
+
+    private void ApplyPreset(int index)
+    {
+        _applyingPreset = true;
+        try
+        {
+            switch (index)
+            {
+                case 2: // Broadcast
+                    SetPresetValues(3.0, -2.0, -1.0, true, -50.0, true, -18.0, 4.0, true, -1.0, true, 6.0, true, 100.0);
+                    break;
+                case 3: // Streaming
+                    SetPresetValues(2.0, 0.0, -1.0, true, -55.0, true, -16.0, 3.0, true, -1.0, true, 10.0, true, 85.0);
+                    break;
+                case 4: // Voice chat
+                    SetPresetValues(4.0, -4.0, -2.0, true, -48.0, true, -20.0, 4.0, true, -1.0, true, 12.0, true, 70.0);
+                    break;
+                default: // Clean
+                    SetPresetValues(0.0, 0.0, 0.0, false, -55.0, false, -18.0, 3.0, true, -1.0, false, 9.0, true, 100.0);
+                    break;
+            }
+        }
+        finally
+        {
+            _applyingPreset = false;
+        }
+        ApplyMixerState();
+    }
+
+    private void SetPresetValues(
+        double micGain, double boardGain, double masterGain,
+        bool gate, double gateThreshold,
+        bool compressor, double compressorThreshold, double compressorRatio,
+        bool limiter, double limiterCeiling,
+        bool ducking, double duckingAmount,
+        bool clippingProtection, double wetMix)
+    {
+        MicGain = micGain;
+        SoundboardGain = boardGain;
+        MasterGain = masterGain;
+        NoiseGateEnabled = gate;
+        GateThreshold = gateThreshold;
+        CompressorEnabled = compressor;
+        CompressorThreshold = compressorThreshold;
+        CompressorRatio = compressorRatio;
+        LimiterEnabled = limiter;
+        LimiterCeiling = limiterCeiling;
+        DuckingEnabled = ducking;
+        DuckingAmount = duckingAmount;
+        ClippingProtectionEnabled = clippingProtection;
+        PitchWetMix = wetMix;
+    }
+
+    private void SetMixerValue(
+        ref double field,
+        double value,
+        double minimum,
+        double maximum,
+        string propertyName,
+        string labelName)
+    {
+        double clamped = double.IsFinite(value) ? Math.Clamp(value, minimum, maximum) : minimum;
+        if (!SetProperty(ref field, clamped, propertyName))
+        {
+            return;
+        }
+        OnPropertyChanged(labelName);
+        MarkMixerCustomAndApply();
+    }
+
+    private void SetMixerToggle(ref bool field, bool value, string propertyName)
+    {
+        if (SetProperty(ref field, value, propertyName))
+        {
+            MarkMixerCustomAndApply();
+        }
+    }
+
+    private void MarkMixerCustomAndApply()
+    {
+        if (!_applyingPreset)
+        {
+            PresetIndex = 0;
+            ApplyMixerState();
+        }
+    }
+
+    private static string FormatSignedDb(double value) => $"{value:+0.0;-0.0;0.0} dB";
+
     private void ResetVoice()
     {
         Pitch = 0.0;
@@ -875,6 +1166,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         ToggleVoiceFxCommand.RaiseCanExecuteChanged();
         StopAllCommand.RaiseCanExecuteChanged();
         ResetVoiceCommand.RaiseCanExecuteChanged();
+        ResetMixerCommand.RaiseCanExecuteChanged();
+        ApplyPresetCommand.RaiseCanExecuteChanged();
         AddPadsCommand.RaiseCanExecuteChanged();
         PlayPadCommand.RaiseCanExecuteChanged();
     }
@@ -886,10 +1179,20 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             extension.Equals(".mp3", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static double ToMeter(float linear) => Math.Clamp(linear * 100.0, 0.0, 100.0);
+    internal static double ToMeter(float linear)
+    {
+        if (!float.IsFinite(linear) || linear <= 0.0F)
+        {
+            return 0.0;
+        }
+        double db = 20.0 * Math.Log10(linear);
+        return Math.Clamp((db + 60.0) / 60.0 * 100.0, 0.0, 100.0);
+    }
 
     private static string FormatDb(float linear) =>
-        linear <= 0.000001F ? "−∞ dBFS" : $"{20.0 * Math.Log10(linear):0.0} dBFS";
+        !float.IsFinite(linear) || linear <= 0.000001F
+            ? "−∞ dBFS"
+            : $"{20.0 * Math.Log10(linear):0.0} dBFS";
 
     public void Dispose()
     {
