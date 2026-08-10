@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v1.0.0` release candidate
-- Milestone: final stability, device recovery, Media synchronization, and branded packaging
-- Status: implementation and automated validation in progress; long-running Windows 10 and installer acceptance required before stable promotion
+- Version: `v1.0.1` stable
+- Milestone: stable release with device-specific Media synchronization calibration
+- Status: v1.0.0 installer, routing, UI, and audio baseline accepted by the user; v1.0.1 adds the final live calibration control
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -19,6 +19,10 @@ The final candidate corrects remaining humanized labels, green-button foreground
 If the active physical microphone disappears, the app now rebuilds the route on the next usable physical input and reapplies the current Voice and Mixer state. With no usable microphone it keeps the process and cable output alive safely, force-mutes only the microphone branch, and retries without changing the user's stored Mute choice.
 
 CI now produces both the portable ZIP and a branded single-file per-user installer. Setup embeds the verified portable payload, supports path selection/progress/finish/open, registers safe manifest-based uninstall, and offers the official VB-CABLE link when no compatible cable is active without blocking installation. The v1.0.0 tag remains a prerelease until the user accepts the long-duration Windows 10 matrix.
+
+## v1.0.1 stable calibration
+
+The user accepted installation, launch, UI corrections, and the near-complete Media/voice synchronization of v1.0.0. v1.0.1 adds a signed `-100..+100 ms` per-Profile calibration in Settings. It updates the existing native alignment live: negative advances Media and positive delays it. The release workflow now publishes this tag as stable.
 
 ## v0.11.2 startup and icon hotfix
 
@@ -46,7 +50,7 @@ v0.9.0 adds live Mic, Soundboard, and Master gain; microphone Noise Gate and Com
 
 The release also restores visible meter fills through the shared WPF ProgressBar template, maps invalid/silent values safely to an empty `-60..0 dBFS` display, adds a subtle theme-aware restored-window border plus native DWM shadow, and makes custom maximize use the current monitor work area. Global Stop All now stops every Pad and the audio engine through the existing lifecycle path; it preserves configuration and permits a subsequent Start Engine.
 
-Native/managed v0.9.0 and the v0.11.2 functional baseline are accepted. v1.0.0/ABI 8 remains pending CI plus the final recovery, Media synchronization, installer, uninstall, and long-duration matrix.
+Native/managed v0.9.0, v0.11.2, and the v1.0.0 installer/audio baseline are accepted. v1.0.1 retains ABI 8 and adds only the live signed Media calibration before stable publication.
 
 ## v0.8.3 manual acceptance
 

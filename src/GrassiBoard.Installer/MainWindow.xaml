@@ -33,7 +33,7 @@
                         </Grid.RowDefinitions>
                         <Grid>
                             <StackPanel>
-                                <TextBlock x:Name="SetupTitle" Text="Ready to install GrassiBoard 1.0" FontSize="18" FontWeight="SemiBold" />
+                                <TextBlock x:Name="SetupTitle" Text="Ready to install GrassiBoard 1.0.1" FontSize="18" FontWeight="SemiBold" />
                                 <TextBlock x:Name="CableStatusText" Text="Checking for a compatible virtual audio cable..."
                                            Foreground="{StaticResource MutedBrush}" Margin="0,4,0,0" />
                             </StackPanel>

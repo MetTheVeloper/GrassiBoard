@@ -480,6 +480,23 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         set { if (_mediaDeck.SendEnabled != value) { _mediaDeck.SendEnabled = value; _activeProfile.Preferences.MediaSendEnabled = value; OnPropertyChanged(); ScheduleSave(); } }
     }
 
+    public double MediaSyncOffsetMilliseconds
+    {
+        get => _mediaDeck.SyncOffsetMilliseconds;
+        set
+        {
+            double clamped = Math.Round(Math.Clamp(double.IsFinite(value) ? value : 0.0, -100.0, 100.0));
+            if (Math.Abs(_mediaDeck.SyncOffsetMilliseconds - clamped) < 0.001) return;
+            _mediaDeck.SyncOffsetMilliseconds = clamped;
+            _activeProfile.Preferences.MediaSyncOffsetMilliseconds = clamped;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(MediaSyncOffsetLabel));
+            ScheduleSave();
+        }
+    }
+
+    public string MediaSyncOffsetLabel => $"{MediaSyncOffsetMilliseconds:+0;-0;0} ms";
+
     public bool NativeReady
     {
         get => _nativeReady;
@@ -859,7 +876,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         catch (Exception exception) when (exception is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
             EngineStatus = $"Native engine unavailable · {exception.GetType().Name}";
-            EngineDetail = "Use the complete v1.0.0 package.";
+            EngineDetail = "Use the complete v1.0.1 package.";
         }
     }
 
@@ -1792,6 +1809,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         _activeProfile.Preferences.MediaVolume = MediaVolume;
         _activeProfile.Preferences.MediaMonitorEnabled = MediaMonitorEnabled;
         _activeProfile.Preferences.MediaSendEnabled = MediaSendEnabled;
+        _activeProfile.Preferences.MediaSyncOffsetMilliseconds = MediaSyncOffsetMilliseconds;
         _activeProfile.Preferences.LastMediaPath = _mediaDeck.FilePath;
         _profileDocument.ActiveProfileId = _activeProfile.Id;
     }
@@ -1822,6 +1840,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         _mediaDeck.Volume = Safe(profile.Preferences.MediaVolume, 0.0, 1.5, 0.8);
         _mediaDeck.MonitorEnabled = profile.Preferences.MediaMonitorEnabled;
         _mediaDeck.SendEnabled = profile.Preferences.MediaSendEnabled;
+        _mediaDeck.SyncOffsetMilliseconds = Safe(
+            profile.Preferences.MediaSyncOffsetMilliseconds, -100.0, 100.0, 0.0);
 
         if (populateCollections)
         {
@@ -1943,7 +1963,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         string[] names = [nameof(MinimizeToTray), nameof(StartMinimized), nameof(StartWithWindows), nameof(MuteHotkey),
             nameof(StopAllHotkey), nameof(VoiceFxHotkey), nameof(PushToTalkHotkey), nameof(ShowHideHotkey),
             nameof(MediaPlayPauseHotkey), nameof(MediaStopHotkey), nameof(MediaBackHotkey), nameof(MediaForwardHotkey),
-            nameof(MediaVolume), nameof(MediaMonitorEnabled), nameof(MediaSendEnabled)];
+            nameof(MediaVolume), nameof(MediaMonitorEnabled), nameof(MediaSendEnabled),
+            nameof(MediaSyncOffsetMilliseconds), nameof(MediaSyncOffsetLabel)];
         foreach (string name in names) OnPropertyChanged(name);
     }
 
@@ -1990,6 +2011,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         text.AppendLine($"Ring fill: {_statistics.RingBufferFillFrames} frames");
         text.AppendLine($"Pitch latency: {_statistics.PitchLatencySamples} samples ({PitchLatencyMilliseconds:0.0} ms)");
         text.AppendLine($"Media alignment: {_statistics.MediaAlignmentFrames} samples ({MediaAlignmentMilliseconds:0.0} ms) on virtual send; includes the measured microphone pre-render path and local monitor estimate");
+        text.AppendLine($"Media sync calibration: {MediaSyncOffsetMilliseconds:+0;-0;0} ms (negative advances Media; positive delays Media)");
         text.AppendLine($"Reported total latency: {EstimatedTotalLatencyMilliseconds:0.0} ms");
         text.AppendLine($"Dropouts: U {_statistics.UnderrunCount} · O {_statistics.OverrunCount} · D {_statistics.DiscontinuityCount}");
         text.AppendLine($"Active Sound Pads: {_statistics.ActiveSoundCount}");

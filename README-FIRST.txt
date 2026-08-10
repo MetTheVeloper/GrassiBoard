@@ -1,4 +1,4 @@
-GrassiBoard v1.0.0 — Final Release Candidate
+GrassiBoard v1.0.1 — Stable Release
 
 PREREQUISITE: Keep the known working external virtual audio cable installed.
 
@@ -13,6 +13,7 @@ PREREQUISITE: Keep the known working external virtual audio cable installed.
 9. Load a long local audio file in Media Deck; test Play/Pause/Resume/Stop, timeline seek while both paused and playing, ±10 seconds, volume, and Media hotkeys.
 10. Test Monitor/Send as ON/ON, ON/OFF, OFF/ON, OFF/OFF. Speak over Media and confirm only Media—not the microphone—is heard in headphones.
 11. While Media plays, sing or speak on the beat in High quality, Balanced, and Low latency. Confirm the recorded virtual microphone stays aligned with the monitored beat. Settings must report the current Media Vocal Sync value.
+    If a device-specific difference remains, adjust Media Sync Calibration live: negative advances Media and positive delays Media. Start around -5 ms when voice is slightly early.
 12. Global Stop All must stop Pads, Media, and the engine without deleting configuration; Start Engine must work afterward.
 13. While running, disconnect the selected physical microphone. Confirm GrassiBoard switches to the next real microphone without resetting Voice/Mixer/Pad settings. With every physical microphone disconnected, confirm the virtual microphone is safely muted and the app stays alive; reconnect one and confirm automatic recovery.
 14. Restart and confirm Profile, Pad, Preset, Hotkey, Media volume, Monitor, and Send settings return without autoplay.

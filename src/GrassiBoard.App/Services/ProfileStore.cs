@@ -120,6 +120,9 @@ internal sealed class ProfileStore
         preferences.MediaStopHotkey ??= string.Empty;
         preferences.MediaBackHotkey ??= string.Empty;
         preferences.MediaForwardHotkey ??= string.Empty;
+        preferences.MediaSyncOffsetMilliseconds = double.IsFinite(preferences.MediaSyncOffsetMilliseconds)
+            ? Math.Clamp(preferences.MediaSyncOffsetMilliseconds, -100.0, 100.0)
+            : 0.0;
         preferences.LastMediaPath ??= string.Empty;
         foreach (UserPresetModel preset in profile.UserPresets)
         {

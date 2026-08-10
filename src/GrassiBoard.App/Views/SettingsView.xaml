@@ -39,6 +39,32 @@
             </Border>
 
             <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="260" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="90" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="MEDIA SYNC CALIBRATION" Style="{StaticResource EyebrowTextStyle}" />
+                        <TextBlock Text="Fine-tune the recorded beat against your live voice." FontSize="15" FontWeight="SemiBold" Margin="0,5,16,0" />
+                        <TextBlock Text="Negative advances Media; positive delays Media." Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,4,16,0" />
+                    </StackPanel>
+                    <Slider Grid.Column="1" Minimum="-100" Maximum="100" TickFrequency="1"
+                            IsSnapToTickEnabled="True" SmallChange="1" LargeChange="10"
+                            Value="{Binding MediaSyncOffsetMilliseconds, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                            VerticalAlignment="Center" Margin="0,0,18,0" />
+                    <Grid Grid.Column="2" ToolTip="Calibration offset in milliseconds (-100 to +100)">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="28" /></Grid.ColumnDefinitions>
+                        <TextBox Text="{Binding MediaSyncOffsetMilliseconds, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                 HorizontalContentAlignment="Right" VerticalContentAlignment="Center" />
+                        <TextBlock Grid.Column="1" Text="ms" VerticalAlignment="Center" HorizontalAlignment="Right"
+                                   Style="{StaticResource MutedTextStyle}" />
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
                 <StackPanel>
                     <TextBlock Text="GLOBAL HOTKEYS" Style="{StaticResource EyebrowTextStyle}" />
                     <TextBlock Text="Use combinations such as Ctrl+Alt+M. Sound Pad hotkeys are edited on each Pad; Preset hotkeys are edited in Mixer."

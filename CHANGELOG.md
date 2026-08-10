@@ -2,6 +2,17 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [1.0.1] - 2026-08-10
+
+### Added
+
+- Add a live, profile-persisted Media Sync Calibration control from `-100` to `+100 ms` in one-millisecond steps.
+- Apply calibration immediately to the computed Media virtual-send alignment without restarting the engine or Media Deck. Negative values advance Media; positive values delay Media.
+
+### Stable release
+
+- Promote the accepted installer, routing, UI, automatic microphone recovery, Soundboard, Voice FX, Mixer, Profiles, Hotkeys, and Local Media baseline to the first stable GitHub release.
+
 ## [1.0.0] - 2026-08-10
 
 ### Added

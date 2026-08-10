@@ -10,7 +10,7 @@
 
 namespace {
 constexpr std::uint32_t kApiVersion = 8;
-constexpr char kEngineVersion[] = "1.0.0";
+constexpr char kEngineVersion[] = "1.0.1";
 
 gb_result WriteUtf8Result(
     const std::string& value,

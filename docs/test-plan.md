@@ -1,14 +1,14 @@
-# v1.0.0 final release-candidate test plan
+# v1.0.1 stable release test plan
 
-The user has accepted v0.11.2 as the functional regression baseline. v1.0.0 remains a prerelease until CI is green and the Windows 10 / Microsoft LifeChat / external-cable installation and long-duration matrix below is explicitly approved.
+The user accepted v1.0.0 installation, launch, UI, routing, and near-complete Media synchronization. v1.0.1 adds the final device-specific live calibration and is published as stable after the automated release gate.
 
 ## Automated release gate
 
-- Build native x64 Release with `/W4 /WX`; require product `1.0.0`, native ABI 8, and the matching 144-byte managed/native statistics layout.
+- Build native x64 Release with `/W4 /WX`; require product `1.0.1`, native ABI 8, and the matching 144-byte managed/native statistics layout.
 - Pass native DSP, Mixer, Pad, Media ring/alignment, lifecycle, and version tests.
 - Pass managed persistence, selector-label, device-recovery policy, XAML/resource, icon, decode, and packaging smoke tests.
 - Publish and verify portable, symbols, tests, and exactly one self-contained Setup EXE containing the portable payload.
-- Keep the tagged GitHub release marked prerelease until this manual matrix passes.
+- Publish the versioned Setup and portable assets as a stable GitHub release after this automated gate passes.
 
 ## A. UI regression
 
@@ -24,8 +24,9 @@ The user has accepted v0.11.2 as the functional regression baseline. v1.0.0 rema
 2. Play a beat and record the GrassiBoard virtual microphone in a target app.
 3. Sing or clap on the monitored beat in High quality, Balanced, and Low latency.
 4. Confirm the recorded voice and beat remain acceptably aligned in each mode. Settings must show a non-zero Media Vocal Sync that follows the active route/quality.
-5. Repeat Play/Pause/seek/±10 and a live quality change; no stale Media or progressive drift is allowed.
-6. Confirm the physical microphone is never audible in the independent Media monitor.
+5. Move Media Sync Calibration while playback is active. Confirm negative values advance Media, positive values delay it, one-millisecond steps apply without restart, and the value returns with the Profile after restart.
+6. Repeat Play/Pause/seek/±10 and a live quality change; no stale Media or progressive drift is allowed.
+7. Confirm the physical microphone is never audible in the independent Media monitor.
 
 ## C. Microphone disappearance and recovery
 

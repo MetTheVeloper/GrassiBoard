@@ -1,6 +1,6 @@
 # Audio pipeline
 
-## v1.0.0 live route
+## v1.0.1 live route
 
 ```text
 Selected physical microphone
@@ -64,3 +64,5 @@ capture buffer + active Pitch latency + current microphone ring fill
 ```
 
 The delay is recomputed when Media starts or Voice quality changes and is capped by the fixed native Media ring capacity. This aligns what the target application records with the beat heard in headphones; it does not route microphone audio to the headphones.
+
+The active Profile adds a live signed calibration of `-100..+100 ms` to the monitor-path component. Negative values advance Media; positive values delay it. The native buffer changes its applied delay on the next render block without restarting playback.

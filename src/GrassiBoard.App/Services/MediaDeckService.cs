@@ -14,8 +14,7 @@ internal sealed class MediaDeckService : IDisposable
     private const uint ReadAheadFrames = 9_600U;
     private const int MonitorDesiredLatencyMilliseconds = 50;
     private const uint MonitorQueueFrames = 2_880U;
-    private const uint MonitorPathLatencyFrames =
-        (uint)(SampleRate * MonitorDesiredLatencyMilliseconds / 1000) + MonitorQueueFrames;
+    private const double MonitorQueueMilliseconds = MonitorQueueFrames * 1000.0 / SampleRate;
     private readonly NativeAudioEngine _engine;
     private readonly Func<bool> _engineRunning;
     private readonly CancellationTokenSource _shutdown = new();
@@ -29,6 +28,7 @@ internal sealed class MediaDeckService : IDisposable
     private double _volume = 0.8;
     private bool _monitorEnabled = true;
     private bool _sendEnabled = true;
+    private double _syncOffsetMilliseconds;
     private bool _playing;
     private int _generation;
     private float _peak;
@@ -73,6 +73,26 @@ internal sealed class MediaDeckService : IDisposable
             }
             _engine.ClearMedia();
             _engine.SetMediaActive(false);
+        }
+    }
+
+    public double SyncOffsetMilliseconds
+    {
+        get { lock (_stateLock) return _syncOffsetMilliseconds; }
+        set
+        {
+            double clamped = double.IsFinite(value) ? Math.Clamp(value, -100.0, 100.0) : 0.0;
+            bool monitor;
+            lock (_stateLock)
+            {
+                if (Math.Abs(_syncOffsetMilliseconds - clamped) < 0.001) return;
+                _syncOffsetMilliseconds = clamped;
+                monitor = _monitorEnabled;
+            }
+            if (_engine.IsAvailable)
+            {
+                _engine.SetMediaMonitorLatency(CalculateMonitorPathLatencyFrames(monitor, clamped));
+            }
         }
     }
 
@@ -278,7 +298,7 @@ internal sealed class MediaDeckService : IDisposable
                             monitorOutput.Play();
                         }
                         activeGeneration = generation;
-                        _engine.SetMediaMonitorLatency(monitor ? MonitorPathLatencyFrames : 0U);
+                        _engine.SetMediaMonitorLatency(CalculateMonitorPathLatencyFrames(monitor, SyncOffsetMilliseconds));
                         _engine.ClearMedia();
                         _engine.SetMediaActive(false);
                     }
@@ -392,6 +412,18 @@ internal sealed class MediaDeckService : IDisposable
         return extension is ".wav" or ".mp3" or ".aiff" or ".aif"
             ? new AudioFileReader(path)
             : new MediaFoundationReader(path);
+    }
+
+    internal static uint CalculateMonitorPathLatencyFrames(bool monitor, double offsetMilliseconds)
+    {
+        if (!monitor)
+        {
+            return 0U;
+        }
+        double totalMilliseconds = Math.Max(
+            0.0,
+            MonitorDesiredLatencyMilliseconds + MonitorQueueMilliseconds + offsetMilliseconds);
+        return checked((uint)Math.Round(SampleRate * totalMilliseconds / 1000.0));
     }
 
     private static bool IsRecoverableMediaFailure(Exception exception) =>

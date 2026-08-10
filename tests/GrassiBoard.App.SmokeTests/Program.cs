@@ -96,7 +96,7 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "1.0.0" || NativeAudioEngine.ExpectedApiVersion != 8U)
+if (BuildInfo.CurrentVersion != "1.0.1" || NativeAudioEngine.ExpectedApiVersion != 8U)
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -105,7 +105,7 @@ if (BuildInfo.CurrentVersion != "1.0.0" || NativeAudioEngine.ExpectedApiVersion 
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "1.0.0",
+      "Version": "1.0.1",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -114,7 +114,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "1.0.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "1.0.1" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -206,14 +206,34 @@ try
 
     profiles.Profiles[0].Pads.Add(new SoundPadModel { Hotkey = "Ctrl+Shift+1" });
     profiles.Profiles[0].Preferences.ShowHideHotkey = "Ctrl+Alt+G";
+    profiles.Profiles[0].Preferences.MediaSyncOffsetMilliseconds = -7.0;
     ProfileModel clonedProfile = profiles.Profiles[0].Clone();
     if (clonedProfile.Pads[0].Hotkey != "Ctrl+Shift+1" ||
         clonedProfile.Preferences.ShowHideHotkey != "Ctrl+Alt+G" ||
+        clonedProfile.Preferences.MediaSyncOffsetMilliseconds != -7.0 ||
         !GlobalHotkeyService.TryParse("Ctrl+Alt+F9", out _, out _) ||
         GlobalHotkeyService.TryParse("Ctrl+Alt", out _, out _))
     {
         Console.Error.WriteLine("Profile clone or hotkey parsing contract failed.");
         return 14;
+    }
+
+    new ProfileStore(profilePath).Save(profiles);
+    if (new ProfileStore(profilePath).Load().Profiles.Single().Preferences.MediaSyncOffsetMilliseconds != -7.0)
+    {
+        Console.Error.WriteLine("Media sync calibration persistence contract failed.");
+        return 23;
+    }
+
+    uint baseSyncFrames = MediaDeckService.CalculateMonitorPathLatencyFrames(true, 0.0);
+    uint advancedSyncFrames = MediaDeckService.CalculateMonitorPathLatencyFrames(true, -10.0);
+    uint delayedSyncFrames = MediaDeckService.CalculateMonitorPathLatencyFrames(true, 10.0);
+    if (baseSyncFrames - advancedSyncFrames != 480U ||
+        delayedSyncFrames - baseSyncFrames != 480U ||
+        MediaDeckService.CalculateMonitorPathLatencyFrames(false, 10.0) != 0U)
+    {
+        Console.Error.WriteLine("Live Media sync calibration direction contract failed.");
+        return 24;
     }
 
     using (var mediaNative = new NativeAudioEngine())

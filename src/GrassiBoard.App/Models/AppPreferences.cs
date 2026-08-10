@@ -17,5 +17,6 @@ internal sealed class AppPreferences
     public double MediaVolume { get; set; } = 0.8;
     public bool MediaMonitorEnabled { get; set; } = true;
     public bool MediaSendEnabled { get; set; } = true;
+    public double MediaSyncOffsetMilliseconds { get; set; }
     public string LastMediaPath { get; set; } = string.Empty;
 }

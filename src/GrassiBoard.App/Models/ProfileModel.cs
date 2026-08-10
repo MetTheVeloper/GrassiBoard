@@ -63,6 +63,7 @@ internal sealed class ProfileModel : ObservableObject
             MediaVolume = Preferences.MediaVolume,
             MediaMonitorEnabled = Preferences.MediaMonitorEnabled,
             MediaSendEnabled = Preferences.MediaSendEnabled,
+            MediaSyncOffsetMilliseconds = Preferences.MediaSyncOffsetMilliseconds,
             LastMediaPath = Preferences.LastMediaPath
         }
     };
