@@ -2,7 +2,7 @@
 
 - Version: `v0.8.3`
 - Milestone: `7 — Soundboard + UI architecture foundation`
-- Status: v0.8.2 functionality manually accepted on Windows 10; presentation-only v0.8.3 UI/UX refresh implemented; validation in progress
+- Status: v0.8.2 functionality manually accepted on Windows 10; presentation-only v0.8.3 UI/UX refresh implemented; local and GitHub Actions validation passed; manual visual/functional acceptance pending
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -14,6 +14,8 @@
 ## v0.8.3 UI/UX refresh
 
 The v0.8.3 milestone is presentation-only. It centralizes Light/Dark surface and interaction tokens, replaces mixed text symbols with one Segoe MDL2 icon family, restyles the remaining default WPF-looking controls, and reduces Sound Pad cards to a compact collision-safe layout. Audio routing, DSP, persistence, native ABI, and command semantics remain unchanged from the accepted v0.8.2 baseline.
+
+Local Windows 10 validation passed the Release WPF build with zero warnings, managed decode/persistence/binding/XAML tests, the UI-refresh source contract, and real Sound Pad materialization with a live theme transition. GitHub Actions [v0.8.3 UI refresh Build](https://github.com/MetTheVeloper/GrassiBoard/actions/runs/31368704101) passed native compilation/tests, managed tests, self-contained publish, portable-package verification, and artifact uploads for implementation commit `f3797a5`.
 
 ## v0.8.2 manual acceptance
 
