@@ -16,11 +16,11 @@
     </shell:WindowChrome.WindowChrome>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="42" />
+            <RowDefinition Height="40" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Border Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}"
+        <Border Background="{DynamicResource TopBarBrush}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,0,1">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -38,13 +38,15 @@
                                VerticalAlignment="Center" Margin="9,0,0,0" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button x:Name="ThemeToggleButton" Content="☀" Style="{StaticResource TitleBarButtonStyle}"
+                    <Button x:Name="ThemeToggleButton" Content="&#xE706;" Style="{StaticResource TitleBarButtonStyle}"
+                            AutomationProperties.Name="Toggle color theme"
                             Click="OnThemeToggleClick" ToolTip="Switch to light theme" />
-                    <Button Content="―" Style="{StaticResource TitleBarButtonStyle}"
+                    <Button Content="&#xE921;" Style="{StaticResource TitleBarButtonStyle}" AutomationProperties.Name="Minimize"
                             Click="OnMinimizeClick" ToolTip="Minimize" />
-                    <Button x:Name="MaximizeButton" Content="□" Style="{StaticResource TitleBarButtonStyle}"
+                    <Button x:Name="MaximizeButton" Content="&#xE922;" Style="{StaticResource TitleBarButtonStyle}"
+                            AutomationProperties.Name="Maximize or restore"
                             Click="OnMaximizeRestoreClick" ToolTip="Maximize" />
-                    <Button Content="×" Style="{StaticResource TitleBarCloseButtonStyle}"
+                    <Button Content="&#xE8BB;" Style="{StaticResource TitleBarCloseButtonStyle}" AutomationProperties.Name="Close"
                             Click="OnCloseClick" ToolTip="Close" />
                 </StackPanel>
             </Grid>
@@ -52,13 +54,13 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="196" />
+                <ColumnDefinition Width="188" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
         <Border Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,0,1,0">
-            <Grid Margin="18,24">
+            <Grid Margin="14,22">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="36" />
@@ -74,7 +76,7 @@
                 </StackPanel>
 
                 <StackPanel Grid.Row="2">
-                    <Button Content="▦   Board" Command="{Binding NavigateCommand}" CommandParameter="Board">
+                    <Button Command="{Binding NavigateCommand}" CommandParameter="Board" AutomationProperties.Name="Board">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource SidebarButtonStyle}">
                                 <Style.Triggers>
@@ -86,8 +88,12 @@
                                 </Style.Triggers>
                             </Style>
                         </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE80A;" Style="{StaticResource GbIconTextStyle}" Width="22" />
+                            <TextBlock Text="Board" Margin="8,0,0,0" />
+                        </StackPanel>
                     </Button>
-                    <Button Content="≋   Voice" Command="{Binding NavigateCommand}" CommandParameter="Voice">
+                    <Button Command="{Binding NavigateCommand}" CommandParameter="Voice" AutomationProperties.Name="Voice">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource SidebarButtonStyle}">
                                 <Style.Triggers>
@@ -99,8 +105,12 @@
                                 </Style.Triggers>
                             </Style>
                         </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE720;" Style="{StaticResource GbIconTextStyle}" Width="22" />
+                            <TextBlock Text="Voice" Margin="8,0,0,0" />
+                        </StackPanel>
                     </Button>
-                    <Button Content="⇄   Routing" Command="{Binding NavigateCommand}" CommandParameter="Routing">
+                    <Button Command="{Binding NavigateCommand}" CommandParameter="Routing" AutomationProperties.Name="Routing">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource SidebarButtonStyle}">
                                 <Style.Triggers>
@@ -112,8 +122,12 @@
                                 </Style.Triggers>
                             </Style>
                         </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE8AB;" Style="{StaticResource GbIconTextStyle}" Width="22" />
+                            <TextBlock Text="Routing" Margin="8,0,0,0" />
+                        </StackPanel>
                     </Button>
-                    <Button Content="⚙   Settings" Command="{Binding NavigateCommand}" CommandParameter="Settings">
+                    <Button Command="{Binding NavigateCommand}" CommandParameter="Settings" AutomationProperties.Name="Settings">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource SidebarButtonStyle}">
                                 <Style.Triggers>
@@ -125,6 +139,10 @@
                                 </Style.Triggers>
                             </Style>
                         </Button.Style>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE713;" Style="{StaticResource GbIconTextStyle}" Width="22" />
+                            <TextBlock Text="Settings" Margin="8,0,0,0" />
+                        </StackPanel>
                     </Button>
                 </StackPanel>
 
@@ -140,13 +158,13 @@
 
         <Grid Grid.Column="1">
             <Grid.RowDefinitions>
-                <RowDefinition Height="80" />
-                <RowDefinition Height="96" />
+                <RowDefinition Height="72" />
+                <RowDefinition Height="90" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Border Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="0,0,0,1" Padding="24,13">
+            <Border Background="{DynamicResource TopBarBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="0,0,0,1" Padding="24,10">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="1.2*" MinWidth="210" />
@@ -214,7 +232,7 @@
                 </Grid>
             </Border>
 
-            <Grid Grid.Row="1" Margin="28,20,28,10">
+            <Grid Grid.Row="1" Margin="24,18,24,10">
                 <StackPanel>
                     <TextBlock Text="{Binding PageTitle}" Style="{StaticResource PageTitleStyle}" />
                     <TextBlock Text="{Binding PageSubtitle}" Style="{StaticResource MutedTextStyle}" Margin="0,5,0,0" />
@@ -226,7 +244,7 @@
                 </Border>
             </Grid>
 
-            <Grid Grid.Row="2" Margin="28,0,28,24">
+            <Grid Grid.Row="2" Margin="24,0,24,24">
                 <views:BoardView Visibility="{Binding IsBoardPage, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <views:VoiceView Visibility="{Binding IsVoicePage, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 <views:RoutingView Visibility="{Binding IsRoutingPage, Converter={StaticResource BooleanToVisibilityConverter}}" />

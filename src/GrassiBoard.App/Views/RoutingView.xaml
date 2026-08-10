@@ -4,7 +4,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel MaxWidth="1040" HorizontalAlignment="Left">
             <TextBlock Text="AUDIO ROUTING" Style="{StaticResource EyebrowTextStyle}" />
-            <TextBlock Text="Physical in, virtual out" FontSize="20" FontWeight="SemiBold" Margin="0,5,0,0" />
+            <TextBlock Text="Physical in, virtual out" Style="{StaticResource SectionTitleStyle}" Margin="0,5,0,0" />
 
             <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
                 <Grid>
@@ -16,14 +16,26 @@
                     <StackPanel>
                         <TextBlock Text="INPUT MICROPHONE" Style="{StaticResource EyebrowTextStyle}" />
                         <ComboBox ItemsSource="{Binding InputDevices}" SelectedItem="{Binding SelectedInput}"
-                                  DisplayMemberPath="Name" IsEnabled="{Binding CanConfigureRouting}" Margin="0,9,0,0" />
+                                  IsEnabled="{Binding CanConfigureRouting}" Margin="0,9,0,0">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <TextBlock Text="The physical microphone GrassiBoard captures and processes."
                                    Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,8,0,0" />
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="VIRTUAL MICROPHONE OUTPUT" Style="{StaticResource EyebrowTextStyle}" />
                         <ComboBox ItemsSource="{Binding OutputDevices}" SelectedItem="{Binding SelectedOutput}"
-                                  DisplayMemberPath="Name" IsEnabled="{Binding CanConfigureRouting}" Margin="0,9,0,0" />
+                                  IsEnabled="{Binding CanConfigureRouting}" Margin="0,9,0,0">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
                         <TextBlock Text="Processed voice and Sound Pads are sent together to this route."
                                    Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,8,0,0" />
                     </StackPanel>
@@ -37,14 +49,23 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
                     <StackPanel>
-                        <TextBlock Text="{Binding VirtualMicrophoneStatus}" FontSize="17" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AccentBrush}" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE930;" FontFamily="{StaticResource IconFont}" FontSize="16"
+                                       Foreground="{DynamicResource SuccessBrush}" Margin="0,1,9,0" />
+                            <TextBlock Text="{Binding VirtualMicrophoneStatus}" FontSize="17" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource SuccessBrush}" />
+                        </StackPanel>
                         <TextBlock Text="{Binding VirtualMicrophoneHint}" Style="{StaticResource MutedTextStyle}"
                                    Margin="0,7,20,0" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Button Content="Refresh" Style="{StaticResource SecondaryButtonStyle}"
-                                Command="{Binding RefreshDevicesCommand}" Margin="0,0,10,0" />
+                        <Button Style="{StaticResource SecondaryButtonStyle}" Command="{Binding RefreshDevicesCommand}"
+                                Margin="0,0,10,0" ToolTip="Scan audio devices again">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE72C;" Style="{StaticResource GbIconTextStyle}" Margin="0,0,7,0" />
+                                <TextBlock Text="Refresh" />
+                            </StackPanel>
+                        </Button>
                         <Button Content="{Binding EngineButtonLabel}" Command="{Binding StartStopCommand}" MinWidth="130">
                             <Button.Style>
                                 <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">

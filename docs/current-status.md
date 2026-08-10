@@ -1,8 +1,8 @@
 # Current status
 
-- Version: `v0.8.2`
+- Version: `v0.8.3`
 - Milestone: `7 — Soundboard + UI architecture foundation`
-- Status: Sound Pad/UI stability hotfix implemented; local and GitHub Actions validation passed; manual Windows 10 retest pending
+- Status: v0.8.2 functionality manually accepted on Windows 10; presentation-only v0.8.3 UI/UX refresh implemented; validation in progress
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -10,6 +10,14 @@
 - Virtual routing: vendor-neutral external cable selected as the processed WASAPI render destination
 - UI: persistent Board/Voice/Routing/Settings shell with shared top bar and state
 - Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
+
+## v0.8.3 UI/UX refresh
+
+The v0.8.3 milestone is presentation-only. It centralizes Light/Dark surface and interaction tokens, replaces mixed text symbols with one Segoe MDL2 icon family, restyles the remaining default WPF-looking controls, and reduces Sound Pad cards to a compact collision-safe layout. Audio routing, DSP, persistence, native ABI, and command semantics remain unchanged from the accepted v0.8.2 baseline.
+
+## v0.8.2 manual acceptance
+
+On 2026-08-10 the user completed the Windows 10 functional test and explicitly confirmed that v0.8.2 works completely and accurately with no remaining functional problems. This accepts first-Pad creation, WAV/MP3 Soundboard playback and controls, the custom title bar and theme switching, and the previously accepted external-cable microphone route as the regression baseline for v0.8.3.
 
 ## v0.8.2 Sound Pad and UI stability hotfix
 

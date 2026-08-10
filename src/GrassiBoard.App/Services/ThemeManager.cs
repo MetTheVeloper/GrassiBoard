@@ -15,15 +15,23 @@ internal static class ThemeManager
             ["PanelBrush"] = "#131C26",
             ["PanelRaisedBrush"] = "#182431",
             ["PanelQuietBrush"] = "#0E161F",
+            ["TopBarBrush"] = "#0B1118",
+            ["ElevatedCardBrush"] = "#17222E",
+            ["ControlSurfaceBrush"] = "#101923",
+            ["HoverSurfaceBrush"] = "#1D2B38",
+            ["PressedSurfaceBrush"] = "#243746",
+            ["SelectedSurfaceBrush"] = "#163D32",
             ["BorderBrush"] = "#263746",
             ["TextBrush"] = "#F4F7F9",
             ["MutedTextBrush"] = "#93A7BA",
             ["AccentBrush"] = "#76E7B7",
             ["AccentDarkBrush"] = "#163D32",
+            ["SuccessBrush"] = "#76E7B7",
             ["WarningBrush"] = "#F2CF72",
             ["DangerBrush"] = "#FF7C92",
             ["DangerDarkBrush"] = "#47232C",
-            ["MeterTrackBrush"] = "#243442"
+            ["MeterTrackBrush"] = "#243442",
+            ["DisabledBrush"] = "#607080"
         };
 
     private static readonly IReadOnlyDictionary<string, string> LightPalette =
@@ -34,15 +42,23 @@ internal static class ThemeManager
             ["PanelBrush"] = "#FFFFFF",
             ["PanelRaisedBrush"] = "#E7EDF2",
             ["PanelQuietBrush"] = "#EDF2F5",
+            ["TopBarBrush"] = "#FFFFFF",
+            ["ElevatedCardBrush"] = "#FFFFFF",
+            ["ControlSurfaceBrush"] = "#F7F9FA",
+            ["HoverSurfaceBrush"] = "#E8F0F4",
+            ["PressedSurfaceBrush"] = "#DCE8ED",
+            ["SelectedSurfaceBrush"] = "#D7F1E6",
             ["BorderBrush"] = "#C8D4DD",
             ["TextBrush"] = "#15212B",
             ["MutedTextBrush"] = "#53697B",
             ["AccentBrush"] = "#17815F",
             ["AccentDarkBrush"] = "#D7F1E6",
+            ["SuccessBrush"] = "#17815F",
             ["WarningBrush"] = "#8D6500",
             ["DangerBrush"] = "#C33C55",
             ["DangerDarkBrush"] = "#F8E3E8",
-            ["MeterTrackBrush"] = "#D7E1E8"
+            ["MeterTrackBrush"] = "#D7E1E8",
+            ["DisabledBrush"] = "#91A0AC"
         };
 
     private static readonly string PreferencesPath = Path.Combine(

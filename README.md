@@ -4,7 +4,7 @@ GrassiBoard is a Windows x64 live voice-processing and Soundboard application. I
 
 ## Current milestone
 
-`v0.8.2` stabilizes the production application shell and first real Soundboard while preserving the manually accepted `v0.7.0` microphone route. It fixes first-Pad creation, adds readable themed dropdowns, persisted light/dark appearance, a custom title bar, and durable crash reports.
+`v0.8.3` is a presentation-only UI/UX refresh over the fully accepted `v0.8.2` functionality. It keeps the microphone route and Soundboard behavior unchanged while introducing a cohesive Light/Dark design system, compact Sound Pads, consistent icons and restyled WPF controls.
 
 - **Board** is the daily workspace: reusable Sound Pads plus compact Voice FX.
 - **Voice** contains full Pitch, Fine Pitch, Formant, preservation, quality, and latency controls.

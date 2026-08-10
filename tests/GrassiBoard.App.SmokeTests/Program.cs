@@ -96,7 +96,7 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "0.8.2")
+if (BuildInfo.CurrentVersion != "0.8.3")
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -105,7 +105,7 @@ if (BuildInfo.CurrentVersion != "0.8.2")
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "0.8.2",
+      "Version": "0.8.3",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -114,7 +114,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "0.8.2" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "0.8.3" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -237,6 +237,26 @@ foreach (string xamlPath in Directory.EnumerateFiles(appSource, "*.xaml", Search
             return 7;
         }
     }
+}
+
+string boardXaml = File.ReadAllText(Path.Combine(appSource, "Views", "BoardView.xaml"));
+string controlsXaml = File.ReadAllText(Path.Combine(appSource, "Themes", "Controls.xaml"));
+string[] requiredUiContracts =
+[
+    "GbSoundPadCardStyle",
+    "AutomationProperties.Name=\"Play sound\"",
+    "AutomationProperties.Name=\"Stop sound\"",
+    "IsEnabled=\"{Binding IsPlaying}\"",
+    "AutomationProperties.Name=\"Remove sound\""
+];
+if (requiredUiContracts.Any(contract => !boardXaml.Contains(contract, StringComparison.Ordinal)) ||
+    boardXaml.Contains("StateLabel", StringComparison.Ordinal) ||
+    !controlsXaml.Contains("<Style TargetType=\"ToolTip\">", StringComparison.Ordinal) ||
+    !controlsXaml.Contains("<Style TargetType=\"Slider\"", StringComparison.Ordinal) ||
+    !controlsXaml.Contains("<Style TargetType=\"CheckBox\"", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("UI refresh contract failed.");
+    return 9;
 }
 
 Console.WriteLine("Managed app, decode, persistence, binding, and XAML layout smoke tests passed.");

@@ -58,12 +58,12 @@ public partial class MainWindow : Window
     {
         if (ThemeToggleButton is not null)
         {
-            ThemeToggleButton.Content = ThemeManager.IsDark ? "☀" : "☾";
+            ThemeToggleButton.Content = ThemeManager.IsDark ? "\uE706" : "\uE708";
             ThemeToggleButton.ToolTip = ThemeManager.IsDark ? "Switch to light theme" : "Switch to dark theme";
         }
         if (MaximizeButton is not null)
         {
-            MaximizeButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
+            MaximizeButton.Content = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
             MaximizeButton.ToolTip = WindowState == WindowState.Maximized ? "Restore" : "Maximize";
         }
     }

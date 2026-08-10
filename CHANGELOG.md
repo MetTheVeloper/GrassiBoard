@@ -2,6 +2,19 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.8.3] - 2026-08-10
+
+### Changed
+
+- Refresh the shared Light/Dark design system with semantic surface, interaction, state, spacing, and accessibility tokens.
+- Redesign Sound Pad cards into compact 158 px controls with collision-safe titles, status dots, icon-only header and transport actions, disabled idle Stop, and calm playing/error states.
+- Restyle sliders, checkboxes, meters, dropdowns, title-bar controls, navigation, routing status, diagnostics, and page cards around one Segoe MDL2 icon family.
+- Improve device-name scanning with truncation and full-name tooltips while preserving the accepted audio routing and Soundboard behavior.
+
+### Verified
+
+- Record complete Windows 10 functional acceptance of v0.8.2 as the regression baseline for this presentation-only refresh.
+
 ## [0.8.2] - 2026-08-10
 
 ### Fixed

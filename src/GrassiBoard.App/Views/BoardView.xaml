@@ -18,47 +18,50 @@
             <Grid>
                 <StackPanel>
                     <TextBlock Text="SOUNDBOARD" Style="{StaticResource EyebrowTextStyle}" />
-                    <TextBlock Text="Sounds" FontSize="20" FontWeight="SemiBold" Margin="0,5,0,0" />
+                    <TextBlock Text="Sounds" Style="{StaticResource SectionTitleStyle}" Margin="0,5,0,0" />
                 </StackPanel>
-                <Button Content="＋ Add sounds" HorizontalAlignment="Right" VerticalAlignment="Center"
-                        Command="{Binding AddPadsCommand}" />
+                <Button HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding AddPadsCommand}"
+                        AutomationProperties.Name="Add sounds"
+                        ToolTip="Add WAV or MP3 files to the board">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE710;" Style="{StaticResource GbIconTextStyle}" Margin="0,0,8,0" />
+                        <TextBlock Text="Add sounds" Foreground="#07110D" />
+                    </StackPanel>
+                </Button>
             </Grid>
 
             <Border Grid.Row="2" Style="{StaticResource CardStyle}"
                     Visibility="{Binding HasPads, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="420">
-                    <TextBlock Text="＋" FontSize="42" Foreground="{DynamicResource AccentBrush}"
-                               HorizontalAlignment="Center" />
+                    <Border Width="50" Height="50" CornerRadius="25" Background="{DynamicResource SelectedSurfaceBrush}">
+                        <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="20"
+                                   Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
                     <TextBlock Text="Build your first board" FontSize="21" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" Margin="0,12,0,0" />
+                               HorizontalAlignment="Center" Margin="0,14,0,0" />
                     <TextBlock Text="Add WAV or MP3 files, or drop them anywhere in this workspace. Files stay in their original folders."
                                Style="{StaticResource MutedTextStyle}" TextAlignment="Center" Margin="0,8,0,18" />
-                    <Button Content="Choose audio files" Command="{Binding AddPadsCommand}"
-                            HorizontalAlignment="Center" />
+                    <Button Content="Choose audio files" Command="{Binding AddPadsCommand}" HorizontalAlignment="Center" />
                 </StackPanel>
             </Border>
 
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                           Visibility="{Binding HasPads, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <ItemsControl ItemsSource="{Binding Pads}">
                     <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <WrapPanel IsItemsHost="True" />
-                        </ItemsPanelTemplate>
+                        <ItemsPanelTemplate><WrapPanel IsItemsHost="True" /></ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border x:Name="PadCard" Width="242" MinHeight="206" Margin="0,0,12,12"
-                                    CornerRadius="12" Padding="16"
-                                    ToolTip="{Binding Error}">
+                            <Border x:Name="PadCard" ToolTip="{Binding Error}">
                                 <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="{DynamicResource PanelBrush}" />
-                                        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-                                        <Setter Property="BorderThickness" Value="1" />
+                                    <Style TargetType="Border" BasedOn="{StaticResource GbSoundPadCardStyle}">
                                         <Style.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter Property="Background" Value="{DynamicResource HoverSurfaceBrush}" />
+                                            </Trigger>
                                             <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                                <Setter Property="Background" Value="#142A25" />
+                                                <Setter Property="Background" Value="{DynamicResource SelectedSurfaceBrush}" />
                                                 <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
                                                 <Setter Property="BorderThickness" Value="2" />
                                             </DataTrigger>
@@ -66,50 +69,100 @@
                                                 <Setter Property="Background" Value="{DynamicResource DangerDarkBrush}" />
                                                 <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
                                             </DataTrigger>
-                                            <DataTrigger Binding="{Binding IsLoading}" Value="True">
-                                                <Setter Property="Opacity" Value="0.64" />
-                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsLoading}" Value="True"><Setter Property="Opacity" Value="0.58" /></DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </Border.Style>
                                 <Grid>
                                     <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="*" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="32" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="36" />
+                                        <RowDefinition Height="12" />
+                                        <RowDefinition Height="22" />
                                     </Grid.RowDefinitions>
+
                                     <Grid>
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Title}" FontSize="16" FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding StateLabel}" Foreground="{DynamicResource MutedTextBrush}"
-                                                       FontSize="11" Margin="0,4,0,0" />
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="10" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="32" />
+                                            <ColumnDefinition Width="32" />
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse ToolTip="Ready">
+                                            <Ellipse.Style>
+                                                <Style TargetType="Ellipse" BasedOn="{StaticResource GbStatusDotStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                            <Setter Property="Fill" Value="{DynamicResource AccentBrush}" />
+                                                            <Setter Property="Stroke" Value="{DynamicResource TextBrush}" />
+                                                            <Setter Property="StrokeThickness" Value="1" />
+                                                            <Setter Property="ToolTip" Value="Playing" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding HasError}" Value="True">
+                                                            <Setter Property="Fill" Value="{DynamicResource DangerBrush}" />
+                                                            <Setter Property="ToolTip" Value="Needs attention" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsLoading}" Value="True">
+                                                            <Setter Property="Fill" Value="{DynamicResource WarningBrush}" />
+                                                            <Setter Property="ToolTip" Value="Loading" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Ellipse.Style>
+                                        </Ellipse>
+                                        <StackPanel Grid.Column="1" Margin="8,0,5,0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold"
+                                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Title}" />
+                                            <TextBlock Text="{Binding Error}" Foreground="{DynamicResource DangerBrush}" FontSize="9"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                         </StackPanel>
-                                        <Button Content="•••" Style="{StaticResource GhostButtonStyle}"
-                                                HorizontalAlignment="Right" VerticalAlignment="Top"
+                                        <Button Grid.Column="2" Style="{StaticResource GbIconButtonStyle}" AutomationProperties.Name="Edit sound"
                                                 Command="{Binding DataContext.EditPadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                CommandParameter="{Binding}" ToolTip="Edit Sound Pad" />
+                                                CommandParameter="{Binding}" ToolTip="Edit sound">
+                                            <TextBlock Text="&#xE712;" Style="{StaticResource GbIconTextStyle}" />
+                                        </Button>
+                                        <Button Grid.Column="3" Style="{StaticResource GbIconButtonStyle}" Foreground="{DynamicResource DangerBrush}"
+                                                AutomationProperties.Name="Remove sound"
+                                                Command="{Binding DataContext.DeletePadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" ToolTip="Remove sound">
+                                            <TextBlock Text="&#xE74D;" Style="{StaticResource GbIconTextStyle}" />
+                                        </Button>
                                     </Grid>
 
-                                    <Button Grid.Row="1" Margin="0,12,0,12" MinHeight="66" FontSize="15"
-                                            Content="▶  Play"
-                                            Command="{Binding DataContext.PlayPadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}">
-                                        <Button.Style>
-                                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsPlaying}" Value="True">
-                                                        <Setter Property="Content" Value="▶  Playing" />
-                                                        <Setter Property="Background" Value="{DynamicResource AccentDarkBrush}" />
-                                                        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </Button.Style>
-                                    </Button>
+                                    <Grid Grid.Row="2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="36" />
+                                            <ColumnDefinition Width="8" />
+                                            <ColumnDefinition Width="36" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Button Content="&#xE768;" AutomationProperties.Name="Play sound"
+                                                Command="{Binding DataContext.PlayPadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" ToolTip="Play sound">
+                                            <Button.Style>
+                                                <Style TargetType="Button" BasedOn="{StaticResource GbTransportButtonStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPlaying}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                                            <Setter Property="Foreground" Value="#07110D" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                        <Button Grid.Column="2" Content="&#xE71A;" Style="{StaticResource GbTransportButtonStyle}"
+                                                AutomationProperties.Name="Stop sound"
+                                                IsEnabled="{Binding IsPlaying}"
+                                                Command="{Binding DataContext.StopPadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" ToolTip="Stop sound" />
+                                        <CheckBox Grid.Column="4" Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}"
+                                                  VerticalAlignment="Center" ToolTip="Repeat until stopped" />
+                                    </Grid>
 
-                                    <Grid Grid.Row="2" Margin="0,0,0,11">
+                                    <Grid Grid.Row="4">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
@@ -117,22 +170,9 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Text="VOL" Style="{StaticResource EyebrowTextStyle}" VerticalAlignment="Center" />
                                         <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Volume, Mode=TwoWay}"
-                                                Margin="10,0" VerticalAlignment="Center" />
+                                                Margin="10,0" VerticalAlignment="Center" ToolTip="Pad volume" />
                                         <TextBlock Grid.Column="2" Text="{Binding Volume, StringFormat={}{0:P0}}"
-                                                   FontFamily="{StaticResource MonoFont}" FontSize="11" VerticalAlignment="Center" />
-                                    </Grid>
-
-                                    <Grid Grid.Row="3">
-                                        <CheckBox Content="Loop" IsChecked="{Binding Loop, Mode=TwoWay}" />
-                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                            <Button Content="Stop" Style="{StaticResource GhostButtonStyle}"
-                                                    Command="{Binding DataContext.StopPadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}" />
-                                            <Button Content="Remove" Style="{StaticResource GhostButtonStyle}"
-                                                    Foreground="{DynamicResource DangerBrush}"
-                                                    Command="{Binding DataContext.DeletePadCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                    CommandParameter="{Binding}" />
-                                        </StackPanel>
+                                                   FontFamily="{StaticResource MonoFont}" FontSize="10" VerticalAlignment="Center" />
                                     </Grid>
                                 </Grid>
                             </Border>
@@ -148,33 +188,31 @@
                 <Grid Margin="0,10,0,22">
                     <StackPanel>
                         <TextBlock Text="Live voice" FontSize="19" FontWeight="SemiBold" />
-                        <TextBlock Text="Sound Pads always bypass these effects."
-                                   Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,4,80,0" />
+                        <TextBlock Text="Sound Pads always bypass these effects." Style="{StaticResource MutedTextStyle}"
+                                   FontSize="11" Margin="0,4,90,0" />
                     </StackPanel>
-                    <Button HorizontalAlignment="Right" VerticalAlignment="Top"
+                    <Button HorizontalAlignment="Right" VerticalAlignment="Top" MinWidth="90"
                             Content="{Binding VoiceFxLabel}" Command="{Binding ToggleVoiceFxCommand}" />
                 </Grid>
 
                 <Grid Margin="0,0,0,8">
                     <TextBlock Text="PITCH" Style="{StaticResource EyebrowTextStyle}" />
-                    <TextBlock Text="{Binding PitchLabel}" HorizontalAlignment="Right"
-                               FontFamily="{StaticResource MonoFont}" />
+                    <TextBlock Text="{Binding PitchLabel}" HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}" />
                 </Grid>
                 <Slider Minimum="-12" Maximum="12" TickFrequency="1" IsSnapToTickEnabled="True"
-                        Value="{Binding Pitch, Mode=TwoWay}" />
+                        Value="{Binding Pitch, Mode=TwoWay}" ToolTip="Voice pitch" />
 
                 <Grid Margin="0,22,0,8">
                     <TextBlock Text="FORMANT" Style="{StaticResource EyebrowTextStyle}" />
-                    <TextBlock Text="{Binding FormantLabel}" HorizontalAlignment="Right"
-                               FontFamily="{StaticResource MonoFont}" />
+                    <TextBlock Text="{Binding FormantLabel}" HorizontalAlignment="Right" FontFamily="{StaticResource MonoFont}" />
                 </Grid>
                 <Slider Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True"
-                        Value="{Binding Formant, Mode=TwoWay}" />
+                        Value="{Binding Formant, Mode=TwoWay}" ToolTip="Voice formant" />
 
-                <Button Content="Reset Voice" Style="{StaticResource SecondaryButtonStyle}"
+                <Button Content="Reset voice" Style="{StaticResource SecondaryButtonStyle}"
                         Command="{Binding ResetVoiceCommand}" Margin="0,24,0,0" />
 
-                <Border Background="{DynamicResource PanelQuietBrush}" CornerRadius="8" Padding="14" Margin="0,22,0,0">
+                <Border Background="{DynamicResource PanelQuietBrush}" CornerRadius="9" Padding="14" Margin="0,22,0,0">
                     <StackPanel>
                         <TextBlock Text="QUICK LEVELS" Style="{StaticResource EyebrowTextStyle}" />
                         <Grid Margin="0,12,0,5">
