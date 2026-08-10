@@ -6,6 +6,8 @@ namespace GrassiBoard.Views;
 
 public partial class BoardView : System.Windows.Controls.UserControl
 {
+    private bool _mediaTimelinePointerDown;
+
     public BoardView()
     {
         InitializeComponent();
@@ -22,6 +24,40 @@ public partial class BoardView : System.Windows.Controls.UserControl
         if (DataContext is MainViewModel viewModel && e.Data.GetData(DataFormats.FileDrop) is string[] paths)
         {
             await viewModel.AddFilesAsync(paths);
+        }
+    }
+
+    private void OnMediaTimelinePointerDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        _mediaTimelinePointerDown = true;
+        if (DataContext is MainViewModel viewModel)
+        {
+            viewModel.BeginMediaTimelineSeek();
+        }
+    }
+
+    private void OnMediaTimelinePointerUp(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
+        CommitMediaTimelineSeek();
+
+    private void OnMediaTimelineLostMouseCapture(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_mediaTimelinePointerDown && e.LeftButton == System.Windows.Input.MouseButtonState.Released)
+        {
+            CommitMediaTimelineSeek();
+        }
+    }
+
+    private void CommitMediaTimelineSeek()
+    {
+        if (!_mediaTimelinePointerDown)
+        {
+            return;
+        }
+
+        _mediaTimelinePointerDown = false;
+        if (DataContext is MainViewModel viewModel)
+        {
+            viewModel.CommitMediaTimelineSeek();
         }
     }
 }

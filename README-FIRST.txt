@@ -1,4 +1,4 @@
-GrassiBoard v0.11.0 — Profiles, Hotkeys, Tray, Media Deck & Latency
+GrassiBoard v0.11.1 — Local Media Sync Hotfix
 
 PREREQUISITE: Keep the known working external virtual audio cable installed.
 
@@ -10,9 +10,9 @@ PREREQUISITE: Keep the known working external virtual audio cable installed.
 6. Assign a Pad hotkey and test it with another application focused and while GrassiBoard is minimized to Tray.
 7. Test Mute, Stop All, Voice FX, Push-to-Talk (hold=open/release=muted), Show/Hide, and conflict reporting.
 8. Test Tray Show/Mute/Stop All/Exit, Start Minimized, and optional Start with Windows.
-9. Load a long local audio file in Media Deck; test Play/Pause/Resume/Stop, timeline seek, ±10 seconds, volume, and Media hotkeys.
+9. Load a long local audio file in Media Deck; test Play/Pause/Resume/Stop, timeline seek while both paused and playing, ±10 seconds, volume, and Media hotkeys.
 10. Test Monitor/Send as ON/ON, ON/OFF, OFF/ON, OFF/OFF. Speak over Media and confirm only Media—not the microphone—is heard in headphones.
-11. While Media plays, trigger Pads and presets; inspect Media fill/underruns and U/O/D diagnostics for crackling or growth.
+11. While Media plays, sing or speak on the beat in High quality, Balanced, and Low latency. Confirm the virtual-mic recording stays aligned at 150.0, 53.3, and 26.7 ms respectively while headphone Media monitoring remains direct.
 12. Global Stop All must stop Pads, Media, and the engine without deleting configuration; Start Engine must work afterward.
 13. Restart and confirm Profile, Pad, Preset, Hotkey, Media volume, Monitor, and Send settings return without autoplay.
 

@@ -1,7 +1,7 @@
 # Current status
 
-- Version: `v0.11.0`
-- Milestone: combined Profiles/Hotkeys/Tray + Latency Optimization + Local Media Deck
+- Version: `v0.11.1`
+- Milestone: Local Media synchronization and transport hotfix for the combined Profiles/Hotkeys/Tray + Media Deck build
 - Status: implementation and automated validation in progress; manual Windows 10 acceptance required
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
@@ -10,7 +10,13 @@
 - Virtual routing: vendor-neutral external cable selected as the processed WASAPI render destination
 - UI: persistent Board/Voice/Mixer/Routing/Settings shell with Profiles, user presets, global hotkeys, Tray, and shared state
 - Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
-- Media Deck: streaming local-media decode with bounded read-ahead, independent headphone monitor/virtual send, transport, meter, and safe missing-file state
+- Media Deck: streaming local-media decode with bounded read-ahead, direct independent headphone monitor, Pitch-latency-aligned virtual send, transport, meter, and safe missing-file state
+
+## v0.11.1 Media synchronization hotfix
+
+Live inspection of the running v0.11.0 build reported High quality, a fixed 150.0 ms Pitch Algorithm latency, an approximately 234–244 ms total Reported Pipeline, and 5% Media Read-Ahead. v0.11.1 therefore aligns only the virtual-microphone Media branch to the active Pitch processor latency; the headphone monitor stays direct so the performer hears the beat immediately. The delay follows live quality changes, while the decoder keeps the original 200 ms future read-ahead in addition to alignment frames.
+
+The hotfix also renders monitor endpoints by `Name`, replaces font-fragile transport symbols, and prevents the 100 ms state-refresh timer from overwriting a timeline drag during playback.
 
 ## v0.11.0 combined implementation
 
@@ -28,7 +34,7 @@ v0.9.0 adds live Mic, Soundboard, and Master gain; microphone Noise Gate and Com
 
 The release also restores visible meter fills through the shared WPF ProgressBar template, maps invalid/silent values safely to an empty `-60..0 dBFS` display, adds a subtle theme-aware restored-window border plus native DWM shadow, and makes custom maximize use the current monitor work area. Global Stop All now stops every Pad and the audio engine through the existing lifecycle path; it preserves configuration and permits a subsequent Start Engine.
 
-Native/managed v0.9.0 and ABI 6 are accepted. v0.11.0/ABI 7 remains pending CI and the combined manual acceptance matrix.
+Native/managed v0.9.0 and ABI 6 are accepted. v0.11.1/ABI 7 remains pending CI and the combined manual acceptance matrix plus the Media synchronization hotfix checks.
 
 ## v0.8.3 manual acceptance
 

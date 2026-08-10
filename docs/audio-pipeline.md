@@ -1,6 +1,6 @@
 # Audio pipeline
 
-## v0.11.0 live route
+## v0.11.1 live route
 
 ```text
 Selected physical microphone

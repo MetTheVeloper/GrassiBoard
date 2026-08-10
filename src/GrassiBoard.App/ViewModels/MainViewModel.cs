@@ -87,6 +87,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     private AudioDevice? _selectedMonitorOutput;
     private double _mediaPosition;
     private bool _mediaSeeking;
+    private bool _mediaTimelineSeeking;
+    private long _mediaPositionHoldUntil;
 
     public MainViewModel(SoundboardStore? store = null, ProfileStore? profileStore = null)
     {
@@ -398,8 +400,22 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public double MediaDuration => Math.Max(0.01, _mediaDeck.DurationSeconds);
     public double MediaMeter => ToMeter(_statistics.MediaPeak > 0.0F ? _statistics.MediaPeak : _mediaDeck.Peak);
     public string MediaDb => FormatDb(_statistics.MediaPeak > 0.0F ? _statistics.MediaPeak : _mediaDeck.Peak);
-    public double MediaBufferPercent => _statistics.MediaBufferCapacityFrames == 0U
-        ? 0.0 : _statistics.MediaBufferFillFrames * 100.0 / _statistics.MediaBufferCapacityFrames;
+    public double MediaBufferPercent
+    {
+        get
+        {
+            if (_statistics.MediaBufferCapacityFrames == 0U)
+            {
+                return 0.0;
+            }
+
+            uint alignmentFrames = _statistics.MediaActive != 0U ? _statistics.PitchLatencySamples : 0U;
+            uint readAheadFrames = _statistics.MediaBufferFillFrames > alignmentFrames
+                ? _statistics.MediaBufferFillFrames - alignmentFrames
+                : 0U;
+            return readAheadFrames * 100.0 / _statistics.MediaBufferCapacityFrames;
+        }
+    }
 
     public double MediaPosition
     {
@@ -407,11 +423,27 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         set
         {
             double clamped = Math.Clamp(double.IsFinite(value) ? value : 0.0, 0.0, MediaDuration);
-            if (SetProperty(ref _mediaPosition, clamped) && !_mediaSeeking)
+            if (SetProperty(ref _mediaPosition, clamped) && !_mediaSeeking && !_mediaTimelineSeeking)
             {
                 _mediaDeck.Seek(clamped);
+                _mediaPositionHoldUntil = Environment.TickCount64 + 350L;
             }
         }
+    }
+
+    internal void BeginMediaTimelineSeek() => _mediaTimelineSeeking = true;
+
+    internal void CommitMediaTimelineSeek()
+    {
+        if (!_mediaTimelineSeeking)
+        {
+            return;
+        }
+
+        _mediaTimelineSeeking = false;
+        _mediaDeck.Seek(_mediaPosition);
+        _mediaPositionHoldUntil = Environment.TickCount64 + 350L;
+        RefreshMediaState();
     }
 
     public double MediaVolume
@@ -822,7 +854,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         catch (Exception exception) when (exception is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
             EngineStatus = $"Native engine unavailable · {exception.GetType().Name}";
-                EngineDetail = "Use the complete v0.11.0 portable package.";
+            EngineDetail = "Use the complete v0.11.1 portable package.";
         }
     }
 
@@ -1595,14 +1627,17 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
 
     private void RefreshMediaState()
     {
-        _mediaSeeking = true;
-        try
+        if (!_mediaTimelineSeeking && Environment.TickCount64 >= _mediaPositionHoldUntil)
         {
-            MediaPosition = _mediaDeck.PositionSeconds;
-        }
-        finally
-        {
-            _mediaSeeking = false;
+            _mediaSeeking = true;
+            try
+            {
+                MediaPosition = _mediaDeck.PositionSeconds;
+            }
+            finally
+            {
+                _mediaSeeking = false;
+            }
         }
         OnPropertyChanged(nameof(MediaFileName));
         OnPropertyChanged(nameof(MediaError));
@@ -1831,6 +1866,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         text.AppendLine($"Buffers: capture {_statistics.CaptureBufferFrames}, render {_statistics.RenderBufferFrames}");
         text.AppendLine($"Ring fill: {_statistics.RingBufferFillFrames} frames");
         text.AppendLine($"Pitch latency: {_statistics.PitchLatencySamples} samples ({PitchLatencyMilliseconds:0.0} ms)");
+        text.AppendLine($"Media alignment: {_statistics.PitchLatencySamples} samples ({PitchLatencyMilliseconds:0.0} ms) on virtual send; headphone monitor remains direct");
         text.AppendLine($"Reported total latency: {EstimatedTotalLatencyMilliseconds:0.0} ms");
         text.AppendLine($"Dropouts: U {_statistics.UnderrunCount} · O {_statistics.OverrunCount} · D {_statistics.DiscontinuityCount}");
         text.AppendLine($"Active Sound Pads: {_statistics.ActiveSoundCount}");

@@ -4,7 +4,7 @@ GrassiBoard is a Windows x64 live voice-processing and Soundboard application. I
 
 ## Current milestone
 
-`v0.11.0` combines Profiles/Hotkeys/Tray and latency work with a streaming Local Media Deck. It is built on the manually accepted v0.9.0 Voice, Mixer, Soundboard, UI, and external-cable baseline.
+`v0.11.1` is the Local Media synchronization hotfix for the combined Profiles/Hotkeys/Tray and Media Deck milestone. It is built on the manually accepted v0.9.0 Voice, Mixer, Soundboard, UI, and external-cable baseline.
 
 - **Board** is the daily workspace: streaming Local Media Deck, reusable Sound Pads, and compact Voice FX.
 - **Voice** contains full Pitch, Fine Pitch, Formant, preservation, quality, and latency controls.
@@ -15,7 +15,7 @@ GrassiBoard is a Windows x64 live voice-processing and Soundboard application. I
 
 Sound Pads support WAV and MP3, volume, Loop, per-pad stop, simultaneous playback, drag/drop, edit/delete, and JSON persistence. Files are referenced in their original locations. They are decoded and resampled to stereo 48 kHz float away from the real-time audio callback, then cached in the native engine.
 
-The Local Media Deck streams long audio (and supported local video audio tracks) with bounded read-ahead instead of loading the whole file. Headphone monitoring and virtual-microphone send are independent; microphone audio is never sent to the monitor route.
+The Local Media Deck streams long audio (and supported local video audio tracks) with bounded read-ahead instead of loading the whole file. Headphone monitoring stays direct, while virtual-microphone Media send is delayed by the active Pitch algorithm latency so singing over a monitored beat reaches the target application in sync. Microphone audio is never sent to the monitor route.
 
 ## Audio route
 

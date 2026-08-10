@@ -41,6 +41,13 @@ bool MediaStreamBuffer::Pop(float& left, float& right) noexcept
         return false;
     }
 
+    if (silence_frames_remaining_ > 0U) {
+        --silence_frames_remaining_;
+        left = 0.0F;
+        right = 0.0F;
+        return true;
+    }
+
     const std::uint64_t read = read_frame_.load(std::memory_order_relaxed);
     const std::uint64_t write = write_frame_.load(std::memory_order_acquire);
     if (read >= write) {
@@ -55,6 +62,39 @@ bool MediaStreamBuffer::Pop(float& left, float& right) noexcept
     return true;
 }
 
+void MediaStreamBuffer::SynchronizeDelay(const std::uint32_t delayFrames) noexcept
+{
+    const std::uint64_t activation = activation_sequence_.load(std::memory_order_acquire);
+    if (activation != observed_activation_sequence_) {
+        observed_activation_sequence_ = activation;
+        applied_delay_frames_ = delayFrames;
+        silence_frames_remaining_ = delayFrames;
+        return;
+    }
+
+    if (!active_.load(std::memory_order_relaxed) || delayFrames == applied_delay_frames_) {
+        return;
+    }
+
+    if (delayFrames > applied_delay_frames_) {
+        silence_frames_remaining_ += delayFrames - applied_delay_frames_;
+    }
+    else {
+        std::uint32_t reduction = applied_delay_frames_ - delayFrames;
+        const std::uint32_t pendingReduction = std::min(reduction, silence_frames_remaining_);
+        silence_frames_remaining_ -= pendingReduction;
+        reduction -= pendingReduction;
+
+        if (reduction > 0U) {
+            const std::uint64_t read = read_frame_.load(std::memory_order_relaxed);
+            const std::uint64_t write = write_frame_.load(std::memory_order_acquire);
+            const std::uint64_t available = std::min(write - read, capacity_frames_);
+            read_frame_.store(read + std::min<std::uint64_t>(reduction, available), std::memory_order_release);
+        }
+    }
+    applied_delay_frames_ = delayFrames;
+}
+
 void MediaStreamBuffer::Clear() noexcept
 {
     const std::uint64_t write = write_frame_.load(std::memory_order_acquire);
@@ -63,7 +103,10 @@ void MediaStreamBuffer::Clear() noexcept
 
 void MediaStreamBuffer::SetActive(const bool active) noexcept
 {
-    active_.store(active, std::memory_order_release);
+    const bool wasActive = active_.exchange(active, std::memory_order_acq_rel);
+    if (active && !wasActive) {
+        activation_sequence_.fetch_add(1U, std::memory_order_release);
+    }
 }
 
 bool MediaStreamBuffer::IsActive() const noexcept

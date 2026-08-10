@@ -169,6 +169,7 @@ internal sealed class MediaDeckService : IDisposable
             _positionSeconds = Math.Clamp(double.IsFinite(seconds) ? seconds : 0.0, 0.0, _durationSeconds);
             _generation++;
         }
+        _engine.SetMediaActive(false);
         _engine.ClearMedia();
     }
 
@@ -293,11 +294,16 @@ internal sealed class MediaDeckService : IDisposable
                 }
 
                 bool nativeFull = false;
+                uint alignmentFrames = 0U;
                 if (canSend && _engine.GetStatistics(out AudioStatistics statistics) == NativeResult.Ok)
                 {
-                    nativeFull = statistics.MediaBufferFillFrames >= ReadAheadFrames;
+                    alignmentFrames = statistics.PitchLatencySamples;
+                    uint alignedReadAhead = ReadAheadFrames + alignmentFrames;
+                    nativeFull = statistics.MediaBufferFillFrames >= alignedReadAhead;
                 }
-                bool monitorFull = monitorBuffer is not null && monitorBuffer.BufferedDuration >= TimeSpan.FromMilliseconds(200);
+                double alignedReadAheadMilliseconds = (ReadAheadFrames + alignmentFrames) * 1000.0 / SampleRate;
+                bool monitorFull = monitorBuffer is not null &&
+                    monitorBuffer.BufferedDuration >= TimeSpan.FromMilliseconds(alignedReadAheadMilliseconds);
                 if ((canSend && nativeFull) || (canMonitor && monitorFull))
                 {
                     await Task.Delay(10, cancellationToken);

@@ -2,6 +2,20 @@
 
 All notable changes to GrassiBoard are documented in this file.
 
+## [0.11.1] - 2026-08-10
+
+### Fixed
+
+- Show only the endpoint `Name` in the Local Media monitor-device selector.
+- Keep the Media timeline under user control while dragging so seeking works during active playback as well as while paused.
+- Replace font-dependent/broken Stop and ±10 transport glyphs with theme-safe vector or UI-font content.
+- Delay only the Local Media virtual-microphone branch by the active Pitch algorithm latency (150.0/53.3/26.7 ms for High/Balanced/Low), while keeping the independent headphone monitor direct.
+- Preserve 200 ms of true Media read-ahead in addition to the alignment delay and report read-ahead without counting alignment frames.
+
+### Verified
+
+- Read the running v0.11.0 High-quality diagnostics: Pitch Algorithm 150.0 ms, Reported Pipeline approximately 234–244 ms, and Media Read-Ahead 5%. This confirms that synchronization must follow fixed algorithm latency rather than variable total pipeline latency.
+
 ## [0.11.0] - 2026-08-10
 
 ### Added

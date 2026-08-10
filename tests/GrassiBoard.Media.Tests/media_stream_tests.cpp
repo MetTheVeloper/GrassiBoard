@@ -51,6 +51,36 @@ int main()
         return 6;
     }
 
-    std::cout << "Media streaming ring contract passed.\n";
+    grassiboard::MediaStreamBuffer alignedBuffer(16U);
+    const float aligned[]{
+        0.1F, -0.1F, 0.2F, -0.2F, 0.3F, -0.3F,
+        0.4F, -0.4F, 0.5F, -0.5F, 0.6F, -0.6F};
+    if (alignedBuffer.Write(aligned, 6U) != 6U) {
+        std::cerr << "Media alignment setup failed.\n";
+        return 7;
+    }
+    alignedBuffer.SetActive(true);
+    alignedBuffer.SynchronizeDelay(2U);
+    if (!alignedBuffer.Pop(left, right) || left != 0.0F || right != 0.0F ||
+        !alignedBuffer.Pop(left, right) || left != 0.0F || right != 0.0F ||
+        !alignedBuffer.Pop(left, right) || std::abs(left - 0.1F) > 0.0001F) {
+        std::cerr << "Media pitch-alignment delay contract failed.\n";
+        return 8;
+    }
+
+    alignedBuffer.SynchronizeDelay(3U);
+    if (!alignedBuffer.Pop(left, right) || left != 0.0F || right != 0.0F ||
+        !alignedBuffer.Pop(left, right) || std::abs(left - 0.2F) > 0.0001F) {
+        std::cerr << "Media live delay-increase contract failed.\n";
+        return 9;
+    }
+
+    alignedBuffer.SynchronizeDelay(0U);
+    if (!alignedBuffer.Pop(left, right) || std::abs(left - 0.6F) > 0.0001F) {
+        std::cerr << "Media live delay-reduction contract failed.\n";
+        return 10;
+    }
+
+    std::cout << "Media streaming and pitch-alignment contracts passed.\n";
     return 0;
 }

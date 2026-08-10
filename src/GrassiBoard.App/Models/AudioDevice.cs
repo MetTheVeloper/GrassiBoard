@@ -10,4 +10,6 @@ internal sealed record AudioDevice
     public bool IsDefault { get; init; }
 
     public AudioEndpointDescriptor ToDescriptor() => new(Id, Name, ContainerId, IsDefault);
+
+    public override string ToString() => Name;
 }

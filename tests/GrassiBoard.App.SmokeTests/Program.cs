@@ -96,7 +96,7 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "0.11.0" || NativeAudioEngine.ExpectedApiVersion != 7U)
+if (BuildInfo.CurrentVersion != "0.11.1" || NativeAudioEngine.ExpectedApiVersion != 7U)
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -105,7 +105,7 @@ if (BuildInfo.CurrentVersion != "0.11.0" || NativeAudioEngine.ExpectedApiVersion
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "0.11.0",
+      "Version": "0.11.1",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -114,7 +114,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "0.11.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "0.11.1" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -225,6 +225,12 @@ try
             Console.Error.WriteLine("Media missing/invalid path safety contract failed.");
             return 16;
         }
+    }
+
+    if (new AudioDevice { Id = "monitor-id", Name = "Headset Earphone" }.ToString() != "Headset Earphone")
+    {
+        Console.Error.WriteLine("Audio device display-name contract failed.");
+        return 17;
     }
 
     string crashPath = CrashReporter.Report(

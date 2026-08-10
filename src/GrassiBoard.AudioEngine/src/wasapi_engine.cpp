@@ -618,6 +618,7 @@ void WasapiEngine::Worker() noexcept
                         bool underrun = false;
                         bool mediaUnderrun = false;
                         mixer_processor_.BeginBlock();
+                        media_stream_.SynchronizeDelay(pitch_processor_.GetLatencySamples());
                         for (UINT32 frame = 0; frame < available; ++frame) {
                             float microphoneSample = 0.0F;
                             if (!ring_buffer_.Pop(microphoneSample)) {

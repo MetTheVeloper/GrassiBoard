@@ -15,6 +15,7 @@ public:
         const float* interleavedStereoSamples,
         std::uint32_t frameCount) noexcept;
     bool Pop(float& left, float& right) noexcept;
+    void SynchronizeDelay(std::uint32_t delayFrames) noexcept;
     void Clear() noexcept;
     void SetActive(bool active) noexcept;
     bool IsActive() const noexcept;
@@ -29,6 +30,10 @@ private:
     std::atomic<std::uint64_t> read_frame_{0U};
     std::atomic<std::uint64_t> write_frame_{0U};
     std::atomic<bool> active_{false};
+    std::atomic<std::uint64_t> activation_sequence_{0U};
+    std::uint64_t observed_activation_sequence_ = 0U;
+    std::uint32_t applied_delay_frames_ = 0U;
+    std::uint32_t silence_frames_remaining_ = 0U;
 };
 
 }
