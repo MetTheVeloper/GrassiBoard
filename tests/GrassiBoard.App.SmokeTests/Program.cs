@@ -549,13 +549,22 @@ try
         return 31;
     }
 
-    RemoteCommandResult applyPreset = await dispatcher.ExecuteAsync(new RemoteIncomingEnvelope
+    RemoteCommandResult applyPreset;
+    try
     {
-        ProtocolVersion = RemoteProtocol.Version,
-        Type = "preset.apply",
-        MessageId = Guid.NewGuid().ToString("N"),
-        Payload = JsonSerializer.SerializeToElement(new { presetId = remotePreset.Id }, RemoteProtocol.JsonOptions)
-    });
+        applyPreset = await dispatcher.ExecuteAsync(new RemoteIncomingEnvelope
+        {
+            ProtocolVersion = RemoteProtocol.Version,
+            Type = "preset.apply",
+            MessageId = Guid.NewGuid().ToString("N"),
+            Payload = JsonSerializer.SerializeToElement(new { presetId = remotePreset.Id }, RemoteProtocol.JsonOptions)
+        }).WaitAsync(TimeSpan.FromSeconds(5));
+    }
+    catch (TimeoutException)
+    {
+        Console.Error.WriteLine("Remote preset command routing contract timed out.");
+        return 32;
+    }
     if (!applyPreset.Success || Math.Abs(remoteViewModel.Pitch - 4.0) > 0.001 || Math.Abs(remoteViewModel.Formant + 1.0) > 0.001)
     {
         Console.Error.WriteLine("Remote preset command routing contract failed.");

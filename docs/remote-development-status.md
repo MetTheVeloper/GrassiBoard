@@ -158,7 +158,7 @@ Desktop audio regression: NOT TESTED
 ## v1.1 known issues
 
 ```text
-GitHub Actions CI iteration 3 reached managed smoke tests; compilation and Nuxt/native stages passed, but the Remote preset routing smoke contract failed because ApplyVoiceState() called the unavailable native engine during a managed-only preset transition. Hotfix: ApplyVoiceState now no-ops until NativeReady, matching ApplyMixerState and the existing property-setter guards.
+GitHub Actions CI iteration 4 passed Nuxt generation, native build/tests, and managed compilation, but the managed smoke test hung in the Remote preset transition. Root cause: after the native-call guard fixed the prior exception, the managed-only test could enter the timed WPF preset transition without a pumping Dispatcher. Hotfix: when NativeReady is false, preset snapshots apply immediately with no animation; the smoke contract also has a 5-second timeout so future regressions fail fast instead of consuming the full CI job timeout.
 Authoring environment cannot run dotnet or resolve pnpm packages from the npm registry, so the real Windows/.NET/Nuxt build has not been executed here.
 The initial v1.1.0 candidate intentionally uses exact direct frontend dependency versions with `pnpm install --no-frozen-lockfile`; a generated `pnpm-lock.yaml` is still required before final v1.1 acceptance, after dependency resolution is available.
 Windows Firewall reachability still requires real Windows 10/11 + Android testing.

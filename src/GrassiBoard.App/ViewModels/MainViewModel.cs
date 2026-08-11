@@ -1540,6 +1540,16 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
 
     private async Task ApplySnapshotSmoothAsync(AudioStateSnapshot target)
     {
+        // Managed-only callers (including smoke tests and a native-engine-unavailable UI)
+        // do not have a pumping WPF Dispatcher for an animated transition. Apply the
+        // authoritative state immediately; smooth transitions are only meaningful when
+        // the native engine is available to render them.
+        if (!NativeReady)
+        {
+            ApplySnapshotImmediate(target);
+            return;
+        }
+
         _presetTransition?.Cancel();
         _presetTransition?.Dispose();
         var transition = new CancellationTokenSource();
@@ -1600,6 +1610,39 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
                 _applyingPreset = false;
                 ScheduleSave();
             }
+        }
+    }
+
+    private void ApplySnapshotImmediate(AudioStateSnapshot target)
+    {
+        _applyingPreset = true;
+        try
+        {
+            VoiceFxEnabled = target.VoiceFxEnabled;
+            Pitch = target.Pitch;
+            FinePitch = target.FinePitch;
+            Formant = target.Formant;
+            PreserveVocalCharacter = target.PreserveVocalCharacter;
+            QualityIndex = target.QualityIndex;
+            MicGain = target.MicGain;
+            SoundboardGain = target.SoundboardGain;
+            MasterGain = target.MasterGain;
+            NoiseGateEnabled = target.NoiseGateEnabled;
+            GateThreshold = target.GateThreshold;
+            CompressorEnabled = target.CompressorEnabled;
+            CompressorThreshold = target.CompressorThreshold;
+            CompressorRatio = target.CompressorRatio;
+            LimiterEnabled = target.LimiterEnabled;
+            LimiterCeiling = target.LimiterCeiling;
+            DuckingEnabled = target.DuckingEnabled;
+            DuckingAmount = target.DuckingAmount;
+            ClippingProtectionEnabled = target.ClippingProtectionEnabled;
+            PitchWetMix = target.PitchWetMix;
+        }
+        finally
+        {
+            _applyingPreset = false;
+            ScheduleSave();
         }
     }
 
