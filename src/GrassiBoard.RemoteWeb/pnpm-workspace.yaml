@@ -1,0 +1,5 @@
+# pnpm 11 blocks dependency lifecycle/build scripts unless they are explicitly reviewed.
+# Nuxt's toolchain requires esbuild's install script to select/prepare the platform binary.
+# Keep this allowlist narrow; do not enable dangerouslyAllowAllBuilds.
+allowBuilds:
+  esbuild: true

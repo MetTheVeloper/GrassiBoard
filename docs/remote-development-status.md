@@ -74,13 +74,13 @@ Never skip ahead because the code “looks correct.”
 
 ```text
 Stage: v1.1.x — Remote Control
-Status: IMPLEMENTATION CANDIDATE / AWAITING CI
+Status: IMPLEMENTATION CANDIDATE / CI HOTFIX AWAITING RERUN
 Implementation version: v1.1.0
 Baseline commit: 4aa960d (v1.0.1 source baseline)
 Implementation commit: TBD after patch is applied/committed
-GitHub Actions run: TBD
+GitHub Actions run: First v1.1.0 CI attempt FAILED during Remote Web dependency installation; rerun pending
 Artifact: TBD
-Awaiting user test: AFTER A GREEN CI ARTIFACT
+Awaiting user test: AFTER A GREEN CI ARTIFACT (CI rerun required after pnpm build-script allowlist hotfix)
 ```
 
 ## Current objective
@@ -158,6 +158,9 @@ Desktop audio regression: NOT TESTED
 ## v1.1 known issues
 
 ```text
+First v1.1.0 GitHub Actions attempt failed at `pnpm install --no-frozen-lockfile` because pnpm 11 strict dependency-build security rejected the unreviewed `esbuild` install script with ERR_PNPM_IGNORED_BUILDS.
+CI hotfix prepared: `src/GrassiBoard.RemoteWeb/pnpm-workspace.yaml` explicitly allowlists only `esbuild` build scripts (`allowBuilds: esbuild: true`). `dangerouslyAllowAllBuilds` is intentionally NOT enabled.
+A CI rerun is required to verify dependency installation and continue into `pnpm generate`, .NET/native build, packaging, and installer steps.
 Authoring environment cannot run dotnet or resolve pnpm packages from the npm registry, so the real Windows/.NET/Nuxt build has not been executed here.
 The initial v1.1.0 candidate intentionally uses exact direct frontend dependency versions with `pnpm install --no-frozen-lockfile`; a generated `pnpm-lock.yaml` is still required before final v1.1 acceptance, after dependency resolution is available.
 Windows Firewall reachability still requires real Windows 10/11 + Android testing.
