@@ -13,14 +13,14 @@ permissions:
   contents: read
 
 env:
-  GRASSIBOARD_VERSION: 1.0.1
+  GRASSIBOARD_VERSION: 1.1.0
   DOTNET_SDK_VERSION: 8.0.423
 
 jobs:
   build:
     name: Windows x64 Release
     runs-on: windows-2022
-    timeout-minutes: 35
+    timeout-minutes: 45
 
     steps:
       - name: Check out source
@@ -33,6 +33,34 @@ jobs:
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           dotnet-version: ${{ env.DOTNET_SDK_VERSION }}
+
+      - name: Install pinned pnpm and Node for Remote Web
+        uses: pnpm/setup@84cb39b217b10273981911c288cd62326dc7c6d2 # v2.0.2
+        with:
+          version: 11.21.0
+          runtime: node@24.19.0
+          package-json-file: src/GrassiBoard.RemoteWeb/package.json
+          install: false
+          cache: false
+
+      - name: Install Remote Web dependencies
+        working-directory: ./src/GrassiBoard.RemoteWeb
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Generate Nuxt Remote Web SPA
+        shell: pwsh
+        working-directory: ./src/GrassiBoard.RemoteWeb
+        env:
+          NUXT_TELEMETRY_DISABLED: '1'
+        run: |
+          pnpm generate
+          if (!(Test-Path ./.output/public/index.html)) {
+            throw 'Nuxt generate did not produce .output/public/index.html.'
+          }
+          $assets = Get-ChildItem ./.output/public/_nuxt -File -ErrorAction SilentlyContinue
+          if (!$assets) {
+            throw 'Nuxt generate did not produce client assets.'
+          }
 
       - name: Generate build information
         shell: pwsh
@@ -120,7 +148,9 @@ jobs:
               'GrassiBoard.exe',
               'GrassiBoard.AudioEngine.dll',
               'NAudio.dll',
+              'QRCoder.dll',
               'BuildInfo.json',
+              'RemoteWeb/index.html',
               'CHANGELOG.md',
               'README-FIRST.txt',
               'EXTERNAL-CABLE-SETUP.md',
@@ -131,6 +161,9 @@ jobs:
               if ($item -notin $names) {
                 throw "Portable package is missing $item"
               }
+            }
+            if (!($names | Where-Object { $_ -like 'RemoteWeb/_nuxt/*' })) {
+              throw 'Portable package is missing generated Nuxt client assets.'
             }
             if ($names | Where-Object { $_ -match '\.(sys|inf|cat|cer|pfx)$' }) {
               throw 'The portable app package must not contain driver or certificate material.'

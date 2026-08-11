@@ -3,9 +3,11 @@ using GrassiBoard;
 using GrassiBoard.Infrastructure;
 using GrassiBoard.Models;
 using GrassiBoard.Services;
+using GrassiBoard.Services.Remote;
 using GrassiBoard.ViewModels;
 using System.Windows;
 using System.Windows.Threading;
+using System.Text.Json;
 using System.Xml.Linq;
 
 if (args is ["--diagnose-add-pad", string audioPath])
@@ -96,7 +98,7 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "1.0.1" || NativeAudioEngine.ExpectedApiVersion != 8U)
+if (BuildInfo.CurrentVersion != "1.1.0" || NativeAudioEngine.ExpectedApiVersion != 8U)
 {
     Console.Error.WriteLine("Managed version contract is inconsistent.");
     return 1;
@@ -105,7 +107,7 @@ if (BuildInfo.CurrentVersion != "1.0.1" || NativeAudioEngine.ExpectedApiVersion 
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "1.0.1",
+      "Version": "1.1.0",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -114,7 +116,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "1.0.1" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "1.1.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -404,6 +406,27 @@ if (requiredUiContracts.Any(contract => !boardXaml.Contains(contract, StringComp
     return 9;
 }
 
+string remoteServerSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteServerService.cs"));
+string remoteProtocolSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteProtocol.cs"));
+string installerServiceSource = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.Installer", "InstallationService.cs"));
+string installerWindowXaml = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.Installer", "MainWindow.xaml"));
+if (remoteServerSource.Contains("NativeAudioEngine", StringComparison.Ordinal) ||
+    remoteServerSource.Contains("DllImport", StringComparison.Ordinal) ||
+    remoteProtocolSource.Contains("FilePath", StringComparison.Ordinal) ||
+    !appProject.Contains("Microsoft.AspNetCore.App", StringComparison.Ordinal) ||
+    !appProject.Contains("QRCoder", StringComparison.Ordinal) ||
+    !appProject.Contains("GrassiBoard.RemoteWeb", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("Remote isolation/publish source contract failed.");
+    return 34;
+}
+if (!installerServiceSource.Contains("ProductVersion = \"1.1.0\"", StringComparison.Ordinal) ||
+    !installerWindowXaml.Contains("Ready to install GrassiBoard 1.1.0", StringComparison.Ordinal))
+{
+    Console.Error.WriteLine("Installer candidate version contract failed.");
+    return 35;
+}
+
 MixerSettings defaultMixer = MixerSettings.CreateDefault();
 if (System.Runtime.InteropServices.Marshal.SizeOf<MixerSettings>() != 60 ||
     defaultMixer.StructSize != 60U ||
@@ -431,6 +454,124 @@ if (MainViewModel.ToMeter(float.NegativeInfinity) != 0.0 ||
 {
     Console.Error.WriteLine("dBFS meter mapping contract failed.");
     return 10;
+}
+
+string remoteRoot = Path.Combine(Path.GetTempPath(), $"GrassiBoard-remote-{Guid.NewGuid():N}");
+Directory.CreateDirectory(remoteRoot);
+try
+{
+    string remoteSettingsPath = Path.Combine(remoteRoot, "remote-settings.json");
+    var remoteStore = new RemoteSettingsStore(remoteSettingsPath);
+    RemoteSettingsDocument remoteSettings = remoteStore.Load();
+    DateTimeOffset remoteNow = new(2026, 8, 11, 9, 0, 0, TimeSpan.Zero);
+    var pairing = new RemotePairingService(remoteStore, remoteSettings, () => remoteNow);
+    RemotePairingInfo pairingInfo = pairing.CreatePairing("http://192.168.1.20:47918/");
+    string pairSecret = Uri.UnescapeDataString(new Uri(pairingInfo.Url).Query.TrimStart('?').Split('=', 2)[1]);
+    if (!pairing.TryPair(new RemotePairRequest(pairSecret, null, "Smoke Phone"), out RemotePairResponse? pairResponse) ||
+        pairResponse is null || pairing.ValidateClientToken(pairResponse.ClientToken)?.Name != "Smoke Phone")
+    {
+        Console.Error.WriteLine("Remote pairing/token contract failed.");
+        return 25;
+    }
+    if (!pairing.Revoke(Guid.Parse(pairResponse.ClientId)) || pairing.ValidateClientToken(pairResponse.ClientToken) is not null)
+    {
+        Console.Error.WriteLine("Remote token revoke contract failed.");
+        return 26;
+    }
+
+    RemotePairingInfo expiring = pairing.CreatePairing("http://192.168.1.20:47918/");
+    remoteNow = remoteNow.AddMinutes(3);
+    if (pairing.IsPairingActive || pairing.TryPair(new RemotePairRequest(null, expiring.Code, "Late Phone"), out _))
+    {
+        Console.Error.WriteLine("Remote pairing expiration contract failed.");
+        return 27;
+    }
+
+    string envelopeJson = """{"protocolVersion":1,"type":"voice.pitch.set","messageId":"smoke","payload":{"value":2.5}}""";
+    RemoteIncomingEnvelope? protocolEnvelope = JsonSerializer.Deserialize<RemoteIncomingEnvelope>(envelopeJson, RemoteProtocol.JsonOptions);
+    if (protocolEnvelope is null || protocolEnvelope.ProtocolVersion != 1 || protocolEnvelope.Type != "voice.pitch.set" ||
+        protocolEnvelope.Payload.GetProperty("value").GetDouble() != 2.5)
+    {
+        Console.Error.WriteLine("Remote protocol serialization contract failed.");
+        return 28;
+    }
+
+    string soundboardPath = Path.Combine(remoteRoot, "soundboard.json");
+    string profilePathForRemote = Path.Combine(remoteRoot, "profiles.json");
+    using var remoteViewModel = new MainViewModel(
+        new SoundboardStore(soundboardPath),
+        new ProfileStore(profilePathForRemote),
+        new RemoteSettingsStore(Path.Combine(remoteRoot, "vm-remote-settings.json")));
+    var privatePad = new SoundPadModel
+    {
+        Title = "Private path pad",
+        FilePath = Path.Combine(remoteRoot, "secret-audio.wav")
+    };
+    remoteViewModel.Pads.Add(privatePad);
+    var remotePreset = new UserPresetModel
+    {
+        Name = "Remote Radio",
+        State = new AudioStateSnapshot { Pitch = 4.0, Formant = -1.0 }
+    };
+    remoteViewModel.UserPresets.Add(remotePreset);
+    var publisher = new RemoteStatePublisher();
+    int invalidations = 0;
+    publisher.Invalidated += _ => invalidations++;
+    long revision = publisher.Invalidate();
+    if (revision <= 1 || invalidations != 1)
+    {
+        Console.Error.WriteLine("Remote state revision contract failed.");
+        return 29;
+    }
+
+    var dispatcher = new RemoteCommandDispatcher(remoteViewModel, Dispatcher.CurrentDispatcher);
+    RemoteStateSnapshot snapshot = await dispatcher.CreateSnapshotAsync(revision);
+    string snapshotJson = JsonSerializer.Serialize(snapshot, RemoteProtocol.JsonOptions);
+    if (snapshot.Revision != revision || snapshot.Pads.Single().Title != "Private path pad" ||
+        snapshot.Presets.Single().Name != "Remote Radio" ||
+        snapshotJson.Contains(privatePad.FilePath, StringComparison.OrdinalIgnoreCase) ||
+        snapshotJson.Contains("filePath", StringComparison.OrdinalIgnoreCase))
+    {
+        Console.Error.WriteLine("Remote authoritative snapshot/privacy contract failed.");
+        return 30;
+    }
+
+    RemoteCommandResult invalidPitch = await dispatcher.ExecuteAsync(new RemoteIncomingEnvelope
+    {
+        ProtocolVersion = RemoteProtocol.Version,
+        Type = "voice.pitch.set",
+        MessageId = Guid.NewGuid().ToString("N"),
+        Payload = JsonSerializer.SerializeToElement(new { value = 99.0 }, RemoteProtocol.JsonOptions)
+    });
+    if (invalidPitch.Success || invalidPitch.ErrorCode != "invalid_range")
+    {
+        Console.Error.WriteLine("Remote server-side slider validation contract failed.");
+        return 31;
+    }
+
+    RemoteCommandResult applyPreset = await dispatcher.ExecuteAsync(new RemoteIncomingEnvelope
+    {
+        ProtocolVersion = RemoteProtocol.Version,
+        Type = "preset.apply",
+        MessageId = Guid.NewGuid().ToString("N"),
+        Payload = JsonSerializer.SerializeToElement(new { presetId = remotePreset.Id }, RemoteProtocol.JsonOptions)
+    });
+    if (!applyPreset.Success || Math.Abs(remoteViewModel.Pitch - 4.0) > 0.001 || Math.Abs(remoteViewModel.Formant + 1.0) > 0.001)
+    {
+        Console.Error.WriteLine("Remote preset command routing contract failed.");
+        return 32;
+    }
+
+    RemoteStateSnapshot reconnectSnapshot = await dispatcher.CreateSnapshotAsync(publisher.Invalidate());
+    if (reconnectSnapshot.Revision <= snapshot.Revision || Math.Abs(reconnectSnapshot.Voice.Pitch - 4.0) > 0.001)
+    {
+        Console.Error.WriteLine("Remote reconnect snapshot contract failed.");
+        return 33;
+    }
+}
+finally
+{
+    Directory.Delete(remoteRoot, true);
 }
 
 string presetRoot = Path.Combine(Path.GetTempPath(), $"GrassiBoard-preset-{Guid.NewGuid():N}");

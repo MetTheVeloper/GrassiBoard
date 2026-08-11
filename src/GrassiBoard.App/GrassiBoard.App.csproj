@@ -13,11 +13,19 @@
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="NAudio" Version="2.3.0" />
+    <PackageReference Include="QRCoder" Version="1.8.0" />
     <ProjectReference Include="..\GrassiBoard.Shared\GrassiBoard.Shared.csproj" />
     <Resource Include="Assets\GrassiBoard.ico" />
     <Resource Include="Assets\GrassiBoard.png" />
     <Content Include="BuildInfo.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <Content Include="..\GrassiBoard.RemoteWeb\.output\public\**\*"
+             Condition="Exists('..\GrassiBoard.RemoteWeb\.output\public\index.html')"
+             Link="RemoteWeb\%(RecursiveDir)%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </Content>

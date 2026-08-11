@@ -7,9 +7,11 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
 using System.Windows.Threading;
+using System.Windows.Media.Imaging;
 using GrassiBoard.Infrastructure;
 using GrassiBoard.Models;
 using GrassiBoard.Services;
+using GrassiBoard.Services.Remote;
 using GrassiBoard.Shared;
 using GrassiBoard.Views;
 using Microsoft.Win32;
@@ -28,11 +30,14 @@ internal enum AppPage
 internal sealed class MainViewModel : ObservableObject, IDisposable
 {
     private readonly NativeAudioEngine _engine = new();
+    private readonly Dispatcher _dispatcher;
     private readonly SoundboardStore _store;
     private readonly ProfileStore _profileStore;
     private readonly ProfileDocument _profileDocument;
     private readonly MediaDeckService _mediaDeck;
     private readonly GlobalHotkeyService _hotkeys;
+    private readonly RemoteStatePublisher _remoteStatePublisher;
+    private readonly RemoteServerService _remoteServer;
     private readonly DispatcherTimer _meterTimer;
     private readonly DispatcherTimer _saveTimer;
     private readonly BuildInfo _build;
@@ -94,9 +99,17 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     private bool _forcedRecoveryMute;
     private string _failedInputDeviceId = string.Empty;
     private DateTimeOffset _nextRecoveryAttemptUtc;
+    private bool _remoteEnabled;
+    private string _remoteStatus = "Remote Control is off";
+    private string _remoteAddress = string.Empty;
+    private string _remoteNetworkHint = "Enable Remote Control while the PC and phone are on the same private Wi-Fi/LAN.";
+    private string _remotePairingCode = string.Empty;
+    private DateTimeOffset _remotePairingExpiresAt;
+    private BitmapImage? _remotePairingQr;
 
-    public MainViewModel(SoundboardStore? store = null, ProfileStore? profileStore = null)
+    public MainViewModel(SoundboardStore? store = null, ProfileStore? profileStore = null, RemoteSettingsStore? remoteSettingsStore = null)
     {
+        _dispatcher = Dispatcher.CurrentDispatcher;
         _store = store ?? new SoundboardStore();
         string profilePath = Path.Combine(
             Path.GetDirectoryName(_store.StoragePath) ?? Path.GetTempPath(), "profiles.json");
@@ -119,6 +132,17 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         OutputDevices = [];
         _mediaDeck = new MediaDeckService(_engine, () => IsRunning);
         _hotkeys = new GlobalHotkeyService(Dispatcher.CurrentDispatcher);
+        remoteSettingsStore ??= new RemoteSettingsStore();
+        RemoteSettingsDocument remoteSettings = remoteSettingsStore.Load();
+        var remotePairing = new RemotePairingService(remoteSettingsStore, remoteSettings);
+        _remoteStatePublisher = new RemoteStatePublisher();
+        var remoteCommandDispatcher = new RemoteCommandDispatcher(this, _dispatcher);
+        _remoteServer = new RemoteServerService(remoteSettingsStore, remoteSettings, remotePairing, remoteCommandDispatcher, _remoteStatePublisher);
+        _remoteServer.Changed += OnRemoteServerChanged;
+        _remoteEnabled = remoteSettings.Enabled;
+        RemoteClients = [];
+        PropertyChanged += OnRemoteObservableChanged;
+        Pads.CollectionChanged += OnRemoteCollectionChanged;
         LoadProfileState(_activeProfile, populateCollections: true);
         _selectedProfile = _activeProfile;
 
@@ -171,6 +195,9 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         });
         DeletePadCommand = new RelayCommand(parameter => DeletePad(parameter as SoundPadModel));
         CopyDiagnosticsCommand = new RelayCommand(_ => Clipboard.SetText(BuildDiagnostics()));
+        RegenerateRemotePairingCommand = new RelayCommand(_ => { _remoteServer.RegeneratePairing(); RefreshRemoteUi(); }, _ => _remoteServer.IsRunning);
+        RestartRemoteServerCommand = new AsyncRelayCommand(_ => RestartRemoteServerAsync(), _ => RemoteEnabled);
+        RevokeRemoteClientCommand = new AsyncRelayCommand(parameter => RevokeRemoteClientAsync(parameter as RemoteClientDisplay), parameter => parameter is RemoteClientDisplay);
 
         UserPresets.CollectionChanged += OnUserPresetsChanged;
 
@@ -187,6 +214,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public ObservableCollection<UserPresetModel> UserPresets { get; }
     public ObservableCollection<AudioDevice> InputDevices { get; }
     public ObservableCollection<AudioDevice> OutputDevices { get; }
+    public ObservableCollection<RemoteClientDisplay> RemoteClients { get; }
 
     public RelayCommand NavigateCommand { get; }
     public AsyncRelayCommand StartStopCommand { get; }
@@ -221,10 +249,53 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     public RelayCommand EditPadCommand { get; }
     public RelayCommand DeletePadCommand { get; }
     public RelayCommand CopyDiagnosticsCommand { get; }
+    public RelayCommand RegenerateRemotePairingCommand { get; }
+    public AsyncRelayCommand RestartRemoteServerCommand { get; }
+    public AsyncRelayCommand RevokeRemoteClientCommand { get; }
 
     public string Version => $"v{_build.Version}";
     public string Commit => _build.ShortCommit;
     public string NativeVersion => _engine.NativeVersion;
+    internal string ActiveProfileName => _activeProfile.Name;
+
+    public bool RemoteEnabled
+    {
+        get => _remoteEnabled;
+        set
+        {
+            if (!SetProperty(ref _remoteEnabled, value)) return;
+            try
+            {
+                _remoteServer.SetEnabledPreference(value);
+                _ = ApplyRemoteEnabledAsync(value);
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                _remoteEnabled = !value;
+                OnPropertyChanged(nameof(RemoteEnabled));
+                CrashReporter.Report(exception, "Remote Control preference", false);
+                RemoteStatus = "Could not save Remote Control settings";
+                RemoteNetworkHint = "Check that GrassiBoard can write to your user AppData folder, then try again.";
+            }
+        }
+    }
+
+    public string RemoteStatus { get => _remoteStatus; private set => SetProperty(ref _remoteStatus, value); }
+    public string RemoteAddress { get => _remoteAddress; private set => SetProperty(ref _remoteAddress, value); }
+    public string RemoteNetworkHint { get => _remoteNetworkHint; private set => SetProperty(ref _remoteNetworkHint, value); }
+    public string RemotePairingCode { get => _remotePairingCode; private set => SetProperty(ref _remotePairingCode, value); }
+    public BitmapImage? RemotePairingQr { get => _remotePairingQr; private set => SetProperty(ref _remotePairingQr, value); }
+    public bool RemoteServerRunning => _remoteServer.IsRunning;
+    public string RemotePairingExpiryLabel
+    {
+        get
+        {
+            if (_remotePairingExpiresAt == DateTimeOffset.MinValue) return string.Empty;
+            TimeSpan remaining = _remotePairingExpiresAt - DateTimeOffset.UtcNow;
+            if (remaining <= TimeSpan.Zero) return "Pairing code expired — regenerate it.";
+            return $"Expires in {Math.Max(0, (int)remaining.TotalMinutes):00}:{remaining.Seconds:00}";
+        }
+    }
     public uint NativeApiVersion => _engine.ApiVersion;
     public bool HasPads => Pads.Count > 0;
     public bool IsBoardPage => CurrentPage == AppPage.Board;
@@ -840,6 +911,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
 
     public async Task InitializeAsync()
     {
+        await InitializeRemoteAsync();
         try
         {
             NativeResult result = _engine.Initialize();
@@ -876,9 +948,113 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         catch (Exception exception) when (exception is DllNotFoundException or BadImageFormatException or EntryPointNotFoundException)
         {
             EngineStatus = $"Native engine unavailable · {exception.GetType().Name}";
-            EngineDetail = "Use the complete v1.0.1 package.";
+            EngineDetail = "Use the complete matching GrassiBoard package.";
         }
     }
+
+    private async Task InitializeRemoteAsync()
+    {
+        if (RemoteEnabled) await ApplyRemoteEnabledAsync(true);
+        else RefreshRemoteUi();
+    }
+
+    private async Task ApplyRemoteEnabledAsync(bool enabled)
+    {
+        try
+        {
+            if (enabled) await _remoteServer.StartAsync();
+            else await _remoteServer.StopAsync();
+        }
+        catch (Exception exception)
+        {
+            CrashReporter.Report(exception, "Remote Control lifecycle", false);
+        }
+        RefreshRemoteUi();
+    }
+
+    private async Task RestartRemoteServerAsync()
+    {
+        if (!RemoteEnabled) return;
+        await _remoteServer.RestartAsync();
+        RefreshRemoteUi();
+    }
+
+    private async Task RevokeRemoteClientAsync(RemoteClientDisplay? client)
+    {
+        if (client is null) return;
+        await _remoteServer.RevokeClientAsync(client.Id);
+        RefreshRemoteUi();
+    }
+
+    private void OnRemoteServerChanged()
+    {
+        if (_dispatcher.CheckAccess()) RefreshRemoteUi();
+        else _dispatcher.BeginInvoke(RefreshRemoteUi);
+    }
+
+    private void RefreshRemoteUi()
+    {
+        RemoteStatus = _remoteServer.Status;
+        RemoteAddress = _remoteServer.Address;
+        RemoteNetworkHint = _remoteServer.NetworkHint;
+        RemotePairingInfo? pairing = _remoteServer.CurrentPairing;
+        RemotePairingCode = pairing?.Code ?? string.Empty;
+        _remotePairingExpiresAt = pairing?.ExpiresAt ?? DateTimeOffset.MinValue;
+        RemotePairingQr = RemoteQrCodeService.Create(pairing?.Url);
+        RemoteClients.Clear();
+        foreach (RemoteClientDisplay client in _remoteServer.GetClientDisplays()) RemoteClients.Add(client);
+        OnPropertyChanged(nameof(RemoteServerRunning));
+        OnPropertyChanged(nameof(RemotePairingExpiryLabel));
+        RegenerateRemotePairingCommand.RaiseCanExecuteChanged();
+        RestartRemoteServerCommand.RaiseCanExecuteChanged();
+    }
+
+    private void OnRemoteObservableChanged(object? sender, PropertyChangedEventArgs e) => _remoteStatePublisher.Invalidate();
+
+    private void OnRemoteCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e) => _remoteStatePublisher.Invalidate();
+
+    internal async Task RemoteStartEngineAsync()
+    {
+        if (!IsRunning) await StartStopAsync();
+    }
+
+    internal async Task RemoteStopEngineAsync()
+    {
+        if (IsRunning) await StartStopAsync();
+    }
+
+    internal Task RemoteStopAllAsync() => StopAllAsync();
+
+    internal void RemoteResetVoice() => ResetVoice();
+
+    internal async Task<bool> RemoteApplyUserPresetAsync(Guid presetId)
+    {
+        UserPresetModel? preset = UserPresets.FirstOrDefault(item => item.Id == presetId);
+        if (preset is null) return false;
+        await ApplySnapshotSmoothAsync(preset.State);
+        return true;
+    }
+
+    internal async Task<bool> RemotePlayPadAsync(Guid padId)
+    {
+        SoundPadModel? pad = Pads.FirstOrDefault(item => item.Id == padId);
+        if (pad is null) return false;
+        await PlayPadAsync(pad);
+        return true;
+    }
+
+    internal bool RemoteStopPad(Guid padId)
+    {
+        SoundPadModel? pad = Pads.FirstOrDefault(item => item.Id == padId);
+        if (pad is null) return false;
+        StopPad(pad);
+        return true;
+    }
+
+    internal void RemoteMediaPlayPause() => MediaPlayPause();
+    internal void RemoteMediaStop() { _mediaDeck.Stop(); RefreshMediaState(); }
+    internal void RemoteMediaSkip(double seconds) { _mediaDeck.Skip(seconds); RefreshMediaState(); }
+    internal void RemoteMediaSeek(double seconds) { MediaPosition = seconds; RefreshMediaState(); }
 
     public async Task AddFilesAsync(IEnumerable<string> paths)
     {
@@ -1598,6 +1774,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             }
         }
 
+        OnPropertyChanged(nameof(RemotePairingExpiryLabel));
         if (IsSettingsPage)
         {
             OnPropertyChanged(nameof(DiagnosticsText));
@@ -1972,12 +2149,14 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
 
     private void OnUserPresetPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        _remoteStatePublisher.Invalidate();
         ScheduleSave();
         if (e.PropertyName == nameof(UserPresetModel.Hotkey)) RefreshHotkeys();
     }
 
     private void OnUserPresetsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        _remoteStatePublisher.Invalidate();
         RaisePresetCommandStates();
         ScheduleSave();
     }
@@ -2019,6 +2198,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         text.AppendLine($"Media monitor: {MediaMonitorEnabled} · send: {MediaSendEnabled} · device: {SelectedMonitorOutput?.Name ?? "not selected"}");
         text.AppendLine($"Profile: {_activeProfile.Name} · user presets {UserPresets.Count}");
         text.AppendLine($"Hotkeys: {HotkeyStatus.Replace(Environment.NewLine, " | ")}");
+        text.AppendLine($"Remote: {(RemoteServerRunning ? "Running" : "Off")} · paired {RemoteClients.Count} · address {RemoteAddress}");
         text.AppendLine($"Microphone muted: {MicrophoneMuted}");
         text.AppendLine($"Input endpoint: {SelectedInput?.Name ?? "not selected"}");
         text.AppendLine($"Input ID: {SelectedInput?.Id ?? "not selected"}");
@@ -2054,6 +2234,7 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
 
     private void OnPadPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        _remoteStatePublisher.Invalidate();
         if (e.PropertyName is nameof(SoundPadModel.Title) or nameof(SoundPadModel.FilePath) or
             nameof(SoundPadModel.Volume) or nameof(SoundPadModel.Loop) or nameof(SoundPadModel.RestartOnPress) or
             nameof(SoundPadModel.Hotkey))
@@ -2154,6 +2335,10 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
             // The application is closing; a prior successful save remains intact.
         }
         StopAllSounds();
+        _remoteServer.Changed -= OnRemoteServerChanged;
+        PropertyChanged -= OnRemoteObservableChanged;
+        Pads.CollectionChanged -= OnRemoteCollectionChanged;
+        try { _remoteServer.DisposeAsync().AsTask().GetAwaiter().GetResult(); } catch (Exception) { }
         _mediaDeck.Dispose();
         _hotkeys.Dispose();
         _engine.Dispose();

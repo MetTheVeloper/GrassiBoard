@@ -43,3 +43,32 @@ VB-CABLE and other virtual-cable products are independent optional prerequisites
 - License: Microsoft Public License
 
 The complete license is stored at `src/GrassiBoard.Driver/THIRD-PARTY-MS-PL.txt` and included in the driver package.
+
+## QRCoder
+
+- Upstream: https://github.com/codebude/QRCoder
+- NuGet package: `QRCoder` `1.8.0` (pinned)
+- License: MIT
+- Usage: creates the one-time Remote pairing QR image in the WPF Settings UI; never used in the native audio callback
+
+The MIT notice is included in `THIRD-PARTY-NOTICES.txt`.
+
+## Nuxt
+
+- Upstream: https://github.com/nuxt/nuxt
+- npm package: `nuxt` `4.5.2` (pinned direct dependency)
+- License: MIT
+- Usage: build-time/application framework for the static GrassiBoard Remote SPA; no Node/Nitro runtime is installed on the user's PC
+
+The MIT notice is included in `THIRD-PARTY-NOTICES.txt`.
+
+## Vue
+
+- Upstream: https://github.com/vuejs/core
+- npm package: `vue` `3.5.41` (pinned direct dependency)
+- License: MIT
+- Usage: client runtime for the generated GrassiBoard Remote SPA
+
+The MIT notice is included in `THIRD-PARTY-NOTICES.txt`.
+
+> v1.1.0 candidate note: the direct frontend versions are pinned, but the complete transitive npm dependency inventory/lockfile must be generated and reviewed before v1.1 is marked USER ACCEPTED.

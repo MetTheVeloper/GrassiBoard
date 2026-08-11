@@ -54,3 +54,11 @@ Playback control uses a fixed 256-command single-producer/single-consumer queue.
 - Pitch range: `-12` to `+12` semitones plus `-100` to `+100` cents
 - Formant shift range: `-12` to `+12` semitones
 - Default Voice state: Balanced, preservation enabled, Voice FX disabled (positive UI maps to native bypass)
+
+## Remote Control v1.1 ownership boundary
+
+The optional v1.1 Remote subsystem is a managed control/state peripheral around the accepted audio core. `RemoteServerService` owns the private-LAN Kestrel host and authenticated WebSocket clients; `RemotePairingService` owns pairing credentials; `RemoteCommandDispatcher` crosses onto the WPF dispatcher and invokes the same `MainViewModel` control/state surface used by the desktop application. `RemoteStatePublisher` coalesces UI/application state changes into authoritative snapshots.
+
+The generated Nuxt 4/Vue 3 SPA is served from the packaged `RemoteWeb` directory. It owns no persistent authoritative GrassiBoard state and queues no commands while disconnected. Reconnect begins with authentication and a fresh snapshot.
+
+No Remote v1.1 service performs network work inside the native callback, and v1.1 does not add or change C++ audio APIs. Product version advances to the v1.1.0 test candidate while native ABI remains 8.

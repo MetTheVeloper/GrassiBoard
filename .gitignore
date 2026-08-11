@@ -83,3 +83,8 @@ Testing/
 # Test results
 TestResults/
 *.trx
+
+# Nuxt Remote Web
+src/GrassiBoard.RemoteWeb/node_modules/
+src/GrassiBoard.RemoteWeb/.nuxt/
+src/GrassiBoard.RemoteWeb/.output/

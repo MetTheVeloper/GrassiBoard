@@ -1,0 +1,309 @@
+import type { ConnectionState, PairResponse, RemoteEnvelope, RemoteStateSnapshot } from '~/types/remote'
+
+const protocolVersion = 1
+let socket: WebSocket | null = null
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let reconnectAttempt = 0
+let initialized = false
+let authTimer: ReturnType<typeof setTimeout> | null = null
+
+function normalizeOrigin(value: string) {
+  return value.replace(/\/+$/, '')
+}
+
+function defaultDeviceName() {
+  if (!import.meta.client) return 'Browser'
+  const ua = navigator.userAgent
+  if (/Android/i.test(ua)) return 'Android Phone'
+  if (/iPhone|iPad/i.test(ua)) return 'iPhone/iPad'
+  return 'Browser'
+}
+
+export function useRemoteConnection() {
+  const config = useRuntimeConfig()
+  const route = useRoute()
+  const router = useRouter()
+  const snapshot = useState<RemoteStateSnapshot | null>('remote:snapshot', () => null)
+  const connectionState = useState<ConnectionState>('remote:connection', () => 'idle')
+  const lastError = useState<string>('remote:error', () => '')
+  const paired = useState<boolean>('remote:paired', () => false)
+  const pendingAcks = useState<Record<string, string>>('remote:acks', () => ({}))
+  const manualCode = useState<string>('remote:manual-code', () => '')
+
+  const remoteOrigin = computed(() => {
+    const configured = String(config.public.remoteOrigin || '').trim()
+    if (configured) return normalizeOrigin(configured)
+    if (import.meta.client) return normalizeOrigin(window.location.origin)
+    return ''
+  })
+
+  const isConnected = computed(() => connectionState.value === 'connected')
+  const connectionLabel = computed(() => {
+    switch (connectionState.value) {
+      case 'connected': return 'Connected'
+      case 'pairing': return 'Pairing…'
+      case 'connecting': return 'Connecting…'
+      case 'authenticating': return 'Authenticating…'
+      case 'unauthorized': return 'Pairing required'
+      case 'disconnected': return 'Reconnecting…'
+      default: return 'Ready'
+    }
+  })
+
+  function apiUrl(path: string) {
+    return `${remoteOrigin.value}${path}`
+  }
+
+  function wsUrl() {
+    const url = new URL(apiUrl('/ws'))
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+    return url.toString()
+  }
+
+  function getToken() {
+    return import.meta.client ? localStorage.getItem('grassiboard.remote.token') ?? '' : ''
+  }
+
+  function saveToken(token: string) {
+    if (!import.meta.client) return
+    localStorage.setItem('grassiboard.remote.token', token)
+    paired.value = true
+  }
+
+  function forgetToken() {
+    if (import.meta.client) localStorage.removeItem('grassiboard.remote.token')
+    paired.value = false
+    snapshot.value = null
+  }
+
+  function vibrate(pattern: number | number[] = 14) {
+    if (import.meta.client && 'vibrate' in navigator) navigator.vibrate(pattern)
+  }
+
+  async function pair(input: { secret?: string, code?: string, deviceName?: string }) {
+    if (!remoteOrigin.value) return false
+    connectionState.value = 'pairing'
+    lastError.value = ''
+    try {
+      const response = await $fetch<PairResponse>(apiUrl('/api/remote/pair'), {
+        method: 'POST',
+        body: {
+          secret: input.secret || undefined,
+          code: input.code || undefined,
+          deviceName: input.deviceName || defaultDeviceName()
+        }
+      })
+      saveToken(response.clientToken)
+      if (typeof route.query.pair === 'string') {
+        const { pair: _pair, ...query } = route.query
+        await router.replace({ query })
+      }
+      vibrate([18, 20, 18])
+      connect(true)
+      return true
+    } catch (error) {
+      connectionState.value = 'unauthorized'
+      lastError.value = 'The pairing code is invalid, expired, or pairing is locked.'
+      return false
+    }
+  }
+
+  async function pairWithCode() {
+    const code = manualCode.value.replace(/\D/g, '').slice(0, 6)
+    if (code.length !== 6) {
+      lastError.value = 'Enter the 6-digit pairing code shown on the PC.'
+      return false
+    }
+    return pair({ code })
+  }
+
+  function clearTimers() {
+    if (reconnectTimer) clearTimeout(reconnectTimer)
+    if (authTimer) clearTimeout(authTimer)
+    reconnectTimer = null
+    authTimer = null
+  }
+
+  function closeSocket() {
+    clearTimers()
+    if (socket) {
+      const current = socket
+      socket = null
+      current.onclose = null
+      current.onerror = null
+      current.onmessage = null
+      current.close()
+    }
+  }
+
+  function scheduleReconnect() {
+    if (!import.meta.client || !getToken() || reconnectTimer) return
+    const delay = Math.min(12_000, 500 * (2 ** Math.min(reconnectAttempt, 5)))
+    reconnectAttempt += 1
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null
+      connect(true)
+    }, delay)
+  }
+
+  function handleMessage(event: MessageEvent<string>) {
+    let message: RemoteEnvelope<any>
+    try {
+      message = JSON.parse(event.data) as RemoteEnvelope<any>
+    } catch {
+      return
+    }
+    if (message.protocolVersion !== protocolVersion) {
+      lastError.value = `Remote protocol ${protocolVersion} is required.`
+      closeSocket()
+      return
+    }
+
+    if (message.type === 'connection.hello') {
+      const token = getToken()
+      if (!token || !socket) {
+        connectionState.value = 'unauthorized'
+        return
+      }
+      connectionState.value = 'authenticating'
+      socket.send(JSON.stringify({
+        protocolVersion,
+        type: 'connection.auth',
+        messageId: crypto.randomUUID(),
+        payload: { token }
+      }))
+      authTimer = setTimeout(() => {
+        lastError.value = 'Authentication timed out.'
+        closeSocket()
+        scheduleReconnect()
+      }, 10_000)
+      return
+    }
+
+    if (message.type === 'state.snapshot') {
+      if (authTimer) clearTimeout(authTimer)
+      authTimer = null
+      snapshot.value = message.payload as RemoteStateSnapshot
+      connectionState.value = 'connected'
+      lastError.value = ''
+      paired.value = true
+      reconnectAttempt = 0
+      return
+    }
+
+    if (message.type === 'ack') {
+      if (message.payload?.command === 'connection.auth') {
+        connectionState.value = 'authenticating'
+      }
+      if (message.messageId) {
+        const next = { ...pendingAcks.value }
+        delete next[message.messageId]
+        pendingAcks.value = next
+      }
+      return
+    }
+
+    if (message.type === 'error') {
+      const code = String(message.payload?.code || 'remote_error')
+      lastError.value = String(message.payload?.message || 'Remote command failed.')
+      if (message.messageId) {
+        const next = { ...pendingAcks.value }
+        delete next[message.messageId]
+        pendingAcks.value = next
+      }
+      if (code === 'unauthorized') {
+        forgetToken()
+        connectionState.value = 'unauthorized'
+        closeSocket()
+      }
+    }
+  }
+
+  function connect(force = false) {
+    if (!import.meta.client) return
+    const token = getToken()
+    paired.value = Boolean(token)
+    if (!token) {
+      connectionState.value = 'unauthorized'
+      return
+    }
+    if (!force && socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return
+    closeSocket()
+    connectionState.value = 'connecting'
+    lastError.value = ''
+    try {
+      const next = new WebSocket(wsUrl())
+      socket = next
+      next.onmessage = handleMessage
+      next.onerror = () => {
+        lastError.value = 'Could not reach GrassiBoard on the local network.'
+      }
+      next.onclose = () => {
+        if (socket === next) socket = null
+        if (getToken()) {
+          connectionState.value = 'disconnected'
+          scheduleReconnect()
+        } else {
+          connectionState.value = 'unauthorized'
+        }
+      }
+    } catch {
+      connectionState.value = 'disconnected'
+      lastError.value = 'The Remote address is invalid or unavailable.'
+      scheduleReconnect()
+    }
+  }
+
+  function sendCommand(type: string, payload: Record<string, unknown> = {}) {
+    if (!socket || socket.readyState !== WebSocket.OPEN || connectionState.value !== 'connected') {
+      lastError.value = 'Remote is not connected. The command was not queued.'
+      return false
+    }
+    const messageId = crypto.randomUUID()
+    pendingAcks.value = { ...pendingAcks.value, [messageId]: type }
+    socket.send(JSON.stringify({ protocolVersion, type, messageId, payload }))
+    return true
+  }
+
+  function disconnect() {
+    closeSocket()
+    connectionState.value = paired.value ? 'disconnected' : 'unauthorized'
+  }
+
+  function initialize() {
+    if (!import.meta.client || initialized) return
+    initialized = true
+    paired.value = Boolean(getToken())
+    const pairSecret = typeof route.query.pair === 'string' ? route.query.pair : ''
+    if (pairSecret && !getToken()) {
+      void pair({ secret: pairSecret })
+      return
+    }
+    connect()
+
+    window.addEventListener('online', () => connect(true))
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && getToken()) connect(true)
+    })
+  }
+
+  return {
+    snapshot,
+    connectionState,
+    connectionLabel,
+    isConnected,
+    lastError,
+    paired,
+    pendingAcks,
+    manualCode,
+    remoteOrigin,
+    initialize,
+    connect,
+    disconnect,
+    pair,
+    pairWithCode,
+    sendCommand,
+    vibrate,
+    forgetToken
+  }
+}

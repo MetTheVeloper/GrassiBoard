@@ -12,6 +12,12 @@
 - Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
 - Media Deck: streaming local-media decode with bounded read-ahead, buffered independent headphone monitor, full microphone-path-aligned virtual send, transport, meter, and safe missing-file state
 
+## v1.1.0 Remote Control implementation candidate — NOT USER ACCEPTED
+
+Remote Control v1.1.0 is under test and does not replace the accepted v1.0.1 stable baseline yet. The candidate adds a LAN-only embedded Kestrel server, authenticated pairing/revoke, protocol-v1 authoritative WebSocket state, and a generated Nuxt 4/Vue 3 mobile SPA for Board, Voice, compact Mixer, Media, Mic Mute, Stop All, and remote Engine Start. Native ABI remains 8 and the accepted microphone/DSP/VB-CABLE route is unchanged.
+
+The candidate must pass GitHub Actions and the real Windows + Android manual matrix before it can become the current accepted release. v1.2 remains blocked.
+
 ## v1.0.0 final release candidate
 
 The final candidate corrects remaining humanized labels, green-button foregrounds, and Media transport text. Native ABI 8 reports the total Media Vocal Sync delay and aligns the virtual Media send to capture, active Pitch, current microphone ring, and the estimated local-monitor path so a vocal recorded over a monitored beat shares the same time base.

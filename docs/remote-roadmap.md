@@ -445,32 +445,34 @@ If the phone changes a slider continuously, coalesce updates when necessary rath
 
 # 8. Web client technology
 
-Preferred implementation:
+Approved implementation for v1.1 and later Remote UI work:
 
 ```text
+Nuxt 4
 Vue 3
-Vite
 TypeScript
-Static SPA only
-No Nuxt
+pnpm
+ssr: false
+Static SPA generated with `pnpm generate`
+No Nitro/API runtime on the user's PC
 No Node.js runtime on the user's PC
 ```
 
-The Node toolchain exists only in CI/build time.
+The Node/pnpm toolchain exists only in development and CI/build time. Nuxt is used as the frontend application framework; GrassiBoard's embedded ASP.NET Core/Kestrel server remains the only production backend and serves the generated `.output/public` assets.
 
-Recommended repository location:
+Repository location:
 
 ```text
 src/GrassiBoard.RemoteWeb/
 ```
 
-Build output should be static assets copied/embedded into the Windows app package and served by the embedded server.
+Build output is generated static assets copied/embedded into the Windows app package and served by the embedded server.
 
-Pin package versions and commit the lockfile.
+Pin direct package versions and commit the pnpm lockfile once dependency resolution is available.
 
 GitHub Actions must build the web client from a clean runner before publishing the WPF app.
 
-The installer/portable package must contain the compiled web assets; the user must not install Node/npm.
+The installer/portable package must contain the compiled web assets; the user must not install Node.js, pnpm, or Nuxt.
 
 ---
 
@@ -2111,9 +2113,9 @@ Expected conceptual order:
 ```text
 Checkout
 Setup pinned .NET SDK
-Setup pinned Node LTS for RemoteWeb build
-npm ci
-npm run build
+Setup pinned Node runtime + pnpm for RemoteWeb build
+pnpm install --frozen-lockfile
+pnpm generate
 Generate build information
 Configure/build native engine
 Native tests

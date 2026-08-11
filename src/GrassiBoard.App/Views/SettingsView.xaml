@@ -66,6 +66,81 @@
 
             <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
                 <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Text="REMOTE CONTROL" Style="{StaticResource EyebrowTextStyle}" />
+                            <TextBlock Text="Use your phone as a live GrassiBoard controller on the same private LAN/Wi-Fi."
+                                       FontSize="15" FontWeight="SemiBold" Margin="0,5,20,0" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" Content="Enabled" IsChecked="{Binding RemoteEnabled, Mode=TwoWay}"
+                                  VerticalAlignment="Center" />
+                    </Grid>
+
+                    <Border Margin="0,14,0,0" Padding="12" Background="{DynamicResource PanelQuietBrush}" CornerRadius="10">
+                        <StackPanel>
+                            <TextBlock Text="{Binding RemoteStatus}" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding RemoteAddress}" FontFamily="{StaticResource MonoFont}"
+                                       Foreground="{DynamicResource AccentBrush}" Margin="0,5,0,0" />
+                            <TextBlock Text="{Binding RemoteNetworkHint}" TextWrapping="Wrap" Style="{StaticResource MutedTextStyle}"
+                                       FontSize="11" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Margin="0,16,0,0" Visibility="{Binding RemoteServerRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180" />
+                            <ColumnDefinition Width="18" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="168" Height="168" Background="White" CornerRadius="10" Padding="8">
+                            <Image Source="{Binding RemotePairingQr}" Stretch="Uniform" />
+                        </Border>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                            <TextBlock Text="PAIR A PHONE" Style="{StaticResource EyebrowTextStyle}" />
+                            <TextBlock Text="Scan the QR code, or open the Remote address and enter this one-time code."
+                                       TextWrapping="Wrap" Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,6,0,0" />
+                            <TextBlock Text="{Binding RemotePairingCode}" FontFamily="{StaticResource MonoFont}"
+                                       FontSize="30" FontWeight="SemiBold" Margin="0,12,0,0" />
+                            <TextBlock Text="{Binding RemotePairingExpiryLabel}" Style="{StaticResource MutedTextStyle}" Margin="0,3,0,0" />
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button Content="Regenerate code" Command="{Binding RegenerateRemotePairingCommand}" />
+                                <Button Content="Restart server" Command="{Binding RestartRemoteServerCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Margin="0,18,0,0" Visibility="{Binding RemoteServerRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="PAIRED DEVICES" Style="{StaticResource EyebrowTextStyle}" />
+                        <ItemsControl ItemsSource="{Binding RemoteClients}" Margin="0,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding StatusLabel}" Style="{StaticResource MutedTextStyle}" FontSize="11" />
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Revoke" Style="{StaticResource SecondaryButtonStyle}"
+                                                Command="{Binding DataContext.RevokeRemoteClientCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}" Margin="0,16,0,0">
+                <StackPanel>
                     <TextBlock Text="GLOBAL HOTKEYS" Style="{StaticResource EyebrowTextStyle}" />
                     <TextBlock Text="Use combinations such as Ctrl+Alt+M. Sound Pad hotkeys are edited on each Pad; Preset hotkeys are edited in Mixer."
                                Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,5,0,14" />

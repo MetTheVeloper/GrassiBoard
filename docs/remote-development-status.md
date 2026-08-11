@@ -11,7 +11,7 @@
 ```text
 Current stable GrassiBoard release: v1.0.1
 Baseline status: USER ACCEPTED / STABLE
-Remote roadmap status: PLANNED
+Remote roadmap status: IN DEVELOPMENT
 Current permitted Remote target: v1.1.x — Remote Control
 ```
 
@@ -74,12 +74,13 @@ Never skip ahead because the code “looks correct.”
 
 ```text
 Stage: v1.1.x — Remote Control
-Status: NOT STARTED
-Implementation version: TBD
-Branch/commit: TBD
+Status: IMPLEMENTATION CANDIDATE / AWAITING CI
+Implementation version: v1.1.0
+Baseline commit: 4aa960d (v1.0.1 source baseline)
+Implementation commit: TBD after patch is applied/committed
 GitHub Actions run: TBD
 Artifact: TBD
-Awaiting user test: NO
+Awaiting user test: AFTER A GREEN CI ARTIFACT
 ```
 
 ## Current objective
@@ -89,7 +90,7 @@ Build the controller-only Remote defined in `docs/remote-roadmap.md`:
 ```text
 Embedded LAN web server
 Pairing / trusted clients
-Vue/Vite/TypeScript mobile SPA
+Nuxt 4 / Vue 3 / TypeScript / pnpm static SPA
 WebSocket realtime state synchronization
 Sound Pads
 Voice FX / Pitch / Formant
@@ -115,7 +116,7 @@ No integrated phone microphone yet.
 | Version family | Feature | Implementation status | User acceptance | Notes |
 |---|---|---|---|---|
 | v1.0.1 | Stable desktop baseline | Complete | **USER ACCEPTED** | Regression baseline |
-| v1.1.x | Remote Control | Not started | **NOT ACCEPTED** | Current permitted stage |
+| v1.1.x | Remote Control | v1.1.0 candidate implemented | **NOT ACCEPTED** | Awaiting CI + real-device test |
 | v1.2.x | Remote Monitor | Blocked | **NOT ACCEPTED** | Start only after v1.1 approval |
 | v1.3.x | Full-Duplex Remote Audio | Blocked | **NOT ACCEPTED** | Start only after v1.2 approval |
 
@@ -157,7 +158,9 @@ Desktop audio regression: NOT TESTED
 ## v1.1 known issues
 
 ```text
-None recorded yet.
+Authoring environment cannot run dotnet or resolve pnpm packages from the npm registry, so the real Windows/.NET/Nuxt build has not been executed here.
+The initial v1.1.0 candidate intentionally uses exact direct frontend dependency versions with `pnpm install --no-frozen-lockfile`; a generated `pnpm-lock.yaml` is still required before final v1.1 acceptance, after dependency resolution is available.
+Windows Firewall reachability still requires real Windows 10/11 + Android testing.
 ```
 
 ## v1.1 final acceptance commit message
@@ -312,6 +315,39 @@ Next action:
 ```
 
 Do not rewrite history. Append new entries.
+
+
+## 2026-08-11 — v1.1.0 — first Remote Control implementation candidate
+
+Implementation:
+- Added embedded ASP.NET Core/Kestrel LAN Remote server without changing native ABI 8.
+- Added protocol v1, authoritative state snapshots, command allowlist/range validation, reconnect-safe WebSocket behavior, and coalesced state publication.
+- Added two-minute one-time QR/code pairing, hashed persistent client credentials, device revoke, and LAN-only address selection.
+- Added Settings Remote Control UI with QR, pairing code, status, restart, and paired-device revoke.
+- Added Nuxt 4 + Vue 3 + TypeScript + pnpm static SPA with Board, Voice, Mixer, Media, haptics, landscape layout, and hold-to-confirm Stop All.
+- Added CI generation/publish/package checks for RemoteWeb and QRCoder.
+- Added managed smoke coverage for pairing, revoke, expiration, protocol parsing, snapshot privacy, parameter validation, preset routing, and revision/reconnect state.
+- Updated version metadata to 1.1.0 for the test candidate; stable accepted release remains v1.0.1 until user approval.
+
+Automated verification:
+- Source/static verification performed in the authoring environment.
+- Actual dotnet/native/Nuxt build not available in this environment; GitHub Actions is the authoritative next build gate.
+
+GitHub Actions:
+- Run: TBD after user applies/pushes patch.
+- Result: NOT RUN.
+
+Manual test requested:
+- Pairing/revoke, Pads, Voice/Presets, Mixer, Media, Engine Stop All/Start, reconnect, portrait/landscape, and complete v1.0.1 regression matrix after a green artifact.
+
+User result:
+- Awaiting.
+
+Reported issues:
+- None yet.
+
+Next action:
+- Apply patch, run GitHub Actions, fix v1.1.x only if CI/manual testing reports failures; do not start v1.2.
 
 ---
 

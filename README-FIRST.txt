@@ -1,5 +1,19 @@
-GrassiBoard v1.0.1 — Stable Release
+GrassiBoard v1.1.0 — Remote Control test candidate
 
+STATUS: NOT USER ACCEPTED.
+Stable regression baseline: v1.0.1. Remote Monitor (v1.2) and Remote Mic (v1.3) are not part of this build.
+
+REMOTE CONTROL TESTS
+A. Enable Remote in Settings, scan the QR on Android, pair, reload the browser, then verify Revoke blocks reconnect.
+B. Play/stop Pads from the phone; add/edit/delete Pads on Windows and confirm the phone updates without refresh.
+C. Test Voice FX, Pitch, Fine Pitch, Formant, Preserve Character, Reset Voice, and user Presets from the phone; Windows must stay synchronized.
+D. Test Mic/Soundboard/Master gain and Mic Mute from the phone.
+E. Load Media on Windows, then test Play/Pause, Stop, ±10 s, seek, volume, headphone Monitor, and Send to Virtual Mic remotely.
+F. Press and hold STOP ALL on the phone, then Start Engine from the Board page without returning to the PC.
+G. Toggle phone Wi-Fi, background/foreground Chrome, and lock/unlock the phone. It must reconnect from a fresh authoritative snapshot and must not replay stale commands.
+H. Check portrait and landscape usability, then run the accepted v1.0.1 desktop regression checks below.
+
+STABLE BASELINE REGRESSION CHECKS
 PREREQUISITE: Keep the known working external virtual audio cable installed.
 
 1. Run the branded Setup EXE, or extract the complete portable ZIP and run GrassiBoard.exe.
