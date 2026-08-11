@@ -1384,6 +1384,11 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
 
     private void ApplyVoiceState()
     {
+        if (!NativeReady)
+        {
+            return;
+        }
+
         _engine.SetPitch((float)Pitch);
         _engine.SetFinePitch((float)FinePitch);
         _engine.SetVoiceFxEnabled(VoiceFxEnabled);

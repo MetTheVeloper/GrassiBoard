@@ -74,13 +74,13 @@ Never skip ahead because the code “looks correct.”
 
 ```text
 Stage: v1.1.x — Remote Control
-Status: IMPLEMENTATION CANDIDATE / MANAGED-BUILD HOTFIX AWAITING RERUN
+Status: IMPLEMENTATION CANDIDATE / AWAITING CI
 Implementation version: v1.1.0
 Baseline commit: 4aa960d (v1.0.1 source baseline)
 Implementation commit: TBD after patch is applied/committed
-GitHub Actions run: Attempt 1 failed at pnpm dependency install; attempt 2 passed Remote Web/native stages and failed during managed smoke-test compilation; rerun pending
+GitHub Actions run: TBD
 Artifact: TBD
-Awaiting user test: AFTER A GREEN CI ARTIFACT (CI rerun required after managed compile hotfix)
+Awaiting user test: AFTER A GREEN CI ARTIFACT
 ```
 
 ## Current objective
@@ -158,12 +158,7 @@ Desktop audio regression: NOT TESTED
 ## v1.1 known issues
 
 ```text
-First v1.1.0 GitHub Actions attempt failed at `pnpm install --no-frozen-lockfile` because pnpm 11 strict dependency-build security rejected the unreviewed `esbuild` install script with ERR_PNPM_IGNORED_BUILDS.
-CI hotfix prepared: `src/GrassiBoard.RemoteWeb/pnpm-workspace.yaml` explicitly allowlists only `esbuild` build scripts (`allowBuilds: esbuild: true`). `dangerouslyAllowAllBuilds` is intentionally NOT enabled.
-The pnpm/esbuild hotfix was verified by the second GitHub Actions attempt: Remote Web dependency installation, Nuxt generation, build-info generation, native configure/build, and native tests all passed.
-The second CI attempt then failed at `Run managed smoke tests` because two newly added Remote C# files had compile-time authoring issues: `RemoteServerService.cs` lacked an explicit `System.IO` import for `Path`/`Directory`/`File`/`MemoryStream`; `RemotePairingService.cs` used nullable `out byte[]?` values under warnings-as-errors and an unparenthesized switch expression (`padded.Length % 4 switch`) that parsed incorrectly.
-Managed-build hotfix prepared: add `using System.IO`, make Base64Url decode output non-null on successful return, initialize failed output to `Array.Empty<byte>()`, and parenthesize `(padded.Length % 4)` before the switch expression.
-A CI rerun is required to verify the managed build and continue into publish/package/installer steps.
+GitHub Actions CI iteration 3 reached managed smoke tests; compilation and Nuxt/native stages passed, but the Remote preset routing smoke contract failed because ApplyVoiceState() called the unavailable native engine during a managed-only preset transition. Hotfix: ApplyVoiceState now no-ops until NativeReady, matching ApplyMixerState and the existing property-setter guards.
 Authoring environment cannot run dotnet or resolve pnpm packages from the npm registry, so the real Windows/.NET/Nuxt build has not been executed here.
 The initial v1.1.0 candidate intentionally uses exact direct frontend dependency versions with `pnpm install --no-frozen-lockfile`; a generated `pnpm-lock.yaml` is still required before final v1.1 acceptance, after dependency resolution is available.
 Windows Firewall reachability still requires real Windows 10/11 + Android testing.
