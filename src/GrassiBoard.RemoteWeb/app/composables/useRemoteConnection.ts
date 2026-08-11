@@ -1,5 +1,11 @@
 import type { ConnectionState, PairResponse, RemoteEnvelope, RemoteStateSnapshot } from '~/types/remote'
 
+interface RemoteSnackbar {
+  id: number
+  message: string
+  tone: 'neutral' | 'success' | 'warning' | 'danger'
+}
+
 interface RemoteInfo {
   protocolVersion: number
   name: string
@@ -16,6 +22,7 @@ let reconnectTimer: ReturnType<typeof setTimeout> | null = null
 let reconnectAttempt = 0
 let initialized = false
 let authTimer: ReturnType<typeof setTimeout> | null = null
+let snackbarTimer: ReturnType<typeof setTimeout> | null = null
 
 function normalizeOrigin(value: string) {
   return value.replace(/\/+$/, '')
@@ -54,6 +61,7 @@ export function useRemoteConnection() {
   const pendingAcks = useState<Record<string, string>>('remote:acks', () => ({}))
   const manualCode = useState<string>('remote:manual-code', () => '')
   const serverInfo = useState<RemoteInfo | null>('remote:server-info', () => null)
+  const snackbar = useState<RemoteSnackbar | null>('remote:snackbar', () => null)
 
   const remoteOrigin = computed(() => {
     const configured = String(config.public.remoteOrigin || '').trim()
@@ -124,6 +132,26 @@ export function useRemoteConnection() {
     if (import.meta.client && 'vibrate' in navigator) navigator.vibrate(pattern)
   }
 
+  function dismissSnackbar() {
+    if (snackbarTimer) clearTimeout(snackbarTimer)
+    snackbarTimer = null
+    snackbar.value = null
+  }
+
+  function showSnackbar(
+    message: string,
+    tone: RemoteSnackbar['tone'] = 'neutral',
+    duration = 2800
+  ) {
+    if (!message) return
+    if (snackbarTimer) clearTimeout(snackbarTimer)
+    snackbar.value = { id: Date.now(), message, tone }
+    snackbarTimer = setTimeout(() => {
+      snackbarTimer = null
+      snackbar.value = null
+    }, Math.max(1600, duration))
+  }
+
   async function pair(input: { secret?: string, code?: string, deviceName?: string }) {
     if (!remoteOrigin.value) return false
     connectionState.value = 'pairing'
@@ -156,8 +184,9 @@ export function useRemoteConnection() {
   async function pairFromQr(rawValue: string) {
     lastError.value = ''
     let secret = ''
+    let parsed: URL | null = null
     try {
-      const parsed = new URL(rawValue.trim())
+      parsed = new URL(rawValue.trim())
       secret = parsed.searchParams.get('pair') || ''
     } catch {
       const match = rawValue.match(/[?&]pair=([^&\s]+)/i)
@@ -167,6 +196,17 @@ export function useRemoteConnection() {
       lastError.value = 'This QR is not a GrassiBoard pairing code.'
       return false
     }
+
+    // A previously installed IP-scoped PWA may be running from an old LAN IP.
+    // If the newly scanned desktop QR points at another host, move to that PC's
+    // onboarding URL instead of trying to pair against the dead/current origin.
+    if (import.meta.client && parsed?.hostname && parsed.hostname !== window.location.hostname) {
+      closeSocket()
+      forgetToken()
+      window.location.href = parsed.toString()
+      return true
+    }
+
     closeSocket()
     forgetToken()
     return pair({ secret })
@@ -269,17 +309,25 @@ export function useRemoteConnection() {
 
     if (message.type === 'error') {
       const code = String(message.payload?.code || 'remote_error')
-      lastError.value = String(message.payload?.message || 'Remote command failed.')
+      const errorMessage = String(message.payload?.message || 'Remote command failed.')
       if (message.messageId) {
         const next = { ...pendingAcks.value }
         delete next[message.messageId]
         pendingAcks.value = next
       }
+
       if (code === 'unauthorized') {
+        lastError.value = errorMessage
         forgetToken()
         connectionState.value = 'unauthorized'
         closeSocket()
+        return
       }
+
+      // Command-level failures are transient interaction feedback, not network
+      // state. Keep the control surface alive and surface them as an M3-style
+      // snackbar instead of a persistent inline error banner.
+      showSnackbar(errorMessage, code === 'engine_not_running' ? 'warning' : 'danger')
     }
   }
 
@@ -321,6 +369,7 @@ export function useRemoteConnection() {
   function sendCommand(type: string, payload: Record<string, unknown> = {}) {
     if (!socket || socket.readyState !== WebSocket.OPEN || connectionState.value !== 'connected') {
       lastError.value = 'Remote is not connected. The command was not queued.'
+      showSnackbar(lastError.value, 'warning')
       return false
     }
     const messageId = createMessageId()
@@ -364,6 +413,7 @@ export function useRemoteConnection() {
     connectionLabel,
     isConnected,
     lastError,
+    snackbar,
     paired,
     pendingAcks,
     manualCode,
@@ -379,6 +429,8 @@ export function useRemoteConnection() {
     pairFromQr,
     refreshInfo,
     sendCommand,
+    showSnackbar,
+    dismissSnackbar,
     vibrate,
     forgetToken
   }

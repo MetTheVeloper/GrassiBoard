@@ -5,34 +5,75 @@ const mic = ref(0)
 const soundboard = ref(0)
 const master = ref(0)
 const sendGain = useCoalescedCommand('mixer.gain.set')
+
 watch(() => state.value?.micGain, value => { if (typeof value === 'number') mic.value = value }, { immediate: true })
 watch(() => state.value?.soundboardGain, value => { if (typeof value === 'number') soundboard.value = value }, { immediate: true })
 watch(() => state.value?.masterGain, value => { if (typeof value === 'number') master.value = value }, { immediate: true })
-function toggleMute() {
-  if (!remote.snapshot.value) return
-  remote.sendCommand('mic.mute.set', { muted: !remote.snapshot.value.microphoneMuted })
+
+function toggleMute(value: boolean) {
+  remote.sendCommand('mic.mute.set', { muted: value })
 }
+function setGain(channel: 'mic' | 'soundboard' | 'master', value: number) {
+  if (channel === 'mic') mic.value = value
+  if (channel === 'soundboard') soundboard.value = value
+  if (channel === 'master') master.value = value
+  sendGain({ channel, value })
+}
+
+function setMicGain(value: number) { setGain('mic', value) }
+function setSoundboardGain(value: number) { setGain('soundboard', value) }
+function setMasterGain(value: number) { setGain('master', value) }
 </script>
 
 <template>
   <section class="page-section">
-    <div class="section-heading"><div><p class="eyebrow">MIXER</p><h1>Compact Mixer</h1></div></div>
-    <div v-if="state" class="control-stack">
-      <button class="toggle-card glass-card" :class="{ danger: remote.snapshot.value?.microphoneMuted }" type="button" @click="toggleMute">
-        <span>Microphone</span><strong>{{ remote.snapshot.value?.microphoneMuted ? 'MUTED' : 'LIVE' }}</strong>
-      </button>
-      <label class="slider-card glass-card">
-        <span><strong>Mic Gain</strong><output>{{ mic.toFixed(1) }} dB</output></span>
-        <input v-model.number="mic" type="range" min="-24" max="24" step="0.5" @input="sendGain({ channel: 'mic', value: mic })">
-      </label>
-      <label class="slider-card glass-card">
-        <span><strong>Soundboard Gain</strong><output>{{ soundboard.toFixed(1) }} dB</output></span>
-        <input v-model.number="soundboard" type="range" min="-24" max="24" step="0.5" @input="sendGain({ channel: 'soundboard', value: soundboard })">
-      </label>
-      <label class="slider-card glass-card">
-        <span><strong>Master Gain</strong><output>{{ master.toFixed(1) }} dB</output></span>
-        <input v-model.number="master" type="range" min="-24" max="12" step="0.5" @input="sendGain({ channel: 'master', value: master })">
-      </label>
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">MIXER</p>
+        <h2>Compact Mixer</h2>
+        <p class="section-support">Program-mix controls only. Meter telemetry never moves the layout.</p>
+      </div>
     </div>
+
+    <template v-if="state">
+      <section class="gb-surface control-group control-group--compact">
+        <GbSwitch
+          :model-value="Boolean(remote.snapshot.value?.microphoneMuted)"
+          label="Microphone mute"
+          supporting-text="Immediately mute the mic branch"
+          active-text="Muted"
+          inactive-text="Live"
+          :danger="true"
+          :icon="remote.snapshot.value?.microphoneMuted ? 'mic_off' : 'mic'"
+          @update:model-value="toggleMute"
+        />
+      </section>
+
+      <div class="mixer-channels">
+        <section class="gb-surface mixer-channel">
+          <div class="mixer-channel__header">
+            <span class="gb-control-icon"><GbIcon name="mic" :size="22" /></span>
+            <div><strong>Microphone</strong><small>{{ remote.snapshot.value?.meters.microphoneDb || '−∞ dBFS' }}</small></div>
+          </div>
+          <GbSlider :model-value="mic" :min="-24" :max="24" :step="0.5" label="Mic Gain" :value-text="`${mic >= 0 ? '+' : ''}${mic.toFixed(1)} dB`" @input="setMicGain" />
+        </section>
+
+        <section class="gb-surface mixer-channel">
+          <div class="mixer-channel__header">
+            <span class="gb-control-icon"><GbIcon name="board" :size="22" /></span>
+            <div><strong>Soundboard</strong><small>{{ remote.snapshot.value?.meters.soundboardDb || '−∞ dBFS' }}</small></div>
+          </div>
+          <GbSlider :model-value="soundboard" :min="-24" :max="24" :step="0.5" label="Soundboard Gain" :value-text="`${soundboard >= 0 ? '+' : ''}${soundboard.toFixed(1)} dB`" @input="setSoundboardGain" />
+        </section>
+
+        <section class="gb-surface mixer-channel mixer-channel--master">
+          <div class="mixer-channel__header">
+            <span class="gb-control-icon"><GbIcon name="mixer" :size="22" /></span>
+            <div><strong>Master</strong><small>{{ remote.snapshot.value?.meters.masterDb || '−∞ dBFS' }}</small></div>
+          </div>
+          <GbSlider :model-value="master" :min="-24" :max="12" :step="0.5" label="Master Gain" :value-text="`${master >= 0 ? '+' : ''}${master.toFixed(1)} dB`" @input="setMasterGain" />
+        </section>
+      </div>
+    </template>
   </section>
 </template>

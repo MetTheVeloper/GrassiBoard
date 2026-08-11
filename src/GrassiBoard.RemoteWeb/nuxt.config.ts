@@ -1,6 +1,14 @@
 export default defineNuxtConfig({
   ssr: false,
+  components: [
+    { path: '~/components', pathPrefix: false }
+  ],
   devtools: { enabled: false },
+  vue: {
+    compilerOptions: {
+      isCustomElement: tag => tag.startsWith('md-')
+    }
+  },
   css: ['~/assets/main.css'],
   runtimeConfig: {
     public: {

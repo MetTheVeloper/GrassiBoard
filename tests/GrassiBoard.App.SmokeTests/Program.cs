@@ -409,6 +409,7 @@ if (requiredUiContracts.Any(contract => !boardXaml.Contains(contract, StringComp
 }
 
 string remoteServerSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteServerService.cs"));
+string remoteCommandDispatcherSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteCommandDispatcher.cs"));
 string remoteProtocolSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteProtocol.cs"));
 string remoteSettingsSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteSettingsStore.cs"));
 string remoteMdnsSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteMdnsService.cs"));
@@ -416,6 +417,15 @@ string remoteWebRoot = Path.Combine(Environment.CurrentDirectory, "src", "Grassi
 string remoteWebConnectionSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "composables", "useRemoteConnection.ts"));
 string remoteQrScannerSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "components", "QrScannerModal.vue"));
 string remotePwaPluginSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "plugins", "pwa.client.ts"));
+string remoteMaterialPluginSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "plugins", "material.client.ts"));
+string remoteSnackbarSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "components", "ui", "GbSnackbar.vue"));
+string remoteFabSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "components", "ui", "GbFab.vue"));
+string remoteLayoutSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "layouts", "default.vue"));
+string remoteIconsPluginSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "plugins", "icons.client.ts"));
+string remoteIconSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "components", "ui", "GbIcon.vue"));
+string remoteCssSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "assets", "main.css"));
+string remotePackageSource = File.ReadAllText(Path.Combine(remoteWebRoot, "package.json"));
+string remoteNuxtConfigSource = File.ReadAllText(Path.Combine(remoteWebRoot, "nuxt.config.ts"));
 string remoteManifestSource = File.ReadAllText(Path.Combine(remoteWebRoot, "public", "manifest.webmanifest"));
 string remoteServiceWorkerSource = File.ReadAllText(Path.Combine(remoteWebRoot, "public", "sw.js"));
 string installerServiceSource = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.Installer", "InstallationService.cs"));
@@ -441,9 +451,26 @@ if (remoteServerSource.Contains("NativeAudioEngine", StringComparison.Ordinal) |
     !remoteQrScannerSource.Contains("getUserMedia", StringComparison.Ordinal) ||
     !remoteQrScannerSource.Contains("BarcodeDetector", StringComparison.Ordinal) ||
     !remotePwaPluginSource.Contains("serviceWorker.register('/sw.js'", StringComparison.Ordinal) ||
+    !remotePwaPluginSource.Contains("updateViaCache: 'none'", StringComparison.Ordinal) ||
+    !remoteMaterialPluginSource.Contains("export default defineNuxtPlugin", StringComparison.Ordinal) ||
+    !remoteMaterialPluginSource.Contains("@material/web/fab/fab.js", StringComparison.Ordinal) ||
+    !remoteNuxtConfigSource.Contains("pathPrefix: false", StringComparison.Ordinal) ||
+    !remoteSnackbarSource.Contains("gb-snackbar", StringComparison.Ordinal) ||
+    !remoteFabSource.Contains("<md-fab", StringComparison.Ordinal) ||
+    !remoteLayoutSource.Contains("floating-session-actions", StringComparison.Ordinal) ||
+    !remoteLayoutSource.Contains("engine.stop", StringComparison.Ordinal) ||
+    !remoteWebConnectionSource.Contains("showSnackbar", StringComparison.Ordinal) ||
+    !remoteWebConnectionSource.Contains("engine_not_running' ? 'warning'", StringComparison.Ordinal) ||
+    !remoteIconSource.Contains("material-symbols-rounded", StringComparison.Ordinal) ||
+    !remoteIconSource.Contains("fontVariationSettings", StringComparison.Ordinal) ||
+    !remoteIconsPluginSource.Contains("@fontsource-variable/material-symbols-rounded/full.css", StringComparison.Ordinal) ||
+    !remotePackageSource.Contains("@fontsource-variable/material-symbols-rounded", StringComparison.Ordinal) ||
+    !remoteCssSource.Contains("user-select: none !important", StringComparison.Ordinal) ||
+    !remoteCommandDispatcherSource.Contains("engine_not_running", StringComparison.Ordinal) ||
     !remoteManifestSource.Contains("\"name\": \"GrassiMote\"", StringComparison.Ordinal) ||
     !remoteManifestSource.Contains("\"display\": \"standalone\"", StringComparison.Ordinal) ||
-    !remoteServiceWorkerSource.Contains("grassimote-shell-v1", StringComparison.Ordinal) ||
+    !remoteServiceWorkerSource.Contains("grassimote-shell-v5", StringComparison.Ordinal) ||
+    !remoteServiceWorkerSource.Contains("caches.match('/offline.html')", StringComparison.Ordinal) ||
     !remoteServiceWorkerSource.Contains("url.pathname.startsWith('/api/')", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("Remote isolation/publish source contract failed.");
@@ -571,6 +598,19 @@ try
     }
 
     var dispatcher = new RemoteCommandDispatcher(remoteViewModel, Dispatcher.CurrentDispatcher);
+    RemoteCommandResult stoppedEnginePad = await dispatcher.ExecuteAsync(new RemoteIncomingEnvelope
+    {
+        ProtocolVersion = RemoteProtocol.Version,
+        Type = "pad.play",
+        MessageId = Guid.NewGuid().ToString("N"),
+        Payload = JsonSerializer.SerializeToElement(new { padId = privatePad.Id }, RemoteProtocol.JsonOptions)
+    });
+    if (stoppedEnginePad.Success || stoppedEnginePad.ErrorCode != "engine_not_running" || privatePad.HasError)
+    {
+        Console.Error.WriteLine("Remote stopped-engine Sound Pad regression contract failed.");
+        return 37;
+    }
+
     RemoteStateSnapshot snapshot = await dispatcher.CreateSnapshotAsync(revision);
     string snapshotJson = JsonSerializer.Serialize(snapshot, RemoteProtocol.JsonOptions);
     if (snapshot.Revision != revision || snapshot.Pads.Single().Title != "Private path pad" ||

@@ -71,4 +71,13 @@ The MIT notice is included in `THIRD-PARTY-NOTICES.txt`.
 
 The MIT notice is included in `THIRD-PARTY-NOTICES.txt`.
 
-> v1.1.0 candidate note: the direct frontend versions are pinned, but the complete transitive npm dependency inventory/lockfile must be generated and reviewed before v1.1 is marked USER ACCEPTED.
+> Material UI candidate note: after adding `@material/web`, regenerate and commit `src/GrassiBoard.RemoteWeb/pnpm-lock.yaml` before running the release CI with `--frozen-lockfile`.
+
+## Material Web
+
+- Upstream: https://github.com/material-components/material-web
+- npm package: `@material/web` `2.5.0` (pinned direct dependency)
+- License: Apache-2.0
+- Usage: stable Material 3 Web Components used by the generated GrassiMote static SPA; bundled at build time with no runtime CDN requirement
+
+Material Web is isolated behind GrassiBoard `Gb*` Vue wrappers where application-level consistency benefits from the abstraction. No experimental `labs` component is required by the v1.1 UI redesign candidate. The Apache-2.0 attribution is recorded in `THIRD-PARTY-NOTICES.txt`; the repository `LICENSE` contains the Apache License 2.0 text.

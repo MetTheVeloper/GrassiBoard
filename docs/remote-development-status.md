@@ -7,8 +7,8 @@
 - Published/stable desktop baseline: **v1.0.1 USER ACCEPTED**
 - Native ABI baseline: **8**
 - Virtual microphone route: **external VB-CABLE, unchanged**
-- Current Remote stage: **v1.1.0 GrassiMote Remote Control consolidation**
-- Next roadmap stage: **v1.2 Remote Monitor, blocked until the consolidated v1.1 CI run is green**
+- Current Remote stage: **v1.1.0 GrassiMote Remote Control + Material 3 UI/UX redesign candidate**
+- Next roadmap stage: **v1.2 Remote Monitor, blocked until the current v1.1 source (including the UI candidate if retained) passes manual UI regression testing and CI**
 
 ## v1.1 manual acceptance — PASSED
 
@@ -73,6 +73,24 @@ Do not begin v1.2 implementation before that green run.
 - `Deploy-RemoteWebLocal.ps1` supports fast frontend-only deployment and force-stops the running app before replacement.
 - `Build-LocalRemoteTest.ps1` supports fast managed+web local builds, project-local bootstrap of exact .NET SDK **8.0.423**, reuse of the accepted ABI-8 native DLL, robust process termination, and optional smoke tests.
 - Release CI generates and verifies PWA assets and now requires a committed frozen pnpm lockfile.
+
+## Material 3 UI/UX redesign candidate — AWAITING MANUAL UI REGRESSION TEST
+
+A frontend-only redesign candidate was prepared after functional v1.1 manual acceptance. It intentionally leaves the Remote protocol, pairing, WSS connection logic, authoritative state model, command names, Kestrel endpoints, certificate onboarding, and native audio route unchanged.
+
+Candidate scope:
+
+- `@material/web` **2.5.0**, pinned, with explicit stable component imports only; no `labs` dependency in critical UI paths.
+- Nuxt compile-time `md-*` custom-element recognition.
+- GrassiBoard `Gb*` wrapper layer for buttons, icon buttons, switches, sliders, chips, status, and empty states.
+- Local SVG Material-style icon subset; no runtime icon/font CDN dependency.
+- Semantic GrassiBoard design tokens mapped onto Material system/component tokens.
+- Redesigned global session header, connection/live/mute status, bottom navigation, wide/landscape navigation rail, quick actions, and destructive Stop All hold behavior.
+- Redesigned Board, Voice, Mixer, Media, pairing, and QR scanner surfaces with mobile-first touch targets and explicit realtime states.
+- Deliberate landscape control-deck composition, safe-area handling, reduced-motion support, and lightweight telemetry rendering.
+- PWA shell cache bumped so installed GrassiMote clients receive the redesigned frontend.
+
+Before this candidate is included in the accepted v1.1 release state, manually verify all existing commands and authoritative synchronization in portrait and landscape. Because the dependency set changed, regenerate and commit `src/GrassiBoard.RemoteWeb/pnpm-lock.yaml` before release CI.
 
 ## Security / privacy boundaries
 

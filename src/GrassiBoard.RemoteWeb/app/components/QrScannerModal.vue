@@ -83,10 +83,10 @@ onBeforeUnmount(stop)
 
 <template>
   <div class="scanner-backdrop" role="dialog" aria-modal="true" aria-label="Scan GrassiBoard pairing QR">
-    <section class="scanner-card glass-card">
+    <section class="scanner-card">
       <div class="scanner-heading">
         <div><p class="eyebrow">PAIR DEVICE</p><h2>Scan QR</h2></div>
-        <button class="scanner-close" type="button" aria-label="Close scanner" @click="close">×</button>
+        <button class="scanner-close" type="button" aria-label="Close scanner" @click="close"><GbIcon name="close" :size="23" /></button>
       </div>
       <div class="scanner-viewport">
         <video ref="video" playsinline muted />
@@ -94,7 +94,7 @@ onBeforeUnmount(stop)
       </div>
       <p v-if="error" class="error-copy">{{ error }}</p>
       <p v-else class="micro-copy">{{ status }}</p>
-      <button class="secondary-button" type="button" @click="close">Cancel</button>
+      <GbButton variant="outlined" @click="close">Cancel</GbButton>
     </section>
   </div>
 </template>

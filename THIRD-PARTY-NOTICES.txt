@@ -168,3 +168,23 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Material Web 2.5.0
+https://github.com/material-components/material-web
+
+Copyright Google LLC and contributors.
+SPDX-License-Identifier: Apache-2.0
+
+Material Web is distributed under the Apache License, Version 2.0. The complete
+Apache License 2.0 text is available in the GrassiBoard repository LICENSE file.
+Material Web is bundled into the generated GrassiMote static web assets and does
+not require a runtime CDN or separate Node.js installation on the user's PC.
+
+
+Material Symbols Rounded
+Copyright Google LLC.
+Bundled through @fontsource-variable/material-symbols-rounded.
+License: SIL Open Font License 1.1 (OFL-1.1).
+https://fonts.google.com/icons

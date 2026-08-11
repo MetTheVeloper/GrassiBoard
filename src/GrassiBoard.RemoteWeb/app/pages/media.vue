@@ -5,12 +5,29 @@ const position = ref(0)
 const volume = ref(1)
 const dragging = ref(false)
 const sendVolume = useCoalescedCommand('media.volume.set')
+
 watch(() => media.value?.position, value => { if (!dragging.value && typeof value === 'number') position.value = value }, { immediate: true })
 watch(() => media.value?.volume, value => { if (typeof value === 'number') volume.value = value }, { immediate: true })
-function seek() {
+
+function seek(value: number) {
+  position.value = value
   dragging.value = false
-  remote.sendCommand('media.seek', { seconds: position.value })
+  remote.sendCommand('media.seek', { seconds: value })
 }
+
+function updateVolume(value: number) {
+  volume.value = value
+  sendVolume({ value })
+}
+
+function setMonitor(enabled: boolean) {
+  remote.sendCommand('media.monitor.set', { enabled })
+}
+
+function setSend(enabled: boolean) {
+  remote.sendCommand('media.send.set', { enabled })
+}
+
 function format(seconds: number) {
   if (!Number.isFinite(seconds)) return '00:00'
   const total = Math.max(0, Math.round(seconds))
@@ -20,27 +37,87 @@ function format(seconds: number) {
 
 <template>
   <section class="page-section">
-    <div class="section-heading"><div><p class="eyebrow">MEDIA</p><h1>Media Deck</h1></div></div>
-    <div v-if="media?.hasMedia" class="control-stack">
-      <div class="media-title glass-card"><span class="eyebrow">LOADED</span><strong>{{ media.displayName }}</strong></div>
-      <div class="transport-row">
-        <button type="button" @click="remote.sendCommand('media.skip', { seconds: -10 })">−10</button>
-        <button class="transport-main" type="button" @click="remote.sendCommand('media.playPause')">{{ media.playing ? 'Pause' : 'Play' }}</button>
-        <button type="button" @click="remote.sendCommand('media.skip', { seconds: 10 })">+10</button>
-        <button type="button" @click="remote.sendCommand('media.stop')">Stop</button>
+    <div class="section-heading">
+      <div>
+        <p class="eyebrow">MEDIA</p>
+        <h2>Media Deck</h2>
+        <p class="section-support">Transport controls stay familiar; monitoring and program send remain explicit.</p>
       </div>
-      <label class="slider-card glass-card">
-        <span><strong>Timeline</strong><output>{{ format(position) }} / {{ format(media.duration) }}</output></span>
-        <input v-model.number="position" type="range" min="0" :max="Math.max(media.duration, 0.1)" step="0.1" @pointerdown="dragging = true" @change="seek">
-      </label>
-      <label class="slider-card glass-card">
-        <span><strong>Media Volume</strong><output>{{ Math.round(volume * 100) }}%</output></span>
-        <input v-model.number="volume" type="range" min="0" max="1.5" step="0.01" @input="sendVolume({ value: volume })">
-      </label>
-      <button class="toggle-card glass-card" :class="{ active: media.monitorEnabled }" type="button" @click="remote.sendCommand('media.monitor.set', { enabled: !media.monitorEnabled })"><span>Headphone Monitor</span><strong>{{ media.monitorEnabled ? 'ON' : 'OFF' }}</strong></button>
-      <button class="toggle-card glass-card" :class="{ active: media.sendEnabled }" type="button" @click="remote.sendCommand('media.send.set', { enabled: !media.sendEnabled })"><span>Send to Virtual Mic</span><strong>{{ media.sendEnabled ? 'ON' : 'OFF' }}</strong></button>
-      <p v-if="media.hasError" class="error-copy">The Windows Media Deck reports an error.</p>
     </div>
-    <div v-else class="empty-card glass-card"><strong>No media loaded.</strong><span>Choose a file on the Windows app; the Remote will update automatically.</span></div>
+
+    <template v-if="media?.hasMedia">
+      <section class="gb-surface media-now-playing" :class="{ 'media-now-playing--active': media.playing }">
+        <span class="media-now-playing__art"><GbIcon name="media" :size="30" /></span>
+        <div class="media-now-playing__copy">
+          <p class="eyebrow">{{ media.playing ? 'NOW PLAYING' : 'LOADED' }}</p>
+          <strong>{{ media.displayName }}</strong>
+          <span>{{ format(position) }} / {{ format(media.duration) }}</span>
+        </div>
+        <GbStatusChip :label="media.playing ? 'Playing' : 'Paused'" :tone="media.playing ? 'success' : 'neutral'" :icon="media.playing ? 'play' : 'pause'" />
+      </section>
+
+      <section class="media-transport" aria-label="Media transport controls">
+        <GbIconButton icon="replay10" label="Skip back 10 seconds" @click="remote.sendCommand('media.skip', { seconds: -10 })" />
+        <button class="media-transport__main" type="button" :aria-label="media.playing ? 'Pause media' : 'Play media'" @click="remote.sendCommand('media.playPause')">
+          <GbIcon :name="media.playing ? 'pause' : 'play'" :size="30" />
+        </button>
+        <GbIconButton icon="forward10" label="Skip forward 10 seconds" @click="remote.sendCommand('media.skip', { seconds: 10 })" />
+        <GbIconButton icon="stop" label="Stop media" @click="remote.sendCommand('media.stop')" />
+      </section>
+
+      <section class="gb-surface control-group">
+        <GbSlider
+          :model-value="position"
+          :min="0"
+          :max="Math.max(media.duration, 0.1)"
+          :step="0.1"
+          label="Timeline"
+          :show-scale="false"
+          :value-text="`${format(position)} / ${format(media.duration)}`"
+          @pointerdown="dragging = true"
+          @change="seek"
+        />
+        <GbSlider
+          :model-value="volume"
+          :min="0"
+          :max="1.5"
+          :step="0.01"
+          label="Media Volume"
+          :show-scale="false"
+          :value-text="`${Math.round(volume * 100)}%`"
+          icon="volume"
+          @input="updateVolume"
+        />
+      </section>
+
+      <section class="gb-surface control-group control-group--compact media-routing">
+        <GbSwitch
+          :model-value="media.monitorEnabled"
+          label="Headphone Monitor"
+          supporting-text="Hear Media on the Windows monitor output"
+          icon="headphones"
+          @update:model-value="setMonitor"
+        />
+        <div class="gb-divider" />
+        <GbSwitch
+          :model-value="media.sendEnabled"
+          label="Send to Virtual Mic"
+          supporting-text="Include Media in the program mix"
+          icon="output"
+          @update:model-value="setSend"
+        />
+      </section>
+
+      <div v-if="media.hasError" class="network-banner network-banner--inline" role="alert">
+        <div><GbIcon name="error" :size="19" /><span>The Windows Media Deck reports an error.</span></div>
+      </div>
+    </template>
+
+    <GbEmptyState
+      v-else
+      icon="media"
+      title="No media loaded"
+      message="Choose a file in the Windows Media Deck. GrassiMote will update automatically."
+    />
   </section>
 </template>

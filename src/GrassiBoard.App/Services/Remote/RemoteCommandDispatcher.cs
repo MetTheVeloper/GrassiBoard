@@ -92,6 +92,13 @@ internal sealed class RemoteCommandDispatcher
 
                 case "pad.play":
                     if (!TryGuid(envelope.Payload, "padId", out Guid playPadId)) return Invalid("padId");
+                    // Starting a pad while the engine is stopped is an operation-level
+                    // error, not a pad health error. Do not call PlayPadAsync here,
+                    // because that desktop method intentionally records a persistent
+                    // pad Error for the local WPF UI. The Remote should keep the pad
+                    // READY and let the user start the engine and try again.
+                    if (!_viewModel.IsRunning)
+                        return RemoteCommandResult.Fail("engine_not_running", "Start the audio engine before playing a Sound Pad.");
                     return await _viewModel.RemotePlayPadAsync(playPadId)
                         ? RemoteCommandResult.Ok()
                         : RemoteCommandResult.Fail("pad_not_found", "The requested Sound Pad is not in the active profile.");

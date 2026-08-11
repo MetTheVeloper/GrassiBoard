@@ -9,11 +9,25 @@ onMounted(() => {
 })
 
 const profileName = computed(() => remote.snapshot.value?.profileName || 'GrassiBoard')
-const live = computed(() => remote.snapshot.value?.engine.running ?? false)
+const engineRunning = computed(() => remote.snapshot.value?.engine.running ?? false)
+const micMuted = computed(() => remote.snapshot.value?.microphoneMuted ?? false)
+const connectionTone = computed(() => remote.isConnected.value ? 'success' : (remote.connectionState.value === 'unauthorized' ? 'warning' : 'danger'))
 
-function mute() {
-  const current = remote.snapshot.value?.microphoneMuted ?? false
+const navItems = [
+  { to: '/', label: 'Board', icon: 'board' },
+  { to: '/voice', label: 'Voice', icon: 'voice' },
+  { to: '/mixer', label: 'Mixer', icon: 'mixer' },
+  { to: '/media', label: 'Media', icon: 'media' }
+]
+
+function toggleMute() {
+  const current = micMuted.value
   if (remote.sendCommand('mic.mute.set', { muted: !current })) remote.vibrate(current ? 10 : [18, 25, 18])
+}
+
+function toggleEngine() {
+  const command = engineRunning.value ? 'engine.stop' : 'engine.start'
+  if (remote.sendCommand(command)) remote.vibrate(engineRunning.value ? [16, 14, 10] : [12, 18, 12])
 }
 
 function stopAll() {
@@ -28,50 +42,101 @@ async function onDetected(value: string) {
 
 <template>
   <div class="app-shell">
-    <template v-if="remote.paired.value">
-      <header class="top-status">
-        <div>
-          <p class="eyebrow">{{ profileName }}</p>
-          <div class="status-line">
-            <span class="status-dot" :class="{ live }" />
-            <strong>{{ live ? 'LIVE' : remote.snapshot.value?.engine.state || 'READY' }}</strong>
-            <span class="connection-pill" :class="{ good: remote.isConnected.value }">{{ remote.connectionLabel.value }}</span>
+    <template v-if="remote.paired.value && remote.isConnected.value">
+      <aside class="adaptive-nav" aria-label="Remote sections">
+        <div class="adaptive-nav__brand" aria-hidden="true">G</div>
+        <NuxtLink v-for="item in navItems" :key="item.to" :to="item.to" class="adaptive-nav__item">
+          <span class="adaptive-nav__icon"><GbIcon :name="item.icon" :size="24" /></span>
+          <span>{{ item.label }}</span>
+        </NuxtLink>
+      </aside>
+
+      <div class="app-content">
+        <header class="session-header">
+          <div class="session-header__identity">
+            <p class="eyebrow">GRASSIMOTE</p>
+            <div class="session-header__title-row">
+              <h1 class="session-title">{{ profileName }}</h1>
+              <GbStatusChip
+                :label="remote.connectionLabel.value"
+                :tone="connectionTone"
+                :icon="remote.isConnected.value ? 'wifi' : 'wifi_off'"
+                :pulse="!remote.isConnected.value"
+              />
+            </div>
           </div>
+          <div class="session-header__telemetry" aria-label="Live meters">
+            <span><small>MIC</small><strong>{{ remote.snapshot.value?.meters.microphoneDb || '−∞ dBFS' }}</strong></span>
+            <span><small>MASTER</small><strong>{{ remote.snapshot.value?.meters.masterDb || '−∞ dBFS' }}</strong></span>
+          </div>
+        </header>
+
+        <div class="session-health-row">
+          <div class="session-health" aria-live="polite">
+            <GbStatusChip
+              :label="engineRunning ? 'Engine live' : (remote.snapshot.value?.engine.state || 'Engine ready')"
+              :tone="engineRunning ? 'success' : 'neutral'"
+              icon="power"
+            />
+            <GbStatusChip
+              :label="micMuted ? 'Mic muted' : 'Mic live'"
+              :tone="micMuted ? 'danger' : 'primary'"
+              :icon="micMuted ? 'mic_off' : 'mic'"
+            />
+          </div>
+          <DangerHoldButton compact label="Stop All" @activate="stopAll" />
         </div>
-        <div class="meters" aria-label="Live meters">
-          <span>Mic {{ remote.snapshot.value?.meters.microphoneDb || '−∞ dBFS' }}</span>
-          <span>Master {{ remote.snapshot.value?.meters.masterDb || '−∞ dBFS' }}</span>
+
+        <div v-if="pwa.canInstall.value" class="pwa-banner gb-surface gb-surface--tonal">
+          <div class="pwa-banner__copy">
+            <span class="gb-control-icon"><GbIcon name="install" :size="22" /></span>
+            <div><strong>Install GrassiMote</strong><span>Keep the live deck one tap away on your home screen.</span></div>
+          </div>
+          <GbButton variant="outlined" icon="install" @click="pwa.install">Install</GbButton>
         </div>
-      </header>
 
-      <div v-if="pwa.canInstall.value" class="pwa-banner glass-card">
-        <div><strong>Install GrassiMote</strong><span>Launch it like a native app from your home screen.</span></div>
-        <button class="secondary-button" type="button" @click="pwa.install">Install</button>
+        <div v-if="remote.lastError.value" class="network-banner" role="status">
+          <div><GbIcon name="error" :size="19" /><span>{{ remote.lastError.value }}</span></div>
+          <GbButton v-if="remote.isSecureContext.value" variant="text" icon="qr" @click="scannerOpen = true">Scan QR</GbButton>
+        </div>
+
+        <main class="page-frame"><slot /></main>
       </div>
 
-      <div v-if="remote.lastError.value" class="network-banner">
-        <span>{{ remote.lastError.value }}</span>
-        <button v-if="remote.isSecureContext.value" type="button" @click="scannerOpen = true">Scan QR</button>
+      <div class="floating-session-actions" aria-label="Live session controls">
+        <GbFab
+          :icon="engineRunning ? 'power_off' : 'power'"
+          :label="engineRunning ? 'Stop audio engine' : 'Start audio engine'"
+          :variant="engineRunning ? 'surface' : 'primary'"
+          :tone="engineRunning ? 'success' : 'normal'"
+          @click="toggleEngine"
+        />
+        <GbFab
+          :icon="micMuted ? 'mic' : 'mic_off'"
+          :label="micMuted ? 'Unmute microphone' : 'Mute microphone'"
+          variant="surface"
+          :tone="micMuted ? 'danger' : 'normal'"
+          @click="toggleMute"
+        />
       </div>
 
-      <div class="emergency-row">
-        <button class="mute-button" type="button" :class="{ active: remote.snapshot.value?.microphoneMuted }" @click="mute">
-          {{ remote.snapshot.value?.microphoneMuted ? 'UNMUTE MIC' : 'MUTE MIC' }}
-        </button>
-        <DangerHoldButton label="STOP ALL" @activate="stopAll" />
-      </div>
-
-      <main class="page-frame"><slot /></main>
+      <GbSnackbar
+        :open="Boolean(remote.snackbar.value)"
+        :message="remote.snackbar.value?.message || ''"
+        :tone="remote.snackbar.value?.tone || 'neutral'"
+        @dismiss="remote.dismissSnackbar"
+      />
 
       <nav class="bottom-nav" aria-label="Remote sections">
-        <NuxtLink to="/">Board</NuxtLink>
-        <NuxtLink to="/voice">Voice</NuxtLink>
-        <NuxtLink to="/mixer">Mixer</NuxtLink>
-        <NuxtLink to="/media">Media</NuxtLink>
+        <NuxtLink v-for="item in navItems" :key="item.to" :to="item.to" class="bottom-nav__item">
+          <span class="bottom-nav__icon"><GbIcon :name="item.icon" :size="23" /></span>
+          <span>{{ item.label }}</span>
+        </NuxtLink>
       </nav>
     </template>
-    <ConnectionGate v-else />
 
+    <DisconnectedGate v-else-if="remote.paired.value" />
+    <ConnectionGate v-else />
     <QrScannerModal v-if="scannerOpen" @close="scannerOpen = false" @detected="onDetected" />
   </div>
 </template>

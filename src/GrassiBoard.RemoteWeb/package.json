@@ -15,8 +15,10 @@
     "postinstall": "nuxt prepare"
   },
   "dependencies": {
+    "@material/web": "2.5.0",
     "nuxt": "4.5.2",
-    "vue": "3.5.41"
+    "vue": "3.5.41",
+    "@fontsource-variable/material-symbols-rounded": "5.3.1"
   },
   "devDependencies": {
     "typescript": "5.9.3"

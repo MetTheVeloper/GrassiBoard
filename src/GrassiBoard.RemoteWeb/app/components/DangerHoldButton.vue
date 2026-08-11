@@ -1,5 +1,9 @@
 <script setup lang="ts">
-const props = withDefaults(defineProps<{ label: string, duration?: number }>(), { duration: 650 })
+const props = withDefaults(defineProps<{ label: string, duration?: number, icon?: string, compact?: boolean }>(), {
+  duration: 650,
+  icon: 'stop_all',
+  compact: false
+})
 const emit = defineEmits<{ activate: [] }>()
 const progress = ref(0)
 let frame = 0
@@ -28,20 +32,34 @@ function start() {
   frame = requestAnimationFrame(tick)
 }
 
+function keyboardActivate(event: KeyboardEvent) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    emit('activate')
+  }
+}
+
 onBeforeUnmount(cancel)
 </script>
 
 <template>
   <button
     class="danger-hold"
+    :class="{ 'danger-hold--compact': compact }"
     type="button"
     :style="{ '--hold-progress': `${progress * 100}%` }"
+    :aria-label="`${label}. Hold to activate.`"
     @pointerdown="start"
     @pointerup="cancel"
     @pointercancel="cancel"
     @pointerleave="cancel"
+    @keydown="keyboardActivate"
   >
-    {{ label }}
-    <small>hold</small>
+    <span class="danger-hold__progress" aria-hidden="true" />
+    <span class="danger-hold__content">
+      <GbIcon :name="icon" :size="21" />
+      <span>{{ label }}</span>
+      <small>hold</small>
+    </span>
   </button>
 </template>

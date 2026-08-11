@@ -1,1 +1,0 @@
-import{B as e}from"./B5KXIhNo.js";import{t}from"./B7JN2WAk.js";function n(n,r=55){let{sendCommand:i}=t(),a=null,o={};function s(e){o=e,!a&&(a=setTimeout(()=>{a=null,i(n,o)},r))}return e(()=>{a&&clearTimeout(a)}),s}export{n as t};

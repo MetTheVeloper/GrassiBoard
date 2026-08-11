@@ -1,33 +1,30 @@
-# GrassiBoard Remote Web
+# GrassiMote Remote Web
 
-Nuxt 4 + Vue 3 + TypeScript SPA used by GrassiBoard v1.1 Remote Control.
+GrassiMote is the static Nuxt 4 / Vue 3 control surface served by GrassiBoard over the private LAN.
 
-## Development
+## Stack
 
-```bash
-pnpm install
-pnpm dev
-```
+- Nuxt 4
+- Vue 3
+- TypeScript
+- `ssr: false`
+- `pnpm generate`
+- Material Design 3 interaction system
+- stable `@material/web` controls behind GrassiBoard `Gb*` wrappers
+- locally bundled SVG Material-symbol icon subset (no runtime icon CDN)
 
-When the Nuxt dev server is not served by GrassiBoard itself, point it at a running Windows Remote server:
+There is no Node.js runtime requirement on the deployed Windows PC. Node/pnpm exist only for development and CI; `.output/public` is packaged with the desktop application.
+
+## Local UI iteration
+
+When only Remote Web files change, use the repository helper from the repository root:
 
 ```powershell
-$env:NUXT_PUBLIC_REMOTE_ORIGIN="http://192.168.1.20:47918"
-pnpm dev
+powershell -ExecutionPolicy Bypass -File .\tools\Deploy-RemoteWebLocal.ps1 -RestoreWeb
 ```
 
-The Windows app only allows cross-origin development requests from loopback origins. Production is same-origin.
+`-RestoreWeb` is required after package dependency changes so `pnpm-lock.yaml` and `node_modules` are updated before `pnpm generate`.
 
-## Static production build
+## Design system
 
-```bash
-pnpm generate
-```
-
-The deployable SPA is written to `.output/public`. The WPF project copies that directory to `RemoteWeb/` during publish, and its embedded Kestrel host serves it on the selected private LAN address.
-
-No Node.js, pnpm, Nuxt server, Nitro API, or SSR runtime is required on the user's PC.
-
-## v1.1.0 candidate lockfile note
-
-The first source candidate intentionally does not yet include `pnpm-lock.yaml` because the authoring environment could not reach the package registry. Direct dependency versions are pinned, and CI is configured to resolve the candidate with `pnpm install --no-frozen-lockfile`. A resolved lockfile must be committed before v1.1 is marked user-accepted.
+See `docs/remote-ui-system.md` for Material Web integration, GrassiBoard semantic tokens, shared controls, responsive behavior, and realtime UI boundaries.
