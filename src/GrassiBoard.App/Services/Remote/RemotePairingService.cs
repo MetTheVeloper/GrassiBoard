@@ -58,7 +58,7 @@ internal sealed class RemotePairingService
             _attempts++;
 
             bool valid = false;
-            if (!string.IsNullOrWhiteSpace(request.Secret) && TryBase64UrlDecode(request.Secret, out byte[]? secret))
+            if (!string.IsNullOrWhiteSpace(request.Secret) && TryBase64UrlDecode(request.Secret, out byte[] secret))
             {
                 byte[] candidate = SHA256.HashData(secret);
                 valid = candidate.Length == _secretHash.Length && CryptographicOperations.FixedTimeEquals(candidate, _secretHash);
@@ -90,7 +90,7 @@ internal sealed class RemotePairingService
 
     public RemotePairedClientRecord? ValidateClientToken(string token)
     {
-        if (!TryBase64UrlDecode(token, out byte[]? tokenBytes)) return null;
+        if (!TryBase64UrlDecode(token, out byte[] tokenBytes)) return null;
         byte[] candidateHash = SHA256.HashData(tokenBytes);
         lock (_gate)
         {
@@ -158,13 +158,13 @@ internal sealed class RemotePairingService
     private static string Base64UrlEncode(ReadOnlySpan<byte> bytes) =>
         Convert.ToBase64String(bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_');
 
-    private static bool TryBase64UrlDecode(string value, out byte[]? bytes)
+    private static bool TryBase64UrlDecode(string value, out byte[] bytes)
     {
-        bytes = null;
+        bytes = Array.Empty<byte>();
         try
         {
             string padded = value.Replace('-', '+').Replace('_', '/');
-            padded += padded.Length % 4 switch { 2 => "==", 3 => "=", _ => string.Empty };
+            padded += (padded.Length % 4) switch { 2 => "==", 3 => "=", _ => string.Empty };
             bytes = Convert.FromBase64String(padded);
             return true;
         }
