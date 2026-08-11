@@ -102,6 +102,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     private bool _remoteEnabled;
     private string _remoteStatus = "Remote Control is off";
     private string _remoteAddress = string.Empty;
+    private string _remoteOnboardingAddress = string.Empty;
+    private string _remoteDiscoveryStatus = "mDNS discovery is off";
     private string _remoteNetworkHint = "Enable Remote Control while the PC and phone are on the same private Wi-Fi/LAN.";
     private string _remotePairingCode = string.Empty;
     private DateTimeOffset _remotePairingExpiresAt;
@@ -282,6 +284,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
 
     public string RemoteStatus { get => _remoteStatus; private set => SetProperty(ref _remoteStatus, value); }
     public string RemoteAddress { get => _remoteAddress; private set => SetProperty(ref _remoteAddress, value); }
+    public string RemoteOnboardingAddress { get => _remoteOnboardingAddress; private set => SetProperty(ref _remoteOnboardingAddress, value); }
+    public string RemoteDiscoveryStatus { get => _remoteDiscoveryStatus; private set => SetProperty(ref _remoteDiscoveryStatus, value); }
     public string RemoteNetworkHint { get => _remoteNetworkHint; private set => SetProperty(ref _remoteNetworkHint, value); }
     public string RemotePairingCode { get => _remotePairingCode; private set => SetProperty(ref _remotePairingCode, value); }
     public BitmapImage? RemotePairingQr { get => _remotePairingQr; private set => SetProperty(ref _remotePairingQr, value); }
@@ -996,6 +1000,8 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
     {
         RemoteStatus = _remoteServer.Status;
         RemoteAddress = _remoteServer.Address;
+        RemoteOnboardingAddress = _remoteServer.OnboardingAddress;
+        RemoteDiscoveryStatus = _remoteServer.DiscoveryStatus;
         RemoteNetworkHint = _remoteServer.NetworkHint;
         RemotePairingInfo? pairing = _remoteServer.CurrentPairing;
         RemotePairingCode = pairing?.Code ?? string.Empty;

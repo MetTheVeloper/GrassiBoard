@@ -5,9 +5,10 @@ namespace GrassiBoard.Services.Remote;
 
 internal sealed class RemoteSettingsDocument
 {
-    public int SchemaVersion { get; set; } = 1;
+    public int SchemaVersion { get; set; } = 2;
     public bool Enabled { get; set; }
     public int Port { get; set; } = 47918;
+    public int SecurePort { get; set; } = 47919;
     public List<RemotePairedClientRecord> Clients { get; set; } = [];
 }
 
@@ -43,7 +44,12 @@ internal sealed class RemoteSettingsStore
                 RemoteSettingsDocument? value = JsonSerializer.Deserialize<RemoteSettingsDocument>(
                     File.ReadAllText(_path), RemoteProtocol.JsonOptions);
                 if (value is null) return new RemoteSettingsDocument();
+                value.SchemaVersion = Math.Max(value.SchemaVersion, 2);
                 value.Port = value.Port is >= 1024 and <= 65535 ? value.Port : 47918;
+                int defaultSecurePort = value.Port == 47919 ? 47920 : 47919;
+                value.SecurePort = value.SecurePort is >= 1024 and <= 65535 && value.SecurePort != value.Port
+                    ? value.SecurePort
+                    : defaultSecurePort;
                 value.Clients ??= [];
                 value.Clients.RemoveAll(client => client.Id == Guid.Empty || string.IsNullOrWhiteSpace(client.TokenHash));
                 foreach (RemotePairedClientRecord client in value.Clients)

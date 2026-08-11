@@ -9,6 +9,8 @@ using System.Windows;
 using System.Windows.Threading;
 using System.Text.Json;
 using System.Xml.Linq;
+using System.Net;
+using System.Security.Cryptography.X509Certificates;
 
 if (args is ["--diagnose-add-pad", string audioPath])
 {
@@ -408,6 +410,14 @@ if (requiredUiContracts.Any(contract => !boardXaml.Contains(contract, StringComp
 
 string remoteServerSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteServerService.cs"));
 string remoteProtocolSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteProtocol.cs"));
+string remoteSettingsSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteSettingsStore.cs"));
+string remoteMdnsSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteMdnsService.cs"));
+string remoteWebRoot = Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.RemoteWeb");
+string remoteWebConnectionSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "composables", "useRemoteConnection.ts"));
+string remoteQrScannerSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "components", "QrScannerModal.vue"));
+string remotePwaPluginSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "plugins", "pwa.client.ts"));
+string remoteManifestSource = File.ReadAllText(Path.Combine(remoteWebRoot, "public", "manifest.webmanifest"));
+string remoteServiceWorkerSource = File.ReadAllText(Path.Combine(remoteWebRoot, "public", "sw.js"));
 string installerServiceSource = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.Installer", "InstallationService.cs"));
 string installerWindowXaml = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.Installer", "MainWindow.xaml"));
 if (remoteServerSource.Contains("NativeAudioEngine", StringComparison.Ordinal) ||
@@ -415,7 +425,26 @@ if (remoteServerSource.Contains("NativeAudioEngine", StringComparison.Ordinal) |
     remoteProtocolSource.Contains("FilePath", StringComparison.Ordinal) ||
     !appProject.Contains("Microsoft.AspNetCore.App", StringComparison.Ordinal) ||
     !appProject.Contains("QRCoder", StringComparison.Ordinal) ||
-    !appProject.Contains("GrassiBoard.RemoteWeb", StringComparison.Ordinal))
+    !appProject.Contains("GrassiBoard.RemoteWeb", StringComparison.Ordinal) ||
+    !remoteWebConnectionSource.Contains("createMessageId", StringComparison.Ordinal) ||
+    !remoteWebConnectionSource.Contains("getRandomValues", StringComparison.Ordinal) ||
+    !remoteWebConnectionSource.Contains("pairFromQr", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("UseHttps", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("/api/remote/ca.cer", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("RemoteMdnsService", StringComparison.Ordinal) ||
+    !remoteMdnsSource.Contains("BuildLegacyUnicastAnswer", StringComparison.Ordinal) ||
+    !remoteMdnsSource.Contains("packet.RemoteEndPoint.Port != MdnsPort", StringComparison.Ordinal) ||
+    !remoteMdnsSource.Contains("query.QuestionCount", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("if (!context.Request.IsHttps)", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("Status426UpgradeRequired", StringComparison.Ordinal) ||
+    !remoteSettingsSource.Contains("SecurePort { get; set; } = 47919", StringComparison.Ordinal) ||
+    !remoteQrScannerSource.Contains("getUserMedia", StringComparison.Ordinal) ||
+    !remoteQrScannerSource.Contains("BarcodeDetector", StringComparison.Ordinal) ||
+    !remotePwaPluginSource.Contains("serviceWorker.register('/sw.js'", StringComparison.Ordinal) ||
+    !remoteManifestSource.Contains("\"name\": \"GrassiMote\"", StringComparison.Ordinal) ||
+    !remoteManifestSource.Contains("\"display\": \"standalone\"", StringComparison.Ordinal) ||
+    !remoteServiceWorkerSource.Contains("grassimote-shell-v1", StringComparison.Ordinal) ||
+    !remoteServiceWorkerSource.Contains("url.pathname.startsWith('/api/')", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("Remote isolation/publish source contract failed.");
     return 34;
@@ -480,11 +509,28 @@ try
     }
 
     RemotePairingInfo expiring = pairing.CreatePairing("http://192.168.1.20:47918/");
-    remoteNow = remoteNow.AddMinutes(3);
+    remoteNow = remoteNow.AddMinutes(6);
     if (pairing.IsPairingActive || pairing.TryPair(new RemotePairRequest(null, expiring.Code, "Late Phone"), out _))
     {
         Console.Error.WriteLine("Remote pairing expiration contract failed.");
         return 27;
+    }
+
+    using (var tls = new RemoteTlsService(Path.Combine(remoteRoot, "remote-tls")))
+    {
+        RemoteTlsMaterial material = tls.GetOrCreate(IPAddress.Parse("192.168.1.20"));
+#pragma warning disable SYSLIB0057 // .NET 8 pinned SDK: DER loading constructor is intentionally used in this smoke test.
+        using var rootCertificate = new X509Certificate2(material.RootCertificateDer);
+#pragma warning restore SYSLIB0057
+        string serverDnsName = material.ServerCertificate.GetNameInfo(X509NameType.DnsName, forIssuer: false);
+        if (!material.ServerCertificate.HasPrivateKey ||
+            rootCertificate.HasPrivateKey ||
+            !string.Equals(serverDnsName, RemoteTlsService.StableHostName, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(material.ServerCertificate.Issuer, rootCertificate.Subject, StringComparison.Ordinal))
+        {
+            Console.Error.WriteLine("GrassiMote local TLS certificate contract failed.");
+            return 36;
+        }
     }
 
     string envelopeJson = """{"protocolVersion":1,"type":"voice.pitch.set","messageId":"smoke","payload":{"value":2.5}}""";

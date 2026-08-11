@@ -44,8 +44,13 @@ jobs:
           cache: false
 
       - name: Install Remote Web dependencies
+        shell: pwsh
         working-directory: ./src/GrassiBoard.RemoteWeb
-        run: pnpm install --no-frozen-lockfile
+        run: |
+          if (!(Test-Path ./pnpm-lock.yaml)) {
+            throw 'RemoteWeb pnpm-lock.yaml is required for reproducible release builds.'
+          }
+          pnpm install --frozen-lockfile
 
       - name: Generate Nuxt Remote Web SPA
         shell: pwsh
@@ -60,6 +65,11 @@ jobs:
           $assets = Get-ChildItem ./.output/public/_nuxt -File -ErrorAction SilentlyContinue
           if (!$assets) {
             throw 'Nuxt generate did not produce client assets.'
+          }
+          foreach ($pwaAsset in @('manifest.webmanifest', 'sw.js', 'icons/grassimote-192.png', 'icons/grassimote-512.png')) {
+            if (!(Test-Path (Join-Path ./.output/public $pwaAsset))) {
+              throw "Nuxt generate did not include PWA asset: $pwaAsset"
+            }
           }
 
       - name: Generate build information
@@ -151,6 +161,10 @@ jobs:
               'QRCoder.dll',
               'BuildInfo.json',
               'RemoteWeb/index.html',
+              'RemoteWeb/manifest.webmanifest',
+              'RemoteWeb/sw.js',
+              'RemoteWeb/icons/grassimote-192.png',
+              'RemoteWeb/icons/grassimote-512.png',
               'CHANGELOG.md',
               'README-FIRST.txt',
               'EXTERNAL-CABLE-SETUP.md',

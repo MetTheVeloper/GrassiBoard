@@ -1,5 +1,15 @@
 import type { ConnectionState, PairResponse, RemoteEnvelope, RemoteStateSnapshot } from '~/types/remote'
 
+interface RemoteInfo {
+  protocolVersion: number
+  name: string
+  pairingOpen: boolean
+  secureOrigin?: string
+  onboardingOrigin?: string
+  stableHost?: string
+  mdnsAvailable?: boolean
+}
+
 const protocolVersion = 1
 let socket: WebSocket | null = null
 let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -9,6 +19,20 @@ let authTimer: ReturnType<typeof setTimeout> | null = null
 
 function normalizeOrigin(value: string) {
   return value.replace(/\/+$/, '')
+}
+
+
+function createMessageId() {
+  if (import.meta.client && typeof globalThis.crypto?.randomUUID === 'function') {
+    return globalThis.crypto.randomUUID()
+  }
+
+  if (import.meta.client && globalThis.crypto?.getRandomValues) {
+    const bytes = globalThis.crypto.getRandomValues(new Uint8Array(16))
+    return Array.from(bytes, byte => byte.toString(16).padStart(2, '0')).join('')
+  }
+
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`
 }
 
 function defaultDeviceName() {
@@ -29,6 +53,7 @@ export function useRemoteConnection() {
   const paired = useState<boolean>('remote:paired', () => false)
   const pendingAcks = useState<Record<string, string>>('remote:acks', () => ({}))
   const manualCode = useState<string>('remote:manual-code', () => '')
+  const serverInfo = useState<RemoteInfo | null>('remote:server-info', () => null)
 
   const remoteOrigin = computed(() => {
     const configured = String(config.public.remoteOrigin || '').trim()
@@ -38,6 +63,13 @@ export function useRemoteConnection() {
   })
 
   const isConnected = computed(() => connectionState.value === 'connected')
+  const isSecureContext = computed(() => import.meta.client ? window.isSecureContext : false)
+  const secureAppUrl = computed(() => {
+    const origin = serverInfo.value?.secureOrigin?.replace(/\/+$/, '') || ''
+    if (!origin) return ''
+    const pairSecret = typeof route.query.pair === 'string' ? route.query.pair : ''
+    return pairSecret ? `${origin}/?pair=${encodeURIComponent(pairSecret)}` : `${origin}/`
+  })
   const connectionLabel = computed(() => {
     switch (connectionState.value) {
       case 'connected': return 'Connected'
@@ -58,6 +90,18 @@ export function useRemoteConnection() {
     const url = new URL(apiUrl('/ws'))
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
     return url.toString()
+  }
+
+
+  async function refreshInfo() {
+    if (!remoteOrigin.value) return null
+    try {
+      const info = await $fetch<RemoteInfo>(apiUrl('/api/remote/info'))
+      serverInfo.value = info
+      return info
+    } catch {
+      return null
+    }
   }
 
   function getToken() {
@@ -106,6 +150,26 @@ export function useRemoteConnection() {
       lastError.value = 'The pairing code is invalid, expired, or pairing is locked.'
       return false
     }
+  }
+
+
+  async function pairFromQr(rawValue: string) {
+    lastError.value = ''
+    let secret = ''
+    try {
+      const parsed = new URL(rawValue.trim())
+      secret = parsed.searchParams.get('pair') || ''
+    } catch {
+      const match = rawValue.match(/[?&]pair=([^&\s]+)/i)
+      if (match?.[1]) secret = decodeURIComponent(match[1])
+    }
+    if (!secret) {
+      lastError.value = 'This QR is not a GrassiBoard pairing code.'
+      return false
+    }
+    closeSocket()
+    forgetToken()
+    return pair({ secret })
   }
 
   async function pairWithCode() {
@@ -169,7 +233,7 @@ export function useRemoteConnection() {
       socket.send(JSON.stringify({
         protocolVersion,
         type: 'connection.auth',
-        messageId: crypto.randomUUID(),
+        messageId: createMessageId(),
         payload: { token }
       }))
       authTimer = setTimeout(() => {
@@ -259,7 +323,7 @@ export function useRemoteConnection() {
       lastError.value = 'Remote is not connected. The command was not queued.'
       return false
     }
-    const messageId = crypto.randomUUID()
+    const messageId = createMessageId()
     pendingAcks.value = { ...pendingAcks.value, [messageId]: type }
     socket.send(JSON.stringify({ protocolVersion, type, messageId, payload }))
     return true
@@ -274,16 +338,23 @@ export function useRemoteConnection() {
     if (!import.meta.client || initialized) return
     initialized = true
     paired.value = Boolean(getToken())
+    void refreshInfo()
     const pairSecret = typeof route.query.pair === 'string' ? route.query.pair : ''
     if (pairSecret && !getToken()) {
       void pair({ secret: pairSecret })
-      return
+    } else {
+      connect()
     }
-    connect()
 
-    window.addEventListener('online', () => connect(true))
+    window.addEventListener('online', () => {
+      void refreshInfo()
+      connect(true)
+    })
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && getToken()) connect(true)
+      if (document.visibilityState === 'visible') {
+        void refreshInfo()
+        if (getToken()) connect(true)
+      }
     })
   }
 
@@ -296,12 +367,17 @@ export function useRemoteConnection() {
     paired,
     pendingAcks,
     manualCode,
+    serverInfo,
     remoteOrigin,
+    secureAppUrl,
+    isSecureContext,
     initialize,
     connect,
     disconnect,
     pair,
     pairWithCode,
+    pairFromQr,
+    refreshInfo,
     sendCommand,
     vibrate,
     forgetToken

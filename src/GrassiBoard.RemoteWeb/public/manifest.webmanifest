@@ -1,0 +1,27 @@
+{
+  "id": "/",
+  "name": "GrassiMote",
+  "short_name": "GrassiMote",
+  "description": "Private LAN remote control for GrassiBoard.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "categories": ["music", "utilities", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/grassimote-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/grassimote-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

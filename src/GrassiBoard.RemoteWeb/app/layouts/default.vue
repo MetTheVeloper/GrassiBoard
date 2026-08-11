@@ -1,6 +1,12 @@
 <script setup lang="ts">
 const remote = useRemoteConnection()
-onMounted(remote.initialize)
+const pwa = usePwaInstall()
+const scannerOpen = ref(false)
+
+onMounted(() => {
+  remote.initialize()
+  pwa.initialize()
+})
 
 const profileName = computed(() => remote.snapshot.value?.profileName || 'GrassiBoard')
 const live = computed(() => remote.snapshot.value?.engine.running ?? false)
@@ -12,6 +18,11 @@ function mute() {
 
 function stopAll() {
   if (remote.sendCommand('engine.stopAll')) remote.vibrate([35, 25, 55])
+}
+
+async function onDetected(value: string) {
+  scannerOpen.value = false
+  await remote.pairFromQr(value)
 }
 </script>
 
@@ -33,7 +44,15 @@ function stopAll() {
         </div>
       </header>
 
-      <div v-if="remote.lastError.value" class="network-banner">{{ remote.lastError.value }}</div>
+      <div v-if="pwa.canInstall.value" class="pwa-banner glass-card">
+        <div><strong>Install GrassiMote</strong><span>Launch it like a native app from your home screen.</span></div>
+        <button class="secondary-button" type="button" @click="pwa.install">Install</button>
+      </div>
+
+      <div v-if="remote.lastError.value" class="network-banner">
+        <span>{{ remote.lastError.value }}</span>
+        <button v-if="remote.isSecureContext.value" type="button" @click="scannerOpen = true">Scan QR</button>
+      </div>
 
       <div class="emergency-row">
         <button class="mute-button" type="button" :class="{ active: remote.snapshot.value?.microphoneMuted }" @click="mute">
@@ -52,5 +71,7 @@ function stopAll() {
       </nav>
     </template>
     <ConnectionGate v-else />
+
+    <QrScannerModal v-if="scannerOpen" @close="scannerOpen = false" @detected="onDetected" />
   </div>
 </template>

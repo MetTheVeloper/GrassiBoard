@@ -5,7 +5,7 @@ namespace GrassiBoard.Services.Remote;
 
 internal sealed class RemotePairingService
 {
-    private const int PairingLifetimeSeconds = 120;
+    private const int PairingLifetimeSeconds = 300;
     private const int MaxManualAttempts = 8;
     private readonly object _gate = new();
     private readonly RemoteSettingsStore _store;

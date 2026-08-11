@@ -1,7 +1,14 @@
-GrassiBoard v1.1.0 — Remote Control test candidate
+GrassiBoard v1.1.0 — GrassiMote Remote Control consolidation
 
-STATUS: NOT USER ACCEPTED.
-Stable regression baseline: v1.0.1. Remote Monitor (v1.2) and Remote Mic (v1.3) are not part of this build.
+STATUS: REAL WINDOWS + ANDROID MANUAL ACCEPTANCE PASSED ON 2026-08-11; FINAL CONSOLIDATED GITHUB ACTIONS RUN PENDING.
+Stable published regression baseline remains v1.0.1 until that CI gate is green. Remote Monitor (v1.2) and Remote Mic (v1.3) are not part of this build.
+
+ACCEPTED GRASSIMOTE PATH
+- First-time bootstrap: http://<LAN-IP>:47918/onboard
+- Secure PWA/WSS compatibility path: https://<LAN-IP>:47919/
+- grassimote.local is optional and may not resolve on Android hotspot/mobile-data, some routers, or some VPN topologies.
+- Android installs/trusts the per-PC GrassiMote CA once; the private CA key remains on Windows.
+- Installed GrassiMote can pair with its in-app SCAN QR flow.
 
 REMOTE CONTROL TESTS
 A. Enable Remote in Settings, scan the QR on Android, pair, reload the browser, then verify Revoke blocks reconnect.

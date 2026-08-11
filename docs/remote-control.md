@@ -1,6 +1,6 @@
 # GrassiBoard Remote Control — v1.1
 
-> Status: v1.1.0 implementation candidate. Not user-accepted yet.
+> Status: real-device manual acceptance passed on 2026-08-11; consolidated GitHub Actions verification is the remaining release gate.
 
 ## Scope
 
@@ -9,10 +9,10 @@ v1.1 turns an Android phone browser on the same private LAN/Wi-Fi into a realtim
 ## Architecture
 
 ```text
-Android browser
+Android / installed GrassiMote PWA
   Nuxt 4 / Vue 3 static SPA
         |
-        | HTTP + authenticated WebSocket
+        | HTTPS + authenticated WSS
         v
 GrassiBoard.App
   ASP.NET Core / Kestrel
@@ -99,7 +99,7 @@ First-time pairing:
 1. GrassiBoard generates a cryptographically random one-time secret plus a six-digit fallback code.
 2. Settings displays a QR containing the LAN URL and one-time secret.
 3. The browser exchanges that one-time value for a random client credential.
-4. The one-time pairing value expires after two minutes and is invalidated after successful use.
+4. The one-time pairing value expires after five minutes and is invalidated after successful use.
 5. The browser stores the client token locally.
 6. GrassiBoard stores only a SHA-256 token hash in `%APPDATA%\GrassiBoard\remote-settings.json`.
 7. The reusable token is sent as the first authenticated WebSocket message, never in the WebSocket query string.
@@ -142,7 +142,9 @@ v1.1 deliberately does not expose:
 - full local Media/Pad paths
 - microphone or monitor audio transport
 
-The product remains LAN-first and does not configure Internet port forwarding.
+The product remains LAN-first and does not configure Internet port forwarding. The direct secure LAN-IP origin is the compatibility path used for acceptance; `grassimote.local` is optional because Android hotspot/mobile-data and some LAN/VPN topologies do not resolve mDNS consistently.
+
+The HTTP listener is bootstrap-only for onboarding/public CA delivery. Pairing credentials and authenticated WebSocket control are rejected on HTTP and are accepted only through the HTTPS/WSS GrassiMote endpoint.
 
 ## Build and packaging
 
@@ -154,6 +156,12 @@ The GitHub Actions flow builds RemoteWeb before managed/native publish, then ver
 - existing native/runtime package contract
 
 The user does not install Node.js or pnpm on the target PC.
+
+### Fast local Remote iteration
+
+For frontend-only changes, close the installed GrassiBoard app and run `tools/Deploy-RemoteWebLocal.ps1`. It runs `pnpm generate` and replaces only the installed `RemoteWeb` folder, so no managed/native rebuild is required.
+
+For managed + frontend testing before pushing, run `tools/Build-LocalRemoteTest.ps1 -Run`. The script generates RemoteWeb, reuses an existing ABI-8 native DLL when available (including the currently installed GrassiBoard copy), performs a fast framework-dependent WPF publish, and writes `artifacts/local-test/GrassiBoard-local-test.zip`. Use `-RunSmokeTests` when a local managed regression pass is desired and `-RebuildNative` only when native C++ actually changed. GitHub Actions remains the authoritative self-contained installer/release build.
 
 ## v1.1 manual test order
 
@@ -167,4 +175,27 @@ The user does not install Node.js or pnpm on the target PC.
 8. Test portrait and landscape layouts.
 9. Regression-test desktop Soundboard, Hotkeys, Tray, Voice DSP, Media Deck, and VB-CABLE routing.
 
-A successful CI build is not acceptance. v1.1 becomes accepted only after explicit real-device user approval and the acceptance record is updated in `docs/remote-development-status.md`.
+Real-device user approval was recorded on 2026-08-11. The consolidated source still requires one clean GitHub Actions run before v1.1 is promoted from the v1.0.1 stable baseline and before v1.2 Remote Monitor is unlocked.
+
+
+## GrassiMote secure PWA candidate
+
+The v1.1 test candidate now includes an HTTPS/PWA foundation so the Remote can be installed as **GrassiMote** and can request camera permission for in-app QR pairing. This does not add Remote Monitor or Remote Mic audio.
+
+Runtime endpoints:
+
+```text
+HTTP onboarding:  http://<current-private-ip>:47918/onboard
+Secure PWA/WSS:   https://grassimote.local:47919/
+Secure fallback:  https://<current-private-ip>:47919/
+```
+
+On first start GrassiBoard creates a private local CA and a one-year server certificate. The root is kept for long-term trust while the leaf certificate can be regenerated when the PC's LAN IP changes. The server certificate contains both `grassimote.local` and the current private IPv4 address. Only the public CA certificate is exposed at `/api/remote/ca.cer`; CA/server private keys remain in the user's GrassiBoard AppData.
+
+The desktop pairing QR deliberately points to the HTTP onboarding page. This solves the first-use trust bootstrap: Android can download/install the CA before it is asked to open the secure origin. Once trusted, the onboarding page opens the secure PWA and preserves the one-time pairing secret.
+
+GrassiBoard also runs a small mDNS responder for `grassimote.local`. If mDNS cannot start or `.local` resolution is blocked, Settings reports that condition and the secure IP fallback remains valid.
+
+The generated Nuxt output includes `manifest.webmanifest`, `sw.js`, installable icons, an offline navigation shell, and explicit Service Worker registration. Service Worker and camera functionality are activated only in a secure context.
+
+When no reusable credential is present, secure GrassiMote offers **SCAN QR**. Camera access begins only after that explicit user action. Android Chrome's Barcode Detection API is used for QR recognition when supported; the six-digit pairing code remains available as a fallback.

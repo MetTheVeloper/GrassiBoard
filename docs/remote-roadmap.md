@@ -608,6 +608,23 @@ Create a polished realtime web controller that mirrors a deliberately limited su
 
 The goal is to validate server architecture, pairing, realtime state synchronization, and mobile UX before touching audio networking.
 
+## 13.1 v1.1 secure GrassiMote/PWA foundation — approved scope extension
+
+Before final v1.1 acceptance, the Remote may establish the secure-origin foundation originally anticipated by the later browser-microphone gate, provided this does **not** unlock or implement v1.2/v1.3 audio transport.
+
+Permitted v1.1.x scope:
+
+```text
+GrassiMote installable PWA
+HTTPS / WSS LAN endpoint
+local certificate onboarding
+stable `.local` LAN discovery with IP fallback
+offline/disconnected app shell
+in-app QR scanning after explicit camera permission
+```
+
+This foundation is allowed because Service Workers and browser camera access require a trustworthy secure context. Native Program Mix, ABI 8, VB-CABLE routing, Remote Monitor audio, and Remote Mic remain unchanged/locked. If trustworthy browser onboarding proves unreliable on the target Android device, stop and report the result rather than bypass browser security.
+
 ---
 
 # 14. v1.1 Remote UI scope

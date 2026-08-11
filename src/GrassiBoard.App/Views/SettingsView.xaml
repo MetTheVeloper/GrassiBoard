@@ -83,8 +83,14 @@
                     <Border Margin="0,14,0,0" Padding="12" Background="{DynamicResource PanelQuietBrush}" CornerRadius="10">
                         <StackPanel>
                             <TextBlock Text="{Binding RemoteStatus}" FontWeight="SemiBold" />
+                            <TextBlock Text="SECURE PWA" Style="{StaticResource EyebrowTextStyle}" Margin="0,8,0,0" />
                             <TextBlock Text="{Binding RemoteAddress}" FontFamily="{StaticResource MonoFont}"
-                                       Foreground="{DynamicResource AccentBrush}" Margin="0,5,0,0" />
+                                       Foreground="{DynamicResource AccentBrush}" Margin="0,4,0,0" />
+                            <TextBlock Text="FIRST-TIME ONBOARDING" Style="{StaticResource EyebrowTextStyle}" Margin="0,9,0,0" />
+                            <TextBlock Text="{Binding RemoteOnboardingAddress}" FontFamily="{StaticResource MonoFont}"
+                                       Foreground="{DynamicResource MutedTextBrush}" Margin="0,4,0,0" />
+                            <TextBlock Text="{Binding RemoteDiscoveryStatus}" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource SuccessBrush}" FontSize="11" Margin="0,7,0,0" />
                             <TextBlock Text="{Binding RemoteNetworkHint}" TextWrapping="Wrap" Style="{StaticResource MutedTextStyle}"
                                        FontSize="11" Margin="0,6,0,0" />
                         </StackPanel>
@@ -100,8 +106,8 @@
                             <Image Source="{Binding RemotePairingQr}" Stretch="Uniform" />
                         </Border>
                         <StackPanel Grid.Column="2" VerticalAlignment="Center">
-                            <TextBlock Text="PAIR A PHONE" Style="{StaticResource EyebrowTextStyle}" />
-                            <TextBlock Text="Scan the QR code, or open the Remote address and enter this one-time code."
+                            <TextBlock Text="PAIR / SET UP GRASSIMOTE" Style="{StaticResource EyebrowTextStyle}" />
+                            <TextBlock Text="First-time scan opens secure onboarding. Installed GrassiMote can scan this same QR directly."
                                        TextWrapping="Wrap" Style="{StaticResource MutedTextStyle}" FontSize="11" Margin="0,6,0,0" />
                             <TextBlock Text="{Binding RemotePairingCode}" FontFamily="{StaticResource MonoFont}"
                                        FontSize="30" FontWeight="SemiBold" Margin="0,12,0,0" />

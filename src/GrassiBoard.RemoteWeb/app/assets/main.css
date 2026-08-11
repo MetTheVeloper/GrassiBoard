@@ -96,3 +96,26 @@ input[type="range"] { width: 100%; height: 32px; accent-color: var(--accent); }
   .pad, .pad-play { min-height: 82px; }
   .bottom-nav { width: min(480px, calc(100% - 24px)); }
 }
+
+/* GrassiMote PWA / secure onboarding */
+.brand-icon { display:block; width:64px; height:64px; margin:0 auto 16px; border-radius:17px; box-shadow:0 14px 38px rgba(25,94,180,.28); }
+.scan-button { width:100%; min-height:76px; margin-top:18px; border:1px solid rgba(59,182,255,.32); border-radius:16px; background:linear-gradient(145deg,#14304d,#0d2238); display:flex; align-items:center; justify-content:center; gap:14px; text-align:left; }
+.scan-button .scan-glyph { font-size:2rem; color:var(--accent-strong); line-height:1; }
+.scan-button strong,.scan-button small { display:block; }.scan-button small { color:var(--muted); margin-top:3px; font-weight:600; }
+.or-divider { display:flex; align-items:center; gap:10px; margin:16px 0 0; color:var(--muted); font-size:.72rem; }
+.or-divider::before,.or-divider::after { content:""; height:1px; flex:1; background:var(--line); }
+.link-button { display:grid; place-items:center; text-decoration:none; margin-top:18px; }
+.install-button { width:100%; margin-top:10px; }
+.pwa-banner { margin:-2px 0 12px; padding:12px 14px; display:flex; gap:12px; align-items:center; justify-content:space-between; }
+.pwa-banner > div { display:grid; gap:3px; }.pwa-banner span { color:var(--muted); font-size:.72rem; }.pwa-banner button { min-height:40px; }
+.network-banner { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.network-banner button { flex:0 0 auto; min-height:34px; padding:0 10px; border-radius:9px; border:1px solid rgba(255,194,204,.25); background:rgba(0,0,0,.16); color:#ffd4db; font-weight:750; }
+.scanner-backdrop { position:fixed; z-index:100; inset:0; padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom)); background:rgba(2,8,15,.84); backdrop-filter:blur(14px); display:grid; place-items:center; }
+.scanner-card { width:min(100%,520px); padding:18px; }
+.scanner-heading { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }.scanner-heading h2 { margin:4px 0 0; }
+.scanner-close { width:42px; height:42px; border-radius:50%; border:1px solid var(--line); background:#10253c; font-size:1.6rem; }
+.scanner-viewport { position:relative; aspect-ratio:1/1; overflow:hidden; border-radius:18px; background:#020811; border:1px solid var(--line); }
+.scanner-viewport video { width:100%; height:100%; object-fit:cover; }
+.scanner-frame { position:absolute; inset:17%; border:3px solid rgba(80,208,255,.9); border-radius:18px; box-shadow:0 0 0 999px rgba(0,0,0,.18),0 0 32px rgba(59,182,255,.25); }
+.scanner-card > .secondary-button { width:100%; margin-top:12px; }
+@media (display-mode: standalone) { body { overscroll-behavior-y:none; } }

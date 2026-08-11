@@ -1,13 +1,15 @@
 using System.Buffers;
-using System.IO;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Channels;
+using System.IO;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Server.Kestrel.Https;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -22,6 +24,8 @@ internal sealed class RemoteServerService : IAsyncDisposable
     private readonly RemotePairingService _pairing;
     private readonly RemoteCommandDispatcher _commands;
     private readonly RemoteStatePublisher _statePublisher;
+    private readonly RemoteTlsService _tls = new();
+    private readonly RemoteMdnsService _mdns = new();
     private readonly Channel<long> _invalidations = Channel.CreateBounded<long>(new BoundedChannelOptions(1)
     {
         SingleReader = true,
@@ -32,6 +36,8 @@ internal sealed class RemoteServerService : IAsyncDisposable
     private WebApplication? _app;
     private CancellationTokenSource? _lifetime;
     private Task? _broadcastTask;
+    private RemoteTlsMaterial? _tlsMaterial;
+    private IPAddress? _lanAddress;
 
     public RemoteServerService(
         RemoteSettingsStore settingsStore,
@@ -50,6 +56,9 @@ internal sealed class RemoteServerService : IAsyncDisposable
 
     public bool IsRunning => _app is not null;
     public string Address { get; private set; } = string.Empty;
+    public string OnboardingAddress { get; private set; } = string.Empty;
+    public string SecureAddress { get; private set; } = string.Empty;
+    public string DiscoveryStatus { get; private set; } = "mDNS discovery is off";
     public string Status { get; private set; } = "Remote Control is off";
     public string NetworkHint { get; private set; } = "Enable Remote Control while the PC and phone are on the same private Wi-Fi/LAN.";
     public RemotePairingInfo? CurrentPairing { get; private set; }
@@ -69,6 +78,27 @@ internal sealed class RemoteServerService : IAsyncDisposable
             return;
         }
 
+        RemoteTlsMaterial tlsMaterial;
+        try
+        {
+            tlsMaterial = _tls.GetOrCreate(address);
+        }
+        catch (IOException)
+        {
+            SetTlsFailureStatus();
+            return;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            SetTlsFailureStatus();
+            return;
+        }
+        catch (System.Security.Cryptography.CryptographicException)
+        {
+            SetTlsFailureStatus();
+            return;
+        }
+
         CancellationTokenSource lifetime = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         WebApplicationBuilder builder = WebApplication.CreateSlimBuilder(new WebApplicationOptions
         {
@@ -76,7 +106,11 @@ internal sealed class RemoteServerService : IAsyncDisposable
             ContentRootPath = AppContext.BaseDirectory
         });
         builder.Logging.ClearProviders();
-        builder.WebHost.ConfigureKestrel(options => options.Listen(address, _settings.Port));
+        builder.WebHost.ConfigureKestrel(options =>
+        {
+            options.Listen(address, _settings.Port);
+            options.Listen(address, _settings.SecurePort, listen => listen.UseHttps(tlsMaterial.ServerCertificate));
+        });
         WebApplication app = builder.Build();
         app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(20) });
         app.Use(ApplyDevelopmentCorsAsync);
@@ -84,10 +118,20 @@ internal sealed class RemoteServerService : IAsyncDisposable
         app.MapGet("/api/remote/info", () => Results.Json(new
         {
             protocolVersion = RemoteProtocol.Version,
-            name = "GrassiBoard Remote",
-            pairingOpen = _pairing.IsPairingActive
+            name = "GrassiMote",
+            pairingOpen = _pairing.IsPairingActive,
+            secureOrigin = SecureAddress,
+            onboardingOrigin = OnboardingAddress,
+            stableHost = RemoteTlsService.StableHostName,
+            mdnsAvailable = _mdns.IsRunning
         }, RemoteProtocol.JsonOptions));
 
+        app.MapGet("/api/remote/ca.cer", () =>
+        {
+            byte[] certificate = _tlsMaterial?.RootCertificateDer ?? tlsMaterial.RootCertificateDer;
+            return Results.File(certificate, "application/x-x509-ca-cert", "GrassiMote-Local-CA.cer");
+        });
+        app.MapGet("/onboard", HandleOnboardingAsync);
         app.MapPost("/api/remote/pair", HandlePairAsync);
         app.Map("/ws", HandleWebSocketAsync);
 
@@ -99,7 +143,22 @@ internal sealed class RemoteServerService : IAsyncDisposable
             defaults.DefaultFileNames.Clear();
             defaults.DefaultFileNames.Add("index.html");
             app.UseDefaultFiles(defaults);
-            app.UseStaticFiles(new StaticFileOptions { FileProvider = provider });
+            var contentTypes = new FileExtensionContentTypeProvider();
+            contentTypes.Mappings[".webmanifest"] = "application/manifest+json";
+            app.UseStaticFiles(new StaticFileOptions
+            {
+                FileProvider = provider,
+                ContentTypeProvider = contentTypes,
+                OnPrepareResponse = responseContext =>
+                {
+                    string name = responseContext.File.Name;
+                    if (string.Equals(name, "sw.js", StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(name, "manifest.webmanifest", StringComparison.OrdinalIgnoreCase))
+                    {
+                        responseContext.Context.Response.Headers.CacheControl = "no-cache";
+                    }
+                }
+            });
             app.MapFallback(async context =>
             {
                 context.Response.ContentType = "text/html; charset=utf-8";
@@ -113,7 +172,7 @@ internal sealed class RemoteServerService : IAsyncDisposable
             {
                 context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
                 context.Response.ContentType = "text/plain; charset=utf-8";
-                await context.Response.WriteAsync("GrassiBoard Remote web assets are missing from this build.", context.RequestAborted);
+                await context.Response.WriteAsync("GrassiMote web assets are missing from this build.", context.RequestAborted);
             });
         }
 
@@ -125,20 +184,41 @@ internal sealed class RemoteServerService : IAsyncDisposable
         {
             lifetime.Dispose();
             await app.DisposeAsync();
+            tlsMaterial.Dispose();
             Status = "Remote server could not start";
-            NetworkHint = $"Port {_settings.Port} may be unavailable. Restart Remote Control or close another app using that port.";
+            NetworkHint = $"Ports {_settings.Port}/{_settings.SecurePort} may be unavailable. Restart Remote Control or close another app using those ports.";
             Changed?.Invoke();
             return;
         }
 
         _app = app;
         _lifetime = lifetime;
-        Address = $"http://{address}:{_settings.Port}/";
-        Status = "Remote Control is running";
-        NetworkHint = "If your phone cannot open the address, keep both devices on the same Wi-Fi and allow GrassiBoard on Private networks in Windows Firewall.";
-        CurrentPairing = _pairing.CreatePairing(Address);
+        _tlsMaterial = tlsMaterial;
+        _lanAddress = address;
+        bool mdnsAvailable = await _mdns.StartAsync(address, lifetime.Token);
+        // The direct IP origin is the compatibility path and also works when Android is
+        // acting as a mobile hotspot, where .local/mDNS resolution may be unavailable.
+        // grassimote.local remains a convenience alias for ordinary LAN/Wi-Fi networks.
+        SecureAddress = $"https://{address}:{_settings.SecurePort}/";
+        OnboardingAddress = $"http://{address}:{_settings.Port}/onboard";
+        Address = SecureAddress;
+        DiscoveryStatus = mdnsAvailable
+            ? $"Stable LAN alias advertised: {RemoteTlsService.StableHostName} (secure IP is always available)"
+            : $"mDNS responder unavailable; secure IP mode is active ({address}).";
+        Status = "GrassiMote secure Remote is running";
+        NetworkHint = mdnsAvailable
+            ? $"Use the secure IP on phone-hotspot/mobile-data networks. On ordinary Wi-Fi/LAN you can also try {RemoteTlsService.StableHostName}."
+            : "Secure GrassiMote is available by LAN IP. If DHCP changes this PC address, scan the new pairing QR again.";
+        CurrentPairing = CreateOnboardingPairing();
         _broadcastTask = BroadcastLoopAsync(lifetime.Token);
         _invalidations.Writer.TryWrite(_statePublisher.Revision);
+        Changed?.Invoke();
+    }
+
+    private void SetTlsFailureStatus()
+    {
+        Status = "GrassiMote HTTPS certificate setup failed";
+        NetworkHint = "GrassiBoard could not create its local GrassiMote certificate under your AppData folder.";
         Changed?.Invoke();
     }
 
@@ -171,8 +251,14 @@ internal sealed class RemoteServerService : IAsyncDisposable
             catch (OperationCanceledException) { }
         }
         _broadcastTask = null;
+        await _mdns.StopAsync();
         lifetime?.Dispose();
+        _tlsMaterial = null;
+        _lanAddress = null;
         Address = string.Empty;
+        SecureAddress = string.Empty;
+        OnboardingAddress = string.Empty;
+        DiscoveryStatus = "mDNS discovery is off";
         CurrentPairing = null;
         Status = "Remote Control is off";
         NetworkHint = "Enable Remote Control while the PC and phone are on the same private Wi-Fi/LAN.";
@@ -187,9 +273,59 @@ internal sealed class RemoteServerService : IAsyncDisposable
 
     public void RegeneratePairing()
     {
-        if (_app is null || string.IsNullOrWhiteSpace(Address)) return;
-        CurrentPairing = _pairing.CreatePairing(Address);
+        if (_app is null || string.IsNullOrWhiteSpace(SecureAddress)) return;
+        CurrentPairing = CreateOnboardingPairing();
         Changed?.Invoke();
+    }
+
+    private RemotePairingInfo CreateOnboardingPairing()
+    {
+        RemotePairingInfo securePairing = _pairing.CreatePairing(SecureAddress);
+        string query = new Uri(securePairing.Url).Query;
+        string onboardingUrl = $"{OnboardingAddress}{query}";
+        return new RemotePairingInfo(onboardingUrl, securePairing.Code, securePairing.ExpiresAt);
+    }
+
+    private async Task HandleOnboardingAsync(HttpContext context)
+    {
+        string querySuffix = context.Request.QueryString.HasValue ? context.Request.QueryString.Value ?? string.Empty : string.Empty;
+        string secureIpTarget = _lanAddress is null
+            ? SecureAddress
+            : $"https://{_lanAddress}:{_settings.SecurePort}/{querySuffix}";
+        string stableTarget = $"https://{RemoteTlsService.StableHostName}:{_settings.SecurePort}/{querySuffix}";
+        string safeSecureIp = WebUtility.HtmlEncode(secureIpTarget);
+        string safeStable = WebUtility.HtmlEncode(stableTarget);
+        string safeHost = WebUtility.HtmlEncode(RemoteTlsService.StableHostName);
+        string html = $$"""
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07111f">
+  <title>GrassiMote Secure Setup</title>
+  <style>
+    :root{color-scheme:dark;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:#07111f;color:#edf6ff}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 50% -10%,#123454,#07111f 48%);padding:24px 16px}
+    main{max-width:560px;margin:5vh auto;background:linear-gradient(145deg,#182d46,#0a1828);border:1px solid rgba(151,191,230,.17);border-radius:22px;padding:24px;box-shadow:0 18px 60px rgba(0,0,0,.28)}
+    .brand{font-size:.75rem;letter-spacing:.16em;color:#82a4c3;font-weight:800}.status{display:inline-block;border-radius:999px;padding:6px 10px;background:rgba(93,226,166,.1);color:#5de2a6;font-size:.78rem}
+    h1{font-size:2rem;margin:10px 0 8px}p{color:#a6b8ca;line-height:1.6}.step{margin-top:18px;padding:16px;border:1px solid rgba(151,191,230,.14);border-radius:16px;background:rgba(7,17,31,.45)}
+    .step strong{display:block;margin-bottom:6px}.button{display:block;text-align:center;text-decoration:none;margin-top:12px;padding:14px;border-radius:13px;font-weight:800;background:linear-gradient(135deg,#0e8cdb,#2abcf0);color:#001522}
+    .button.secondary{background:#10253c;color:#edf6ff;border:1px solid rgba(151,191,230,.15)}code{word-break:break-all;color:#60d5ff}.tiny{font-size:.78rem;color:#8198ad}
+  </style>
+</head>
+<body><main>
+  <div class="brand">GRASSIMOTE</div><span class="status">Local secure setup</span>
+  <h1>Trust this GrassiBoard once</h1>
+  <p>GrassiMote needs a trusted HTTPS origin for PWA installation and camera access. The private CA key stays on this Windows PC; only its public certificate is downloaded to your phone.</p>
+  <div class="step"><strong>1 · Install the local CA certificate</strong><p>Download the certificate, then install it as a <b>CA certificate</b> in Android. Menu wording varies by phone.</p><a class="button" href="/api/remote/ca.cer" download>Download GrassiMote CA</a><p class="tiny">Android may show a warning that a user CA can inspect secure traffic. Only keep this CA installed while you trust this PC.</p></div>
+  <div class="step"><strong>2 · Open secure GrassiMote</strong><p>After the certificate is installed, use the direct secure LAN IP. This is the compatible path for ordinary Wi-Fi and for Android phone-hotspot/mobile-data setups.</p><a class="button" href="{{safeSecureIp}}">Open secure GrassiMote</a><p class="tiny">Optional stable alias on networks where mDNS is available: <code>{{safeHost}}</code></p><a class="button secondary" href="{{safeStable}}">Try grassimote.local</a></div>
+  <p class="tiny">Both devices must be on the same local link. VPNs must allow local-network traffic. The .local alias is optional; direct secure IP access remains supported.</p>
+</main></body></html>
+""";
+        context.Response.Headers.CacheControl = "no-store";
+        context.Response.ContentType = "text/html; charset=utf-8";
+        await context.Response.WriteAsync(html, context.RequestAborted);
     }
 
     public async Task<bool> RevokeClientAsync(Guid clientId)
@@ -224,6 +360,16 @@ internal sealed class RemoteServerService : IAsyncDisposable
 
     private async Task HandlePairAsync(HttpContext context)
     {
+        if (!context.Request.IsHttps)
+        {
+            context.Response.StatusCode = StatusCodes.Status426UpgradeRequired;
+            await context.Response.WriteAsJsonAsync(
+                new { error = "Pairing is available only on the secure GrassiMote HTTPS origin." },
+                RemoteProtocol.JsonOptions,
+                context.RequestAborted);
+            return;
+        }
+
         RemotePairRequest? request;
         try
         {
@@ -242,13 +388,19 @@ internal sealed class RemoteServerService : IAsyncDisposable
             return;
         }
 
-        if (!string.IsNullOrWhiteSpace(Address)) CurrentPairing = _pairing.CreatePairing(Address);
+        if (!string.IsNullOrWhiteSpace(OnboardingAddress)) CurrentPairing = CreateOnboardingPairing();
         Changed?.Invoke();
         await context.Response.WriteAsJsonAsync(response, RemoteProtocol.JsonOptions, context.RequestAborted);
     }
 
     private async Task HandleWebSocketAsync(HttpContext context)
     {
+        if (!context.Request.IsHttps)
+        {
+            context.Response.StatusCode = StatusCodes.Status426UpgradeRequired;
+            return;
+        }
+
         if (!context.WebSockets.IsWebSocketRequest)
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -438,6 +590,8 @@ internal sealed class RemoteServerService : IAsyncDisposable
     {
         _statePublisher.Invalidated -= OnStateInvalidated;
         await StopAsync();
+        await _mdns.DisposeAsync();
+        _tls.Dispose();
     }
 
     private sealed class RemoteClientConnection
@@ -521,12 +675,20 @@ internal sealed class RemoteServerService : IAsyncDisposable
 
         public async Task CloseAsync(WebSocketCloseStatus status, string description)
         {
+            using var closeTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(1));
             try
             {
                 if (Socket.State is WebSocketState.Open or WebSocketState.CloseReceived)
-                    await Socket.CloseAsync(status, description, CancellationToken.None);
+                    await Socket.CloseAsync(status, description, closeTimeout.Token);
             }
-            catch (WebSocketException) { }
+            catch (OperationCanceledException)
+            {
+                Socket.Abort();
+            }
+            catch (WebSocketException)
+            {
+                Socket.Abort();
+            }
         }
     }
 }

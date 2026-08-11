@@ -12,11 +12,13 @@
 - Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
 - Media Deck: streaming local-media decode with bounded read-ahead, buffered independent headphone monitor, full microphone-path-aligned virtual send, transport, meter, and safe missing-file state
 
-## v1.1.0 Remote Control implementation candidate — NOT USER ACCEPTED
+## v1.1.0 GrassiMote Remote Control — MANUAL ACCEPTANCE PASSED / FINAL CI PENDING
 
-Remote Control v1.1.0 is under test and does not replace the accepted v1.0.1 stable baseline yet. The candidate adds a LAN-only embedded Kestrel server, authenticated pairing/revoke, protocol-v1 authoritative WebSocket state, and a generated Nuxt 4/Vue 3 mobile SPA for Board, Voice, compact Mixer, Media, Mic Mute, Stop All, and remote Engine Start. Native ABI remains 8 and the accepted microphone/DSP/VB-CABLE route is unchanged.
+On 2026-08-11 the user completed the real Windows + Android v1.1 test and explicitly confirmed that the secure GrassiMote PWA and live Remote controls work correctly. The tested compatibility path is `https://<LAN-IP>:47919/`: Android trusts the per-PC GrassiMote CA, the PWA installs to the Home Screen, in-app QR pairing succeeds, WSS reaches Connected, and Board/Voice/Mixer/Media controls apply to the Windows app in realtime. `grassimote.local` remains an optional convenience alias because Android hotspot/mobile-data and some routers/VPNs do not resolve `.local` reliably.
 
-The candidate must pass GitHub Actions and the real Windows + Android manual matrix before it can become the current accepted release. v1.2 remains blocked.
+The accepted v1.0.1 native audio baseline remains unchanged: native ABI 8, physical-microphone Voice DSP, Soundboard/Media, and the external VB-CABLE Program Mix route are not replaced by Remote Control. v1.1 adds only the managed LAN server/control boundary, authenticated pairing, Nuxt 4/Vue 3 GrassiMote client, HTTPS/WSS secure origin, PWA/offline shell, and QR camera onboarding.
+
+The only remaining release gate is a clean GitHub Actions run from the consolidated source, including the committed `pnpm-lock.yaml` and frozen RemoteWeb dependency restore. Until that CI run is green, v1.0.1 remains the published stable baseline and v1.2 Remote Monitor remains blocked.
 
 ## v1.0.0 final release candidate
 
