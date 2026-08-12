@@ -1,0 +1,58 @@
+GrassiBoard v1.2.0 — Hotfix / Implementation 29
+Gate 4A: Independent Windows + Soundboard Remote Monitor Mix
+
+Baseline
+--------
+Apply this on top of the current working tree where Hotfix 28 has already been applied
+and the ABI-9 Soundboard tap has passed the real Windows + Android manual test.
+
+What this build adds
+--------------------
+- New `monitor-mix` Remote Monitor source.
+- Mixes two already-validated sources into one independent monitor bus:
+    Windows default output / Space
+    + ABI-9 raw Soundboard tap
+- One paced 20 ms worker performs the mix and one 128 kbps Opus encode/send.
+- Live monitor-only gains in GrassiMote:
+    Windows / Space = 90% default
+    Soundboard      = 70% default
+    Monitor Master  = 85% default
+- Server-side validation for all monitor gain updates (0.0..1.0).
+- Monitor controls do not write to Program Soundboard Gain, Program Master, or VB-CABLE.
+- Existing Windows output, Soundboard tap, and synthetic test sources remain available.
+- Bounded Windows loopback buffering prevents accumulated monitor-only delay after stalls.
+- Service-worker shell cache bumped to v13.
+- Smoke-test expectations and remote-development docs updated.
+- Gate 3 Soundboard tap manual acceptance recorded.
+
+Intentionally NOT included yet
+------------------------------
+Gate 4A deliberately stops at the two already-validated sources.
+Direct Media contribution + duplicate prevention is the next isolated gate.
+Processed microphone / My Voice remains a later opt-in gate and stays out of this build.
+
+Apply
+-----
+Extract this ZIP into the GrassiBoard repository root and overwrite existing files.
+
+Build / run
+-----------
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -RemoteMonitorSpike -Run -RunSmokeTests
+
+Manual Gate 4A test
+-------------------
+1. Start the GrassiBoard engine.
+2. GrassiMote -> Monitor -> stop any preserved session.
+3. Select Monitor mix -> Start Monitor Mix.
+4. Confirm Streaming / Peer connected / ICE connected / Track received.
+5. Play Windows audio and trigger Pads together: both must be audible.
+6. Windows / Space -> 0%: Windows audio disappears, Pads remain.
+7. Restore it; Soundboard -> 0%: Pads disappear, Windows audio remains.
+8. Monitor Master -> 0%: the whole phone monitor becomes silent.
+9. Restore levels and verify Program/VB-CABLE is unchanged.
+10. Change normal Program Soundboard Gain/Master: monitor-only source levels must remain independent.
+11. Run mixed audio for a few minutes and check for stutter, clicks, double Soundboard, drift, or growing delay.
+12. Stop and briefly retest isolated Windows output and Soundboard tap sources.
+13. Minimize/restore or change GrassiMote route once to verify PWA recovery is not regressed.
+
+Do not mark v1.2 accepted yet. Gate 4A requires explicit real-device approval first.

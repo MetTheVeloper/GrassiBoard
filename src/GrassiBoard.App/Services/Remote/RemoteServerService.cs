@@ -1,4 +1,4 @@
-using System.Buffers;
+﻿using System.Buffers;
 using System.Net;
 using System.Net.WebSockets;
 using System.Text;
@@ -26,6 +26,12 @@ internal sealed class RemoteServerService : IAsyncDisposable
     private readonly RemoteStatePublisher _statePublisher;
     private readonly RemoteTlsService _tls = new();
     private readonly RemoteMdnsService _mdns = new();
+#if REMOTE_MONITOR_SPIKE
+    private readonly RemoteMonitorWebRtcSpikeService _monitorSpike;
+    private const bool RemoteMonitorSpikeAvailable = true;
+#else
+    private const bool RemoteMonitorSpikeAvailable = false;
+#endif
     private readonly Channel<long> _invalidations = Channel.CreateBounded<long>(new BoundedChannelOptions(1)
     {
         SingleReader = true,
@@ -44,13 +50,20 @@ internal sealed class RemoteServerService : IAsyncDisposable
         RemoteSettingsDocument settings,
         RemotePairingService pairing,
         RemoteCommandDispatcher commands,
-        RemoteStatePublisher statePublisher)
+        RemoteStatePublisher statePublisher
+#if REMOTE_MONITOR_SPIKE
+        , RemoteMonitorWebRtcSpikeService monitorSpike
+#endif
+        )
     {
         _settingsStore = settingsStore;
         _settings = settings;
         _pairing = pairing;
         _commands = commands;
         _statePublisher = statePublisher;
+#if REMOTE_MONITOR_SPIKE
+        _monitorSpike = monitorSpike;
+#endif
         _statePublisher.Invalidated += OnStateInvalidated;
     }
 
@@ -123,7 +136,8 @@ internal sealed class RemoteServerService : IAsyncDisposable
             secureOrigin = SecureAddress,
             onboardingOrigin = OnboardingAddress,
             stableHost = RemoteTlsService.StableHostName,
-            mdnsAvailable = _mdns.IsRunning
+            mdnsAvailable = _mdns.IsRunning,
+            remoteMonitorSpikeAvailable = RemoteMonitorSpikeAvailable
         }, RemoteProtocol.JsonOptions));
 
         app.MapGet("/api/remote/ca.cer", () =>
@@ -234,6 +248,9 @@ internal sealed class RemoteServerService : IAsyncDisposable
 
         RemoteClientConnection[] clients;
         lock (_clientsGate) clients = _clients.ToArray();
+#if REMOTE_MONITOR_SPIKE
+        await _monitorSpike.CloseAllAsync("Remote server stopped");
+#endif
         foreach (RemoteClientConnection client in clients)
         {
             await client.CloseAsync(WebSocketCloseStatus.NormalClosure, "Remote server stopped");
@@ -445,6 +462,9 @@ internal sealed class RemoteServerService : IAsyncDisposable
             await client.SendAckAsync(auth.MessageId, "connection.auth");
             RemoteStateSnapshot initial = await _commands.CreateSnapshotAsync(_statePublisher.Revision);
             await client.SendSnapshotAsync(initial);
+#if REMOTE_MONITOR_SPIKE
+            await _monitorSpike.RebindClientAsync(client.ClientId, client.SendEventAsync);
+#endif
 
             while (socket.State == WebSocketState.Open && !context.RequestAborted.IsCancellationRequested)
             {
@@ -477,6 +497,41 @@ internal sealed class RemoteServerService : IAsyncDisposable
                     continue;
                 }
 
+                if (envelope.Type.StartsWith("monitor.spike.", StringComparison.Ordinal))
+                {
+#if REMOTE_MONITOR_SPIKE
+                    RemoteCommandResult spikeResult = envelope.Type switch
+                    {
+                        "monitor.spike.offer" => await _monitorSpike.HandleOfferAsync(
+                            client.ClientId,
+                            envelope.Payload,
+                            client.SendEventAsync),
+                        "monitor.spike.ice" => await _monitorSpike.HandleIceCandidateAsync(
+                            client.ClientId,
+                            envelope.Payload),
+                        "monitor.spike.mix.set" => await _monitorSpike.HandleMixSettingsAsync(
+                            client.ClientId,
+                            envelope.Payload),
+                        "monitor.spike.stop" => await _monitorSpike.StopAsync(client.ClientId),
+                        _ => RemoteCommandResult.Fail("monitor_spike_unknown_message", "Unknown Remote Monitor spike message.")
+                    };
+
+                    if (spikeResult.Success)
+                        await client.SendAckAsync(envelope.MessageId, envelope.Type);
+                    else
+                        await client.SendErrorAsync(
+                            envelope.MessageId,
+                            spikeResult.ErrorCode ?? "monitor_spike_failed",
+                            spikeResult.ErrorMessage ?? "Remote Monitor spike command failed.");
+#else
+                    await client.SendErrorAsync(
+                        envelope.MessageId,
+                        "monitor_spike_unavailable",
+                        "This build does not include the v1.2 Remote Monitor technology spike.");
+#endif
+                    continue;
+                }
+
                 RemoteCommandResult result = await _commands.ExecuteAsync(envelope);
                 if (result.Success)
                 {
@@ -499,6 +554,9 @@ internal sealed class RemoteServerService : IAsyncDisposable
         }
         finally
         {
+            // Do not tear down an active WebRTC monitor just because the control
+            // WebSocket was backgrounded or briefly lost. The monitor is keyed
+            // by the stable paired client id and can be rebound when WSS returns.
             lock (_clientsGate) _clients.Remove(client);
             Changed?.Invoke();
         }
@@ -590,6 +648,9 @@ internal sealed class RemoteServerService : IAsyncDisposable
     {
         _statePublisher.Invalidated -= OnStateInvalidated;
         await StopAsync();
+#if REMOTE_MONITOR_SPIKE
+        await _monitorSpike.DisposeAsync();
+#endif
         await _mdns.DisposeAsync();
         _tls.Dispose();
     }
@@ -609,6 +670,7 @@ internal sealed class RemoteServerService : IAsyncDisposable
         }
 
         public WebSocket Socket { get; }
+        public Guid ConnectionId { get; } = Guid.NewGuid();
         public Guid ClientId { get; private set; }
         public string Name { get; private set; } = string.Empty;
         public bool Authenticated => ClientId != Guid.Empty;
@@ -655,6 +717,14 @@ internal sealed class RemoteServerService : IAsyncDisposable
             type = "state.snapshot",
             revision = snapshot.Revision,
             payload = snapshot
+        });
+
+        public Task SendEventAsync(string type, object payload) => SendAsync(new
+        {
+            protocolVersion = RemoteProtocol.Version,
+            type,
+            revision = 0,
+            payload
         });
 
         public async Task SendAsync(object message)

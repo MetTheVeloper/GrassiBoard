@@ -14,7 +14,10 @@ interface RemoteInfo {
   onboardingOrigin?: string
   stableHost?: string
   mdnsAvailable?: boolean
+  remoteMonitorSpikeAvailable?: boolean
 }
+
+type RemoteMessageHandler = (message: RemoteEnvelope<any>) => void | Promise<void>
 
 const protocolVersion = 1
 let socket: WebSocket | null = null
@@ -23,6 +26,33 @@ let reconnectAttempt = 0
 let initialized = false
 let authTimer: ReturnType<typeof setTimeout> | null = null
 let snackbarTimer: ReturnType<typeof setTimeout> | null = null
+const messageHandlers = new Map<string, Set<RemoteMessageHandler>>()
+
+function subscribeMessage(type: string, handler: RemoteMessageHandler) {
+  let handlers = messageHandlers.get(type)
+  if (!handlers) {
+    handlers = new Set<RemoteMessageHandler>()
+    messageHandlers.set(type, handlers)
+  }
+  handlers.add(handler)
+
+  return () => {
+    const current = messageHandlers.get(type)
+    if (!current) return
+    current.delete(handler)
+    if (current.size === 0) messageHandlers.delete(type)
+  }
+}
+
+function dispatchSubscribedMessage(message: RemoteEnvelope<any>) {
+  const handlers = messageHandlers.get(message.type)
+  if (!handlers?.size) return
+  for (const handler of [...handlers]) {
+    try {
+      Promise.resolve(handler(message)).catch(() => { /* Isolate feature listeners from the core Remote socket. */ })
+    } catch { /* Isolate feature listeners from the core Remote socket. */ }
+  }
+}
 
 function normalizeOrigin(value: string) {
   return value.replace(/\/+$/, '')
@@ -263,6 +293,8 @@ export function useRemoteConnection() {
       return
     }
 
+    dispatchSubscribedMessage(message)
+
     if (message.type === 'connection.hello') {
       const token = getToken()
       if (!token || !socket) {
@@ -429,6 +461,7 @@ export function useRemoteConnection() {
     pairFromQr,
     refreshInfo,
     sendCommand,
+    subscribeMessage,
     showSnackbar,
     dismissSnackbar,
     vibrate,

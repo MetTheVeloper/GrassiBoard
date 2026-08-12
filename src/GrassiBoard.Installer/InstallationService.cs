@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -14,7 +14,7 @@ internal sealed record InstallProgress(double Percent, string Status);
 
 internal sealed class InstallationService
 {
-    internal const string ProductVersion = "1.1.0";
+    internal const string ProductVersion = "1.2.0";
     private const string ManifestFileName = ".grassiboard-install-manifest.json";
 
     public async Task InstallAsync(

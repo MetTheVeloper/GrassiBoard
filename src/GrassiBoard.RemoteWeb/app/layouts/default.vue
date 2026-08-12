@@ -13,12 +13,15 @@ const engineRunning = computed(() => remote.snapshot.value?.engine.running ?? fa
 const micMuted = computed(() => remote.snapshot.value?.microphoneMuted ?? false)
 const connectionTone = computed(() => remote.isConnected.value ? 'success' : (remote.connectionState.value === 'unauthorized' ? 'warning' : 'danger'))
 
-const navItems = [
+const navItems = computed(() => [
   { to: '/', label: 'Board', icon: 'board' },
   { to: '/voice', label: 'Voice', icon: 'voice' },
   { to: '/mixer', label: 'Mixer', icon: 'mixer' },
-  { to: '/media', label: 'Media', icon: 'media' }
-]
+  { to: '/media', label: 'Media', icon: 'media' },
+  ...(remote.serverInfo.value?.remoteMonitorSpikeAvailable
+    ? [{ to: '/monitor', label: 'Monitor', icon: 'headphones' }]
+    : [])
+])
 
 function toggleMute() {
   const current = micMuted.value
@@ -42,6 +45,7 @@ async function onDetected(value: string) {
 
 <template>
   <div class="app-shell">
+    <RemoteMonitorAudioHost />
     <template v-if="remote.paired.value && remote.isConnected.value">
       <aside class="adaptive-nav" aria-label="Remote sections">
         <div class="adaptive-nav__brand" aria-hidden="true">G</div>

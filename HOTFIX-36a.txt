@@ -1,0 +1,33 @@
+GrassiBoard v1.2.0 — Hotfix 36a
+Windows PowerShell 5.1 compatibility fix for Apply-Hotfix36-V12PersonalStable.ps1
+
+Cause
+-----
+Hotfix 36 used:
+  string.Contains(string, StringComparison)
+
+That overload exists in modern .NET / PowerShell 7, but the user's command runs
+Windows PowerShell 5.1 on .NET Framework, where that overload is unavailable.
+
+Fix
+---
+All comparison-aware Contains calls were replaced with the PowerShell 5.1-safe:
+  string.IndexOf(value, StringComparison) >= 0
+
+No GrassiBoard audio, WebRTC, ABI, UI, installer, or project logic is changed.
+
+Safety
+------
+The original failed run stopped while validating GrassiBoard.App.csproj, before
+the first Replace-Text migration step. Therefore it should not have partially
+modified installer/workflow/status files.
+
+Apply
+-----
+Extract this ZIP into the GrassiBoard repository root and overwrite the script.
+
+Then rerun:
+powershell -ExecutionPolicy Bypass -File .\tools\Apply-Hotfix36-V12PersonalStable.ps1
+
+If successful, continue with:
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -Run -RunSmokeTests

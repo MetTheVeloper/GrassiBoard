@@ -1,5 +1,24 @@
-# Changelog
+﻿# Changelog
 
+
+## [1.2.0] - 2026-08-12
+
+### Added
+- GrassiMote Remote Monitor over same-LAN WebRTC/Opus.
+- Independent Windows/Space, Soundboard, Media, and opt-in processed My Voice monitor sources.
+- Automatic Media duplicate prevention.
+- Phone-only source gains and monitor master.
+- Brutal-minimal six-tile Monitor control surface with direct tap/drag levels.
+
+### Changed
+- Native audio ABI baseline advances to 9 for v1.2.
+- Normal v1.2 builds enable the accepted Remote Monitor path by default.
+- Native engine version reports 1.2.0.
+
+### Notes
+- Program/VB-CABLE routing is unchanged.
+- Current v1.2 use is private/personal; dependency license review must be reopened before future public distribution.
+- Final USER ACCEPTED status is pending the production-candidate soak/package gate.
 All notable changes to GrassiBoard are documented in this file.
 
 ## [1.0.1] - 2026-08-10

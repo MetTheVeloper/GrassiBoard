@@ -1,0 +1,38 @@
+GrassiBoard v1.2.0 — Hotfix 36b
+ABI smoke-test engine-version assertion fix
+
+What happened
+-------------
+Hotfix 36 did exactly what it was supposed to do:
+- normal `windows-x64-release` configured with GRASSIBOARD_REMOTE_MONITOR_TAP=ON;
+- ABI-9 native DLL built successfully;
+- MonitorTapRing, Pitch, Soundboard, Mixer, Media and DriverTransport tests passed.
+
+The only failing test was:
+  GrassiBoard.AudioEngine.AbiSmokeTest
+  "Unexpected native engine version."
+
+Cause
+-----
+The production engine now correctly reports:
+  1.2.0
+
+But the native ABI smoke test still expected the old spike-only string:
+  1.2.0-spike
+
+Fix
+---
+Update that single test expectation to:
+  1.2.0
+
+No runtime/audio/WebRTC code is changed.
+
+Apply
+-----
+Extract this ZIP into the GrassiBoard repository root and overwrite files.
+
+Do NOT rerun Apply-Hotfix36-V12PersonalStable.ps1.
+It already completed successfully.
+
+Just rerun:
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -Run -RunSmokeTests

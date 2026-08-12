@@ -1,0 +1,26 @@
+GrassiBoard v1.2.0 Hotfix 28 — Native DLL path output fix
+
+What this fixes
+---------------
+The ABI-9 native build and tests can succeed, followed by:
+  Cannot bind argument to parameter 'LiteralPath' because it is an empty string.
+
+Cause
+-----
+Resolve-NativeDll is assigned to $nativeSource. CMake/MSBuild stdout emitted from
+inside that PowerShell function was also becoming function output, so $nativeSource
+could contain build log lines (including blank lines) in addition to the real DLL path.
+
+Changes
+-------
+- Pipe native CMake configure/build output to Out-Host.
+- Pipe one-time git submodule output to Out-Host for the same reason.
+- Validate/scalarize the resolved native DLL path before publish packaging.
+- No audio/DSP/WebRTC/ABI-9 monitor-tap behavior changed.
+
+Apply
+-----
+Extract into the GrassiBoard repository root and overwrite existing files.
+
+Then rerun:
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -RemoteMonitorSpike -Run -RunSmokeTests

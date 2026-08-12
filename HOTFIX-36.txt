@@ -1,0 +1,88 @@
+GrassiBoard v1.2.0 — Hotfix 36
+Personal-Stable Production Candidate
+
+This patch promotes the fully accepted v1.2 Remote Monitor implementation from
+the old spike-only build gate into the NORMAL v1.2 build path for the user's
+current private/personal use.
+
+IMPORTANT
+---------
+Because the live repository contains several v1.1/v1.2 files that were created
+before this chat and are newer than the original repository snapshot, Hotfix 36
+does NOT overwrite those live project/installer/workflow files blindly.
+
+After extracting the ZIP into the repository root, run the included migration
+script once. It validates the already-working live App.csproj before changing
+metadata.
+
+APPLY
+-----
+1. Extract this ZIP into the GrassiBoard repository root and overwrite files.
+2. Run:
+
+powershell -ExecutionPolicy Bypass -File .\tools\Apply-Hotfix36-V12PersonalStable.ps1
+
+3. Build the NORMAL v1.2 path (no -RemoteMonitorSpike):
+
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -Run -RunSmokeTests
+
+WHAT CHANGES
+------------
+- GrassiBoard version -> 1.2.0
+- normal managed builds enable the accepted Remote Monitor compile path
+- normal native windows-x64-release -> ABI 9 + monitor taps
+- native engine string -> 1.2.0
+- normal local builder rebuilds ABI 9 instead of reusing installed ABI 8
+- native + managed smoke tests run on the normal v1.2 path
+- installer/build metadata -> 1.2.0
+- SIPSorcery 10.0.13 remains the exact already-tested transport
+- dependency decision is recorded as accepted for CURRENT PRIVATE/PERSONAL USE
+- public distribution remains out of scope and must reopen license review
+
+UNCHANGED
+---------
+- VB-CABLE Program route
+- Voice DSP / Pitch / Formant
+- Soundboard behavior
+- Media behavior
+- Remote Monitor mixing logic
+- Opus 128 kbps VBR / complexity 10
+- GrassiMote brutal-minimal Monitor UI
+- pairing / HTTPS / WSS
+- all accepted v1.1 Remote Control behavior
+
+FINAL v1.2 VALIDATION
+---------------------
+After the build succeeds:
+
+A. Quick regression (5 minutes)
+[ ] Board pad from Windows + phone
+[ ] Voice Pitch/Formant
+[ ] Mixer controls
+[ ] Media transport
+[ ] Monitor Windows + Board + Media
+[ ] My Voice ON/OFF with headphones
+[ ] Monitor quick-tile tap/drag
+[ ] Media duplicate prevention
+[ ] Mic Mute / Stop All / Engine Start
+[ ] Program/VB-CABLE unchanged
+
+B. Soak (30–60 minutes)
+Run the full Monitor Mix continuously. Prefer:
+- Windows audio playing
+- occasional Sound Pads
+- Media playback/seek
+- My Voice enabled for part of the test with phone headphones
+
+Pass if:
+[ ] no growing delay
+[ ] no periodic crackle/stutter
+[ ] no engine dropout/crash
+[ ] no stale Media/Voice replay
+[ ] packet loss remains healthy
+[ ] memory/CPU do not obviously grow without bound
+[ ] GrassiMote controls remain responsive
+[ ] reconnect/foreground recovery still works
+
+Once the user explicitly approves this normal v1.2 build, v1.2 can be marked
+USER ACCEPTED and v1.3 Remote Phone Microphone work is unlocked.

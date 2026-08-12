@@ -1,0 +1,38 @@
+GrassiBoard v1.2.0 — Hotfix 36c
+Native version synchronization + clean ABI-9 rebuild
+
+Why 36b was not enough
+----------------------
+ABI 9 itself is loading (otherwise the API-version assertion would fail first),
+but the ABI smoke test is still seeing an engine version different from `1.2.0`.
+
+Hotfix 36c makes this deterministic:
+- runtime `audio_engine.cpp` is explicitly synchronized to `1.2.0`;
+- ABI smoke test explicitly expects `1.2.0`;
+- if it ever fails again, the test now prints the actual version it loaded;
+- a one-time PowerShell 5.1-safe reset script removes the native
+  `windows-x64-release` build cache so the next compile cannot reuse stale
+  CMake/MSBuild output.
+
+No audio/runtime behavior is changed.
+
+Apply
+-----
+1. Extract this ZIP into the GrassiBoard repository root and overwrite files.
+2. Do NOT rerun Apply-Hotfix36-V12PersonalStable.ps1.
+3. Run once:
+
+powershell -ExecutionPolicy Bypass -File .\tools\Reset-Hotfix36c-NativeBuild.ps1
+
+4. Then rerun the normal v1.2 build:
+
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -Run -RunSmokeTests
+
+Expected result
+---------------
+The native release preset is configured/built from scratch and all seven native
+tests should pass.
+
+If AbiSmokeTest still fails, its output will now include:
+  Expected '1.2.0', got '<actual-version>'
+which will identify the exact DLL/version being loaded.

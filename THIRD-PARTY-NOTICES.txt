@@ -1,4 +1,4 @@
-Signalsmith Stretch
+﻿Signalsmith Stretch
 https://github.com/Signalsmith-Audio/signalsmith-stretch
 Pinned commit: 57b93f4e9206a089a45387eaa39bdc9f310d3308
 
@@ -188,3 +188,17 @@ Copyright Google LLC.
 Bundled through @fontsource-variable/material-symbols-rounded.
 License: SIL Open Font License 1.1 (OFL-1.1).
 https://fonts.google.com/icons
+
+-------------------------------------------------------------------------------
+SIPSorcery 10.0.13
+Role: same-LAN WebRTC / ICE / SDP / RTP transport for GrassiBoard v1.2 Remote Monitor.
+Copyright: Aaron Clauson and SIPSorcery contributors.
+License: BSD 3-Clause plus the upstream Additional Use Restriction.
+Upstream license: sipsorcery-org/sipsorcery LICENSE.md
+Current GrassiBoard scope: private/personal use. Re-review before public distribution.
+
+Concentus 2.2.2
+Role: managed Opus codec used by the v1.2 Remote Monitor transport.
+Copyright: various rights holders including Xiph.Org Foundation and contributors.
+License: permissive Opus/Concentus redistribution terms; see lostromb/concentus LICENSE.
+-------------------------------------------------------------------------------

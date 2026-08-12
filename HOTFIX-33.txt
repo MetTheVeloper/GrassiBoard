@@ -1,0 +1,110 @@
+GrassiBoard v1.2.0 — Hotfix / UI Implementation 33
+Brutal Minimal Monitor UX
+
+Baseline
+--------
+Apply on top of Hotfix 32 / the currently accepted Gate 4C working tree.
+
+Gate 4C is now recorded as USER ACCEPTED (2026-08-12):
+- My Voice is clean and stable.
+- Pitch/Formant and Mic Mute behave correctly.
+- Program Mic Gain/Master remain independent.
+- No crackle, micro-stutter, or other audio artifact was reported.
+- The expected acoustic feedback loop disappears completely when phone
+  headphones/earbuds are used.
+
+What this patch changes
+-----------------------
+This is intentionally a UI/UX-only cleanup. It does NOT change the audio engine,
+monitor mixer, routing, WebRTC transport, Opus profile, ABI-9 taps, or VB-CABLE.
+
+The Monitor page is converted from a technology-spike dashboard into a compact
+daily control surface:
+
+FIRST GLANCE
+- Monitor / Live-Ready-Connecting-Muted state
+- Start / Stop Monitor
+- one-tap Monitor mute
+- compact Windows / Board / Media / Voice / Master values
+
+COLLAPSED BY DEFAULT
+1. Monitor levels
+   - Windows / Space
+   - Soundboard
+   - Media
+   - My Voice enable + level
+   - Monitor Master
+   - duplicate-prevention state shown only as a short "Via Windows" pill
+
+2. Connection details
+   - Opus / receive bitrate / jitter / lost packets
+   - Peer / ICE / Track status
+
+NESTED ADVANCED DIAGNOSTICS
+- Windows output isolated source
+- Soundboard tap isolated source
+- synthetic test tone
+- device / capture / Opus / ICE technical facts
+
+REMOVED FROM THE PRIMARY UI
+- Gate 4C labels
+- technology-spike hero copy
+- transport-gate explanations
+- persistent local-experiment warning
+- codec / ICE / capture walls of text
+- always-visible receiver diagnostics
+- always-visible source picker
+
+My Voice feedback guidance
+--------------------------
+The long permanent feedback explanation is removed.
+The first explicit My Voice enable now shows one short Snackbar:
+  "Headphones recommended for My Voice to prevent feedback."
+The hint is remembered locally and is not shown on every enable.
+
+PWA
+---
+Service-worker shell cache advances to:
+  grassimote-shell-v16
+
+Apply
+-----
+Extract this ZIP into the GrassiBoard repository root and overwrite existing files.
+
+Build / run
+-----------
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -RemoteMonitorSpike -Run -RunSmokeTests
+
+Focused UI/UX test
+------------------
+1. Open GrassiMote -> Monitor.
+2. At first glance, verify the page is compact:
+   - no Gate/spike wall of text;
+   - no technical diagnostics in the open page;
+   - Start/Stop and Monitor mute are immediately reachable;
+   - Windows/Board/Media/Voice/Master summary is visible.
+3. Start Monitor normally.
+   - It must always start the full Monitor Mix.
+4. Expand "Monitor levels".
+   - all existing five controls must still work exactly as before.
+5. Test Media duplicate prevention.
+   - the compact Media state should show "Via Windows" when suppression is active.
+6. Enable My Voice.
+   - first enable should show the short headphones Snackbar;
+   - no permanent warning paragraph should occupy the page.
+7. Collapse Monitor levels.
+8. Expand "Connection details".
+   - bitrate, jitter, packet loss, Peer, ICE, and Track must still be available.
+9. Open "Advanced diagnostics".
+   - Windows, Soundboard, and Test tone isolated source tests must still be available.
+   - stop the active session before switching isolated diagnostic sources.
+10. Stop a diagnostic source and tap the normal top-level "Start monitor".
+    - it must return to the full Monitor Mix, not restart the diagnostic source.
+11. Navigate away/back and minimize/restore once.
+    - existing session preservation/recovery must remain unchanged.
+12. Confirm Board/Voice/Mixer/Media pages and all audio behavior remain unchanged.
+
+Acceptance
+----------
+This UI cleanup is complete only after the user confirms the compact Monitor page
+feels right on the real phone and all hidden-on-demand controls remain accessible.

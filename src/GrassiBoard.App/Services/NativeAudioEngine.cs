@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text.Json;
 using GrassiBoard.Models;
 
@@ -6,7 +6,11 @@ namespace GrassiBoard.Services;
 
 internal sealed partial class NativeAudioEngine : IDisposable
 {
+    #if REMOTE_MONITOR_SPIKE
+    internal const uint ExpectedApiVersion = 9U;
+#else
     internal const uint ExpectedApiVersion = 8U;
+#endif
     private nint _engine;
 
     public uint ApiVersion { get; private set; }
@@ -78,6 +82,70 @@ internal sealed partial class NativeAudioEngine : IDisposable
     public NativeResult SetMediaMonitorLatency(uint latencyFrames) =>
         NativeMethods.SetMediaMonitorLatency(_engine, latencyFrames);
     public NativeResult GetStatistics(out AudioStatistics statistics) => NativeMethods.GetAudioStatistics(_engine, out statistics);
+
+#if REMOTE_MONITOR_SPIKE
+    public NativeResult SetMonitorTapEnabled(bool enabled) =>
+        NativeMethods.SetMonitorTapEnabled(_engine, enabled ? 1U : 0U);
+
+    public NativeResult ClearMonitorTap() => NativeMethods.ClearMonitorTap(_engine);
+
+    public unsafe NativeResult ReadMonitorTap(
+        float[] interleavedStereo,
+        uint frameOffset,
+        uint capacityFrames,
+        out uint readFrames)
+    {
+        if (frameOffset > int.MaxValue || capacityFrames > int.MaxValue ||
+            ((ulong)frameOffset + capacityFrames) * 2UL > (ulong)interleavedStereo.LongLength)
+        {
+            readFrames = 0U;
+            return NativeResult.InvalidArgument;
+        }
+
+        fixed (float* pointer = interleavedStereo)
+        {
+            return NativeMethods.ReadMonitorTap(
+                _engine,
+                pointer + checked((int)frameOffset * 2),
+                capacityFrames,
+                out readFrames);
+        }
+    }
+
+    public NativeResult GetMonitorTapStatistics(out MonitorTapStatistics statistics) =>
+        NativeMethods.GetMonitorTapStatistics(_engine, out statistics);
+
+    public NativeResult SetVoiceMonitorTapEnabled(bool enabled) =>
+        NativeMethods.SetVoiceMonitorTapEnabled(_engine, enabled ? 1U : 0U);
+
+    public NativeResult ClearVoiceMonitorTap() => NativeMethods.ClearVoiceMonitorTap(_engine);
+
+    public unsafe NativeResult ReadVoiceMonitorTap(
+        float[] interleavedStereo,
+        uint frameOffset,
+        uint capacityFrames,
+        out uint readFrames)
+    {
+        if (frameOffset > int.MaxValue || capacityFrames > int.MaxValue ||
+            ((ulong)frameOffset + capacityFrames) * 2UL > (ulong)interleavedStereo.LongLength)
+        {
+            readFrames = 0U;
+            return NativeResult.InvalidArgument;
+        }
+
+        fixed (float* pointer = interleavedStereo)
+        {
+            return NativeMethods.ReadVoiceMonitorTap(
+                _engine,
+                pointer + checked((int)frameOffset * 2),
+                capacityFrames,
+                out readFrames);
+        }
+    }
+
+    public NativeResult GetVoiceMonitorTapStatistics(out MonitorTapStatistics statistics) =>
+        NativeMethods.GetVoiceMonitorTapStatistics(_engine, out statistics);
+#endif
 
     public unsafe NativeResult LoadSound(ulong key, float[] samples, ulong frameCount)
     {
@@ -214,10 +282,52 @@ internal sealed partial class NativeAudioEngine : IDisposable
         [LibraryImport(LibraryName, EntryPoint = "gb_get_audio_statistics")]
         internal static partial NativeResult GetAudioStatistics(nint engine, out AudioStatistics statistics);
 
+
+#if REMOTE_MONITOR_SPIKE
+        [LibraryImport(LibraryName, EntryPoint = "gb_monitor_tap_set_enabled")]
+        internal static partial NativeResult SetMonitorTapEnabled(nint engine, uint enabled);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_monitor_tap_clear")]
+        internal static partial NativeResult ClearMonitorTap(nint engine);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_monitor_tap_read")]
+        internal static partial NativeResult ReadMonitorTap(
+            nint engine, float* interleavedStereo, uint capacityFrames, out uint readFrames);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_monitor_tap_get_statistics")]
+        internal static partial NativeResult GetMonitorTapStatistics(nint engine, out MonitorTapStatistics statistics);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_voice_monitor_tap_set_enabled")]
+        internal static partial NativeResult SetVoiceMonitorTapEnabled(nint engine, uint enabled);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_voice_monitor_tap_clear")]
+        internal static partial NativeResult ClearVoiceMonitorTap(nint engine);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_voice_monitor_tap_read")]
+        internal static partial NativeResult ReadVoiceMonitorTap(
+            nint engine, float* interleavedStereo, uint capacityFrames, out uint readFrames);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_voice_monitor_tap_get_statistics")]
+        internal static partial NativeResult GetVoiceMonitorTapStatistics(nint engine, out MonitorTapStatistics statistics);
+#endif
+
         [LibraryImport(LibraryName, EntryPoint = "gb_get_last_error")]
         internal static partial NativeResult GetLastError(nint engine, nint buffer, uint capacity, out uint required);
     }
 }
+
+
+#if REMOTE_MONITOR_SPIKE
+[StructLayout(LayoutKind.Sequential)]
+internal struct MonitorTapStatistics
+{
+    public uint StructSize;
+    public uint Enabled;
+    public uint FillFrames;
+    public uint CapacityFrames;
+    public ulong OverrunCount;
+}
+#endif
 
 [StructLayout(LayoutKind.Sequential)]
 internal struct MixerSettings

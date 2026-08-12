@@ -31,6 +31,7 @@ const symbols: Record<string, string> = {
   replay10: 'replay_10',
   forward10: 'forward_10',
   headphones: 'headphones',
+  science: 'science',
   output: 'output',
   reset: 'restart_alt',
   qr: 'qr_code_scanner',

@@ -272,7 +272,8 @@ md-circular-progress { --md-circular-progress-active-indicator-color: var(--gb-p
   width: min(calc(100% - 20px), 680px);
   min-height: 72px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 2px;
   padding: 6px;
   border: 1px solid var(--gb-outline-variant);
@@ -664,4 +665,90 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
   .session-health { gap: 5px; }
   .danger-hold--compact span:not(.danger-hold__progress):not(.danger-hold__content) { display: none; }
   .floating-session-actions { right: 14px; gap: 8px; }
+}
+
+
+/* v1.2 isolated WebRTC/Opus technology-spike surface. */
+.monitor-spike-page { padding-bottom: 20px; }
+.monitor-spike-status,
+.monitor-spike-player { padding: clamp(18px, 4vw, 26px); display: grid; gap: var(--gb-space-4); }
+.monitor-spike-status__hero { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+.monitor-spike-status__hero h3 { margin: 2px 0 4px; }
+.monitor-spike-status__hero p:last-child { margin: 0; color: var(--gb-on-surface-variant); line-height: 1.45; }
+.gb-control-icon--large { width: 54px; height: 54px; }
+.monitor-spike-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--gb-outline-variant); border-radius: var(--gb-radius-md); background: var(--gb-outline-variant); }
+.monitor-spike-facts > div { min-height: 68px; padding: 12px 14px; display: grid; align-content: center; gap: 3px; background: var(--gb-surface-container); }
+.monitor-spike-facts span, .monitor-diagnostics span { color: var(--gb-on-surface-variant); font-size: .72rem; }
+.monitor-spike-facts strong { font-size: .88rem; }
+.monitor-audio--hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.monitor-listen-toggle { width: 100%; }
+.monitor-listen-toggle :is(md-filled-button, md-filled-tonal-button, md-outlined-button) { width: 100%; }
+.monitor-spike-detail { min-height: 2.6em; margin: 0; color: var(--gb-on-surface-variant); line-height: 1.45; }
+.monitor-diagnostics { display: flex; flex-wrap: wrap; gap: 8px; }
+.monitor-diagnostics span { padding: 7px 10px; border: 1px solid var(--gb-outline-variant); border-radius: var(--gb-radius-full); background: var(--gb-surface-container); }
+.monitor-diagnostics strong { color: var(--gb-on-surface); font-weight: 750; }
+.monitor-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.monitor-spike-warning { padding: 15px 17px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; border-color: rgba(255, 199, 91, .24); background: rgba(71, 50, 13, .28); color: var(--gb-on-surface); }
+.monitor-spike-warning > .gb-icon { color: var(--gb-warning); margin-top: 1px; }
+.monitor-spike-warning p { margin: 3px 0 0; color: var(--gb-on-surface-variant); font-size: .78rem; line-height: 1.45; }
+
+@media (max-width: 520px) {
+  .monitor-spike-status__hero { grid-template-columns: auto minmax(0, 1fr); }
+  .monitor-spike-status__hero > .gb-status-chip { grid-column: 1 / -1; justify-self: start; }
+  .monitor-spike-facts { grid-template-columns: 1fr; }
+}
+
+@media (orientation: landscape) and (max-height: 620px) and (min-width: 680px) {
+  .monitor-spike-page { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; }
+  .monitor-spike-page > .section-heading { grid-column: 1 / -1; }
+  .monitor-spike-warning { grid-column: 1 / -1; }
+}
+
+/* v1.2 real-audio spike source selector */
+.monitor-source-picker {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--gb-outline-variant);
+  border-radius: var(--gb-radius-md);
+  background: var(--gb-surface-container);
+}
+.monitor-source-picker > p {
+  margin: 0;
+  color: var(--gb-on-surface-variant);
+  font-size: .78rem;
+  line-height: 1.45;
+}
+.monitor-source-picker__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.monitor-quality {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.monitor-quality > div {
+  min-height: 58px;
+  padding: 10px 12px;
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  border: 1px solid var(--gb-outline-variant);
+  border-radius: var(--gb-radius-sm);
+  background: var(--gb-surface-container);
+}
+.monitor-quality span { color: var(--gb-on-surface-variant); font-size: .72rem; }
+.monitor-quality strong { color: var(--gb-on-surface); font-size: .9rem; }
+@media (max-width: 420px) {
+  .monitor-quality { grid-template-columns: 1fr 1fr; }
 }

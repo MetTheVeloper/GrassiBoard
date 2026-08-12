@@ -1,0 +1,140 @@
+GrassiBoard v1.2.0 — Hotfix / Implementation 31
+Gate 4B: Direct Media contribution + automatic duplicate prevention
+
+Baseline / status
+-----------------
+Apply this on top of the current tree with Hotfix 30 already applied.
+
+Gate 4A is now recorded as USER ACCEPTED (2026-08-12):
+- Windows / Space + Soundboard Monitor Mix clean
+- monitor-only gains passed
+- Program/VB-CABLE isolation passed
+- Android receive bitrate ~128–133 kbps
+- jitter ~7–11 ms
+- packet loss 0
+- previous mix-only crackle/micro-stutter fully resolved
+
+What Gate 4B adds
+-----------------
+1. Direct Media contribution
+   MediaDeckService now exposes a bounded managed Remote Monitor tap:
+   - 48 kHz
+   - stereo
+   - float
+   - fed from the already-decoded Media Deck worker
+   - separate from Program/VB-CABLE routing
+
+2. Media monitor-only gain
+   GrassiMote Monitor Mix now exposes:
+   - Windows / Space      90% default
+   - Soundboard           70% default
+   - Media                70% default
+   - Monitor Master       85% default
+
+   The Media slider is phone-monitor-only. It does not change Program Media
+   routing or the normal Media Deck volume.
+
+3. Automatic duplicate prevention
+   If Media local monitoring is ON and its selected monitor endpoint is the
+   same endpoint currently captured by Windows WASAPI loopback:
+   - direct Media tap is automatically suppressed;
+   - Media is heard once through Windows / Space;
+   - stale direct-tap backlog is cleared;
+   - GrassiMote reports "Included through Windows / Space".
+
+   If local Media monitoring is OFF, or is routed to a different endpoint:
+   - direct Media mode is used;
+   - the dedicated Media monitor gain applies again.
+
+   Important expected behavior:
+   While duplicate suppression is active, the dedicated Media slider does not
+   alter the already-embedded Media inside Windows / Space. The Media slider
+   value is retained for when direct mode resumes.
+
+4. Timing / continuity
+   - direct Media is consumed only as complete 20 ms frames;
+   - a small 2-frame prebuffer is used before direct contribution;
+   - the tap reservoir capacity is 24 blocks (~480 ms capacity), deliberately
+     larger than existing Program Media read-ahead so burst filling does not
+     drop the oldest ahead-of-playback Media;
+   - 480 ms is buffer CAPACITY, not a target delay.
+
+5. Existing accepted behavior preserved
+   - ABI stays experimental ABI-9 for this spike; no new native ABI change here.
+   - Opus remains 128 kbps VBR / complexity 10.
+   - accepted Windows/Soundboard mix cadence and limiter remain unchanged.
+   - Program/VB-CABLE path is untouched.
+   - My Voice / processed mic is still NOT included.
+   - service-worker shell cache bumped to v14.
+
+Automated/source contracts updated
+----------------------------------
+Smoke-test contracts were extended for:
+- Media tap presence and bounded capacity
+- Media gain validation
+- duplicate-suppression logic
+- stale-tap clearing
+- MainViewModel wiring
+- GrassiMote Media state/control
+- Gate 4B UI text
+- service-worker cache v14
+
+The actual Windows build and real-device behavior still require the normal
+user-run build/test gate.
+
+Apply
+-----
+Extract this ZIP into the GrassiBoard repository root and overwrite existing files.
+
+Build / run
+-----------
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -RemoteMonitorSpike -Run -RunSmokeTests
+
+Focused Gate 4B manual test
+---------------------------
+A. Direct Media path
+1. Start GrassiBoard Engine.
+2. GrassiMote -> Monitor -> stop any preserved monitor session.
+3. Select Monitor mix -> Start Monitor Mix.
+4. Load a recognizable Media file in the Windows Media Deck.
+5. Turn Media local monitor OFF.
+6. Play Media.
+7. Media MUST still be audible on the phone through the direct Media tap.
+8. Set Media monitor gain to 0%:
+   - Media disappears from phone
+   - Windows / Space remains
+   - Soundboard remains
+   - Program/VB-CABLE remains unchanged
+9. Restore Media gain and exercise Play/Pause, Stop, +/-10 s / seek, resume.
+
+B. Duplicate prevention
+10. Enable Media local monitor on Windows.
+11. Select the SAME physical Windows output endpoint that Remote Monitor is
+    currently capturing.
+12. GrassiMote should report:
+    "Included through Windows / Space"
+13. Play Media and listen carefully:
+    - only one Media copy
+    - no echo
+    - no comb-filter / phasey sound
+    - no sudden doubled loudness
+14. While this suppression is active, Media is embedded in Windows / Space,
+    so changing Windows / Space gain changes that heard Media too.
+15. The dedicated Media slider is retained for direct mode and is not expected
+    to separate Media from Windows while duplicate suppression is active.
+
+C. Return to direct mode
+16. Turn Media local monitor OFF, OR route it to a different output endpoint.
+17. GrassiMote should return to direct Media mode.
+18. Confirm there is NO stale Media replay/catch-up burst.
+19. Dedicated Media gain should work independently again.
+
+D. Stability / regression
+20. Run Windows audio + Soundboard + Media together for several minutes.
+21. Check for crackle, micro-stutter, clipping, doubled Media, growing delay,
+    stale playback after seek/stop, or drift.
+22. Confirm normal Program/VB-CABLE Media behavior is unchanged.
+23. Briefly retest isolated Windows output and Soundboard tap sources.
+24. Record receive bitrate, jitter, packet loss, and any audible latency.
+
+Do NOT mark Gate 4B or v1.2 accepted until the real-device test is explicitly approved.

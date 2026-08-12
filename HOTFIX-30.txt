@@ -1,0 +1,76 @@
+GrassiBoard v1.2.0 — Hotfix / Implementation 30
+Gate 4A stability follow-up: Monitor Mix crackle / micro-stutter
+
+Why this exists
+---------------
+The first real-device Monitor Mix test passed all functional isolation controls:
+- Windows / Space gain
+- Soundboard gain
+- Monitor Master
+- Program/VB-CABLE independence
+
+Android also reported roughly 145–155 kbps receive bitrate and 7–10 ms jitter.
+
+However, a mild scratchy / micro-stutter texture was audible only in `monitor-mix`.
+The already accepted isolated `windows-loopback` and `soundboard-tap` paths stayed clean,
+so Gate 4A is intentionally NOT marked accepted yet.
+
+What changed
+------------
+1. Mixer cadence
+   The Monitor Mix worker no longer cuts source data on managed 20 ms timer boundaries.
+   It accumulates one complete ABI-9 Soundboard frame and uses that native audio clock
+   as the mix cadence, matching the already clean isolated Soundboard path.
+
+2. Windows loopback framing
+   WASAPI callback chunks can arrive in bursts smaller/larger than 20 ms.
+   Monitor Mix now:
+   - never consumes a partial Windows frame;
+   - primes a small 40 ms reservoir before Windows contribution starts/restarts;
+   - consumes exactly one complete 20 ms frame at a time;
+   - keeps the monitor-only queue bounded.
+
+   This is designed to remove repeated zero-padding micro-gaps.
+
+3. Monitor-only peak limiter
+   Windows + Soundboard can sum above 0 dBFS even when both isolated sources are clean.
+   A transparent monitor-only peak limiter now uses immediate attack and slow release,
+   preventing hard-clipping crackle. Program/VB-CABLE is untouched.
+
+4. Tests/docs
+   Smoke-test contracts now require the stable full-frame mixer behavior.
+   The real-device Gate 4A result and quality hold are recorded in the Remote docs.
+
+Intentionally unchanged
+-----------------------
+- Opus target remains 128 kbps VBR / complexity 10.
+- WebRTC signaling/transport is unchanged.
+- ABI-9 Soundboard tap is unchanged.
+- Program mixer / Program Master / VB-CABLE are unchanged.
+- Direct Media and My Voice remain locked until Gate 4A quality is accepted.
+
+Apply
+-----
+Extract this ZIP into the current GrassiBoard repository root and overwrite files.
+This is intended to be applied on top of Hotfix 29 (and the earlier Hotfix 28 build fix).
+
+Build / run
+-----------
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -RemoteMonitorSpike -Run -RunSmokeTests
+
+Focused retest
+--------------
+1. GrassiMote -> Monitor -> stop any preserved session.
+2. Select Monitor mix and start it.
+3. Play Windows audio alone for 30–60 seconds.
+4. Trigger several Pads while Windows audio is playing.
+5. Listen specifically for the previous scratchy/micro-stutter texture.
+6. Briefly set Windows / Space to 0% and listen to Soundboard alone *inside Monitor Mix*.
+7. Restore Windows and set Soundboard to 0%; listen to Windows alone *inside Monitor Mix*.
+8. Restore both and try loud simultaneous audio; listen for clipping/crackle.
+9. Confirm Program/VB-CABLE is still unchanged.
+10. Report bitrate, jitter, packet loss if visible, and whether any startup catch-up or
+    growing delay remains.
+
+Gate 4A is accepted only after the user explicitly confirms the mix-only artifact is
+gone or no longer meaningfully audible.

@@ -1,11 +1,11 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace GrassiBoard.Shared;
 
 public sealed record BuildInfo
 {
-    public static readonly string CurrentVersion = "1.1.0";
+    public static readonly string CurrentVersion = "1.2.0";
 
     [JsonPropertyName("Version")]
     public string Version { get; init; } = CurrentVersion;

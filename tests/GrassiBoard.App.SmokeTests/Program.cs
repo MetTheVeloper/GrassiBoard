@@ -1,4 +1,4 @@
-using GrassiBoard.Shared;
+﻿using GrassiBoard.Shared;
 using GrassiBoard;
 using GrassiBoard.Infrastructure;
 using GrassiBoard.Models;
@@ -100,16 +100,18 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "1.1.0" || NativeAudioEngine.ExpectedApiVersion != 8U)
+if (BuildInfo.CurrentVersion != "1.2.0" || NativeAudioEngine.ExpectedApiVersion != 9U)
 {
-    Console.Error.WriteLine("Managed version contract is inconsistent.");
+    Console.Error.WriteLine(
+        $"Managed version/native ABI contract is inconsistent. " +
+        $"Expected version=1.2.0, ABI=9; actual version={BuildInfo.CurrentVersion}, ABI={NativeAudioEngine.ExpectedApiVersion}.");
     return 1;
 }
 
 string fixture = Path.Combine(AppContext.BaseDirectory, "BuildInfo.fixture.json");
 File.WriteAllText(fixture, """
     {
-      "Version": "1.1.0",
+      "Version": "1.2.0",
       "CommitSha": "0123456789abcdef",
       "TargetArchitecture": "x64"
     }
@@ -118,7 +120,7 @@ File.WriteAllText(fixture, """
 BuildInfo info = BuildInfo.Load(fixture);
 File.Delete(fixture);
 
-if (info.Version != "1.1.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
+if (info.Version != "1.2.0" || info.ShortCommit != "01234567" || info.TargetArchitecture != "x64")
 {
     Console.Error.WriteLine("BuildInfo contract smoke test failed.");
     return 2;
@@ -413,8 +415,20 @@ string remoteCommandDispatcherSource = File.ReadAllText(Path.Combine(appSource, 
 string remoteProtocolSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteProtocol.cs"));
 string remoteSettingsSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteSettingsStore.cs"));
 string remoteMdnsSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteMdnsService.cs"));
+string remoteMonitorSpikeSource = File.ReadAllText(Path.Combine(appSource, "Services", "Remote", "RemoteMonitorWebRtcSpikeService.cs"));
+string nativeAudioEngineSource = File.ReadAllText(Path.Combine(appSource, "Services", "NativeAudioEngine.cs"));
+string mediaDeckServiceSource = File.ReadAllText(Path.Combine(appSource, "Services", "MediaDeckService.cs"));
+string nativeHeaderSource = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.AudioEngine", "include", "grassiboard", "audio_engine.h"));
+string nativeEngineSource = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.AudioEngine", "src", "audio_engine.cpp"));
+string nativeWasapiSource = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.AudioEngine", "src", "wasapi_engine.cpp"));
+string nativeMonitorTapSource = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.AudioEngine", "src", "monitor_tap_buffer.cpp"));
+string cmakePresetsSource = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "CMakePresets.json"));
+string localBuildScriptSource = File.ReadAllText(Path.Combine(Environment.CurrentDirectory, "tools", "Build-LocalRemoteTest.ps1"));
 string remoteWebRoot = Path.Combine(Environment.CurrentDirectory, "src", "GrassiBoard.RemoteWeb");
 string remoteWebConnectionSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "composables", "useRemoteConnection.ts"));
+string remoteMonitorWebSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "composables", "useRemoteMonitorSpike.ts"));
+string remoteMonitorPageSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "pages", "monitor.vue"));
+string remoteMonitorAudioHostSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "components", "RemoteMonitorAudioHost.vue"));
 string remoteQrScannerSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "components", "QrScannerModal.vue"));
 string remotePwaPluginSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "plugins", "pwa.client.ts"));
 string remoteMaterialPluginSource = File.ReadAllText(Path.Combine(remoteWebRoot, "app", "plugins", "material.client.ts"));
@@ -467,17 +481,157 @@ if (remoteServerSource.Contains("NativeAudioEngine", StringComparison.Ordinal) |
     !remotePackageSource.Contains("@fontsource-variable/material-symbols-rounded", StringComparison.Ordinal) ||
     !remoteCssSource.Contains("user-select: none !important", StringComparison.Ordinal) ||
     !remoteCommandDispatcherSource.Contains("engine_not_running", StringComparison.Ordinal) ||
+    !appProject.Contains("EnableRemoteMonitorSpike", StringComparison.Ordinal) ||
+    !appProject.Contains("<PackageReference Include=\"SIPSorcery\" Version=\"10.0.13\"", StringComparison.Ordinal) ||
+    !appProject.Contains("<PackageReference Include=\"Concentus\" Version=\"2.2.2\"", StringComparison.Ordinal) ||
+    appProject.Contains("<PackageReference Include=\"SpawnDev.SIPSorcery\"", StringComparison.Ordinal) ||
+    !appProject.Contains("REMOTE_MONITOR_SPIKE", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("#if REMOTE_MONITOR_SPIKE", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("AudioSourcesEnum.SineWave", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("WasapiLoopbackCapture", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia)", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("WatchDefaultDeviceAsync", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("capture switched automatically", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("FrameMilliseconds = 20", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("AudioFormat negotiatedFormat = _negotiatedFormat.Value", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("_encoder.EncodeAudio(pcm, negotiatedFormat)", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("OpusCodecFactory.CreateEncoder(sampleRate, channels)", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("LoopbackOpusBitrate = 128000", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("encoder.UseVBR = true", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("encoder.UseConstrainedVBR = false", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("encoder.UseDTX = false", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("encoder.Complexity = 10", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("AudioCodecsEnum.OPUS", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("new AudioEncoder(includeOpus: true)", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("soundboard-tap", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("monitor-mix", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("PumpMonitorMixAsync", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("_mixWindowsGain = 0.90F", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("_mixSoundboardGain = 0.70F", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("_mixMediaGain = 0.70F", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("_mixVoiceGain = 0.10F", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("_mixVoiceEnabled", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("ReadVoiceMonitorTap", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("voiceEnabled", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("_mixMasterGain = 0.85F", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("MixLoopbackPrebufferFrames = 2", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("pendingSoundboardFrames", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("buffer.BufferedBytes >= frameBytes", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("MixLimiterCeiling = 0.98F", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("MixMediaPrebufferFrames = 2", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("IsMediaDuplicateSuppressedByWindowsLoopback", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("mediaDuplicateSuppressed", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("_mediaDeck.ClearRemoteMonitorTap()", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("desiredLimiterGain", StringComparison.Ordinal) ||
+    !mediaDeckServiceSource.Contains("RemoteMonitorTapCapacityFrames = BlockFrames * 24", StringComparison.Ordinal) ||
+    !mediaDeckServiceSource.Contains("RemoteMonitorTapBuffer", StringComparison.Ordinal) ||
+    !mediaDeckServiceSource.Contains("SetRemoteMonitorTapEnabled", StringComparison.Ordinal) ||
+    !mediaDeckServiceSource.Contains("TryReadRemoteMonitorTap", StringComparison.Ordinal) ||
+    !mainViewModelCode.Contains("new RemoteMonitorWebRtcSpikeService(_engine, _mediaDeck)", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("SetMonitorTapEnabled(true)", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("ReadMonitorTap", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("PumpNativeSoundboardTapAsync", StringComparison.Ordinal) ||
+    !nativeAudioEngineSource.Contains("ExpectedApiVersion = 9U", StringComparison.Ordinal) ||
+    !nativeAudioEngineSource.Contains("gb_monitor_tap_read", StringComparison.Ordinal) ||
+    !nativeAudioEngineSource.Contains("gb_voice_monitor_tap_read", StringComparison.Ordinal) ||
+    !nativeHeaderSource.Contains("gb_monitor_tap_set_enabled", StringComparison.Ordinal) ||
+    !nativeHeaderSource.Contains("gb_voice_monitor_tap_set_enabled", StringComparison.Ordinal) ||
+    !nativeHeaderSource.Contains("gb_monitor_tap_get_statistics", StringComparison.Ordinal) ||
+    !nativeEngineSource.Contains("constexpr std::uint32_t kApiVersion = 9", StringComparison.Ordinal) ||
+    !nativeWasapiSource.Contains("monitor_tap_.Push", StringComparison.Ordinal) ||
+    !nativeWasapiSource.Contains("voice_monitor_tap_.Push", StringComparison.Ordinal) ||
+    !nativeWasapiSource.Contains("post Pitch/Formant", StringComparison.Ordinal) ||
+    !nativeWasapiSource.Contains("pre Program", StringComparison.Ordinal) ||
+    !nativeMonitorTapSource.Contains("std::memory_order_release", StringComparison.Ordinal) ||
+    !cmakePresetsSource.Contains("windows-x64-remote-monitor-spike", StringComparison.Ordinal) ||
+    !cmakePresetsSource.Contains("GRASSIBOARD_REMOTE_MONITOR_TAP", StringComparison.Ordinal) ||
+    !localBuildScriptSource.Contains("windows-x64-remote-monitor-spike", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("new RTCPeerConnection()", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("monitor.spike.offer", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("monitor.spike.ice", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("monitor.spike.mix.set", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("HandleMixSettingsAsync", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("monitor.spike.stop", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("remoteMonitorSpikeAvailable", StringComparison.Ordinal) ||
+    !remoteWebConnectionSource.Contains("subscribeMessage", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("new RTCPeerConnection({ iceServers: [] })", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("addTransceiver('audio', { direction: 'recvonly' })", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("monitor.spike.offer", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("monitor-mix", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("windows-loopback", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("soundboard-tap", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("monitor.spike.mix.set", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("mixWindowsGainPercent", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("mixMediaGainPercent", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("mixVoiceGainPercent", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("mixVoiceEnabled", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("voiceEnabled", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("mediaDuplicateSuppressed", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("waitForIceGatheringComplete", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("a=candidate:", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Start monitor", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("monitor-quick-grid", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Tap or drag horizontally", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("touch-action: pan-y", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Voice Lv", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("role=\"slider\"", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("navigator.vibrate(7)", StringComparison.Ordinal) ||
+    remoteMonitorPageSource.Contains("monitor-glance", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Advanced diagnostics", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Isolated source test", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Windows / Space", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("label=\"Media\"", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Via Windows", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("My Voice", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("My Voice level", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Monitor Master", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Phone-only mix", StringComparison.Ordinal) ||
+    remoteMonitorPageSource.Contains("Gate 4C", StringComparison.Ordinal) ||
+    remoteMonitorPageSource.Contains("Technology spike", StringComparison.OrdinalIgnoreCase) ||
+    !remoteMonitorPageSource.Contains("monitor-fold", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("Headphones recommended for My Voice", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Mute monitor audio", StringComparison.Ordinal) ||
+    !remoteMonitorAudioHostSource.Contains("monitor-audio--hidden", StringComparison.Ordinal) ||
+    !remoteMonitorAudioHostSource.Contains("navigator.mediaSession", StringComparison.Ordinal) ||
+    !remoteMonitorAudioHostSource.Contains("visibilityState === 'visible'", StringComparison.Ordinal) ||
+    !remoteMonitorAudioHostSource.Contains("resumeIfDesired", StringComparison.Ordinal) ||
+    !remoteMonitorAudioHostSource.Contains("bind('stop'", StringComparison.Ordinal) ||
+    remoteMonitorAudioHostSource.Contains("bind('stop', () => monitor.stop()", StringComparison.Ordinal) ||
+    !remoteMonitorAudioHostSource.Contains("monitor.setMonitorMuted(true)", StringComparison.Ordinal) ||
+    !remoteMonitorAudioHostSource.Contains("monitor.active.value ? 'playing' : 'none'", StringComparison.Ordinal) ||
+    !remoteMonitorAudioHostSource.Contains("addEventListener('focus'", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("grassiboard.monitor.desired-source", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("peerAttached", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("localPeerIsUsable", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("scheduleAutoResume", StringComparison.Ordinal) ||
+    !remoteMonitorWebSource.Contains("getStats()", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Connection details", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Opus target", StringComparison.Ordinal) ||
+    !remoteLayoutSource.Contains("<RemoteMonitorAudioHost", StringComparison.Ordinal) ||
+    remoteMonitorPageSource.Contains("onBeforeUnmount(() => monitor.dispose())", StringComparison.Ordinal) ||
+    !remoteServerSource.Contains("RebindClientAsync(client.ClientId", StringComparison.Ordinal) ||
+    remoteServerSource.Contains("Remote WebSocket disconnected", StringComparison.Ordinal) ||
+    !remoteMonitorSpikeSource.Contains("RebindClientAsync", StringComparison.Ordinal) ||
+    (!remoteMonitorSpikeSource.Contains("stable paired client id", StringComparison.Ordinal) &&
+     !remoteServerSource.Contains("stable paired client id", StringComparison.Ordinal)) ||
+    !remoteMonitorPageSource.Contains("Capture format", StringComparison.Ordinal) ||
+    !remoteMonitorPageSource.Contains("Test tone", StringComparison.Ordinal) ||
+    !remoteLayoutSource.Contains("remoteMonitorSpikeAvailable", StringComparison.Ordinal) ||
+    !localBuildScriptSource.Contains("RemoteMonitorSpike", StringComparison.Ordinal) ||
+    !localBuildScriptSource.Contains("GrassiBoard v1.2 personal-stable production path is ENABLED", StringComparison.Ordinal) ||
+    !localBuildScriptSource.Contains("windows-x64-release", StringComparison.Ordinal) ||
+    !localBuildScriptSource.Contains("--no-incremental", StringComparison.Ordinal) ||
     !remoteManifestSource.Contains("\"name\": \"GrassiMote\"", StringComparison.Ordinal) ||
     !remoteManifestSource.Contains("\"display\": \"standalone\"", StringComparison.Ordinal) ||
-    !remoteServiceWorkerSource.Contains("grassimote-shell-v5", StringComparison.Ordinal) ||
+    !remoteServiceWorkerSource.Contains("grassimote-shell-v17", StringComparison.Ordinal) ||
     !remoteServiceWorkerSource.Contains("caches.match('/offline.html')", StringComparison.Ordinal) ||
     !remoteServiceWorkerSource.Contains("url.pathname.startsWith('/api/')", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("Remote isolation/publish source contract failed.");
     return 34;
 }
-if (!installerServiceSource.Contains("ProductVersion = \"1.1.0\"", StringComparison.Ordinal) ||
-    !installerWindowXaml.Contains("Ready to install GrassiBoard 1.1.0", StringComparison.Ordinal))
+if (!installerServiceSource.Contains("ProductVersion = \"1.2.0\"", StringComparison.Ordinal) ||
+    !installerWindowXaml.Contains("Ready to install GrassiBoard 1.2.0", StringComparison.Ordinal))
 {
     Console.Error.WriteLine("Installer candidate version contract failed.");
     return 35;

@@ -1,4 +1,4 @@
-# Current status
+﻿# Current status
 
 - Version: `v1.0.1` stable
 - Milestone: stable release with device-specific Media synchronization calibration
@@ -12,13 +12,15 @@
 - Soundboard: background WAV/MP3 decode, native cached mixer, 32 simultaneous voices, and JSON persistence
 - Media Deck: streaming local-media decode with bounded read-ahead, buffered independent headphone monitor, full microphone-path-aligned virtual send, transport, meter, and safe missing-file state
 
-## v1.1.0 GrassiMote Remote Control — MANUAL ACCEPTANCE PASSED / FINAL CI PENDING
+## v1.1.0 GrassiMote Remote Control — USER ACCEPTED / CI VERIFIED
 
-On 2026-08-11 the user completed the real Windows + Android v1.1 test and explicitly confirmed that the secure GrassiMote PWA and live Remote controls work correctly. The tested compatibility path is `https://<LAN-IP>:47919/`: Android trusts the per-PC GrassiMote CA, the PWA installs to the Home Screen, in-app QR pairing succeeds, WSS reaches Connected, and Board/Voice/Mixer/Media controls apply to the Windows app in realtime. `grassimote.local` remains an optional convenience alias because Android hotspot/mobile-data and some routers/VPNs do not resolve `.local` reliably.
+On 2026-08-11 the user completed the real Windows + Android v1.1 test and explicitly accepted the secure GrassiMote PWA, live Remote controls, and the final Material 3 portrait/landscape redesign. The tested compatibility path is `https://<LAN-IP>:47919/`: Android trusts the per-PC GrassiMote CA, the PWA installs to the Home Screen, in-app QR pairing succeeds, WSS reaches Connected, and Board/Voice/Mixer/Media controls apply to Windows in realtime. `grassimote.local` remains an optional convenience alias.
 
-The accepted v1.0.1 native audio baseline remains unchanged: native ABI 8, physical-microphone Voice DSP, Soundboard/Media, and the external VB-CABLE Program Mix route are not replaced by Remote Control. v1.1 adds only the managed LAN server/control boundary, authenticated pairing, Nuxt 4/Vue 3 GrassiMote client, HTTPS/WSS secure origin, PWA/offline shell, and QR camera onboarding.
+The accepted native audio baseline remains unchanged: native ABI 8, physical-microphone Voice DSP, Soundboard/Media, and the external VB-CABLE Program Mix route are not replaced by Remote Control. Final UI commit `7500901` passed GitHub Actions Build #84 (run `31529903075`).
 
-The only remaining release gate is a clean GitHub Actions run from the consolidated source, including the committed `pnpm-lock.yaml` and frozen RemoteWeb dependency restore. Until that CI run is green, v1.0.1 remains the published stable baseline and v1.2 Remote Monitor remains blocked.
+## v1.2 Remote Monitor — TECHNOLOGY SPIKE IN PROGRESS
+
+v1.2 is now unlocked. The first gate is an isolated, local-only WebRTC/Opus spike that reuses the authenticated Remote WSS signaling channel and sends a synthetic sine tone from Windows to Android. It does not yet capture Windows audio or touch Program mix/native ABI. The temporary WebRTC dependency is enabled only with `EnableRemoteMonitorSpike=true` / `-RemoteMonitorSpike` and is blocked from production adoption pending real-device success and an explicit license review. See `docs/remote-monitor-spike.md`.
 
 ## v1.0.0 final release candidate
 
@@ -172,3 +174,9 @@ Milestone 3 acceptance unblocked Milestone 4.
 Milestone 2 (`v0.3.0`, commit `28378232`) was accepted on 2026-08-01 on Windows 10 with a Microsoft LifeChat LX-3000. The user reported no issues. Screenshot evidence showed the engine running at `+12` semitones, Pitch Latency `2560` samples / `53.3 ms`, Capture `1056`, Render `576`, Ring Fill `576`, and U/O/D `2/0/3`.
 
 Milestone 1 (`v0.2.0`) was accepted on the same target with physical microphone monitoring, moving meters, and repeated Start/Stop. Milestone 0 (`v0.1.0`) was accepted with the app, BuildInfo, and native engine load verified.
+
+## v1.2.0 personal-stable production candidate — 2026-08-12
+
+All Remote Monitor source/mix/UI gates are manually accepted on the real Windows + Android path. Hotfix 36 promotes ABI 9 + the existing tested WebRTC/Opus monitor stack into the normal v1.2 build defaults for current private/personal use. Public distribution is not currently planned and must reopen the SIPSorcery license review before release.
+
+Final USER ACCEPTED status is pending one normal-build 30–60 minute soak plus packaging/CI verification. Program output remains external VB-CABLE and is unchanged.

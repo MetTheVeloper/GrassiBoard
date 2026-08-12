@@ -1,0 +1,20 @@
+GrassiBoard v1.2.0 — Hotfix 35
+Dependency / license gate review
+
+This patch is documentation/status only. It intentionally does not modify the
+accepted audio engine, WebRTC runtime, Opus settings, UI, routing or VB-CABLE.
+
+What it records:
+- Hotfix 34 interactive quick-tile UX is USER ACCEPTED.
+- SIPSorcery 10.0.13 remains the tested WebRTC transport.
+- Current upstream license review is complete.
+- Downgrading to v8.0.12 is rejected because that tag's own license file
+  documents unresolved AGPL provenance around DTLS/SRTP.
+- Production promotion remains locked until the user explicitly chooses:
+    A) keep the tested SIPSorcery license for the intended distribution scope, or
+    B) replace the WebRTC transport.
+
+Apply:
+Extract into the GrassiBoard repository root and overwrite the docs files.
+
+No rebuild is required for this documentation-only patch.

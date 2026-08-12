@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Globalization;
@@ -139,7 +139,14 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         var remotePairing = new RemotePairingService(remoteSettingsStore, remoteSettings);
         _remoteStatePublisher = new RemoteStatePublisher();
         var remoteCommandDispatcher = new RemoteCommandDispatcher(this, _dispatcher);
-        _remoteServer = new RemoteServerService(remoteSettingsStore, remoteSettings, remotePairing, remoteCommandDispatcher, _remoteStatePublisher);
+#if REMOTE_MONITOR_SPIKE
+        var remoteMonitorSpike = new RemoteMonitorWebRtcSpikeService(_engine, _mediaDeck);
+        _remoteServer = new RemoteServerService(
+            remoteSettingsStore, remoteSettings, remotePairing, remoteCommandDispatcher, _remoteStatePublisher, remoteMonitorSpike);
+#else
+        _remoteServer = new RemoteServerService(
+            remoteSettingsStore, remoteSettings, remotePairing, remoteCommandDispatcher, _remoteStatePublisher);
+#endif
         _remoteServer.Changed += OnRemoteServerChanged;
         _remoteEnabled = remoteSettings.Enabled;
         RemoteClients = [];

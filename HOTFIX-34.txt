@@ -1,0 +1,77 @@
+GrassiBoard v1.2.0 — Hotfix / UI Implementation 34
+Interactive Brutal-Minimal Monitor Tiles
+
+Baseline
+--------
+Apply on top of Hotfix 33 / the current working tree.
+
+This is UI/UX only. It does not modify AudioEngine, ABI-9 taps, Remote Monitor
+mixer logic, WebRTC/Opus, routing, Program Mix, or VB-CABLE.
+
+What changed
+------------
+The compact 3x2 Monitor summary is now the primary mixer surface:
+
+  Windows   Board    Media
+  Voice     Voice Lv Master
+
+Five gain tiles (Windows, Board, Media, Voice Lv, Master):
+- subtle left-to-right fill shows the current percentage;
+- tap anywhere in a tile sets the level to that horizontal position;
+- horizontal drag adjusts continuously;
+- vertical movement remains normal page scrolling;
+- keyboard arrows/Home/End are supported for accessibility;
+- short progressive-enhancement haptic ticks occur at 0/25/50/75/100 when
+  navigator.vibrate is available.
+
+Voice tile:
+- simple one-tap My Voice ON/OFF;
+- Voice Lv remains a separate monitor-only level tile;
+- Voice Lv can be pre-adjusted even while Voice is OFF.
+
+Media duplicate prevention:
+- direct mode: Media tile is a normal draggable gain tile;
+- Via-Windows mode: Media tile becomes non-draggable, shows "Via Windows",
+  and its background fill follows the effective Windows / Space monitor level;
+- retained direct Media gain is preserved for when direct mode returns.
+
+The existing expandable Monitor levels sliders remain available for precise,
+traditional adjustment. Connection details and Advanced diagnostics are unchanged.
+
+PWA
+---
+Service-worker shell cache advances to grassimote-shell-v17.
+
+Apply
+-----
+Extract this ZIP into the GrassiBoard repository root and overwrite existing files.
+
+Build / run
+-----------
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -RemoteMonitorSpike -Run -RunSmokeTests
+
+Focused manual test
+-------------------
+1. Open GrassiMote -> Monitor with the full Monitor Mix running.
+2. Confirm the first-glance mixer is a clean 3x2 grid.
+3. Tap Windows near 25%, 50%, and 90%; heard level and number should follow.
+4. Drag Windows horizontally in both directions; it should track smoothly.
+5. While touching a gain tile, move vertically: the page should still scroll normally.
+6. Repeat drag tests for Board, Voice Lv, and Master.
+7. Tap Voice: My Voice should toggle ON/OFF immediately without opening Monitor levels.
+8. Set Voice Lv while Voice is OFF, then enable Voice; the retained level should be used.
+9. Media direct mode: Media tile must drag normally.
+10. Enable same-endpoint Media local monitoring so duplicate prevention activates:
+    - Media tile must say Via Windows;
+    - it must stop accepting gain gestures;
+    - its fill should visually follow Windows / Space;
+    - Windows tile must control the embedded Media copy as before.
+11. Return Media to direct mode: its previous direct Media value must reappear and work.
+12. Expand Monitor levels and verify every slider exactly mirrors the quick tiles both ways.
+13. Confirm Connection details / Advanced diagnostics still work.
+14. Confirm no audio/routing regression.
+
+Optional haptic check
+---------------------
+On browsers/devices that expose vibration, slowly drag through 0/25/50/75/100.
+Only tiny ticks at those boundaries are expected. No haptic support is not a failure.

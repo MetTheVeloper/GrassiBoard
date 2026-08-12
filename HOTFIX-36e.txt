@@ -1,0 +1,43 @@
+GrassiBoard v1.2.0 — Hotfix 36e
+Force managed dependency rebuild
+
+What the latest error tells us
+------------------------------
+Native v1.2 is healthy:
+  7/7 native tests passed.
+
+Managed smoke reported:
+  Expected version=1.2.0, ABI=9
+  actual version=1.1.0, ABI=9
+
+ABI=9 proves the current v1.2 managed/native contract is being compiled.
+The stale 1.1.0 product version comes from an old compiled GrassiBoard.Shared.dll
+being reused by incremental MSBuild.
+
+Why this can happen
+-------------------
+The hotfix ZIP overwrites BuildInfo.cs, but archive file timestamps can be older
+than an already-built DLL. Incremental MSBuild can therefore decide the shared
+project is up to date even though its file CONTENT changed.
+
+Fix
+---
+- Re-ship GrassiBoard.Shared/BuildInfo.cs with CurrentVersion = 1.2.0.
+- Before managed smoke tests, force:
+    dotnet build --no-incremental
+  for the smoke project + project-reference dependency graph.
+- Run the smoke executable afterward with:
+    dotnet run --no-build
+
+This removes the stale managed-output ambiguity permanently from the local v1.2
+validation script.
+
+Apply
+-----
+Extract this ZIP into the GrassiBoard repository root and overwrite files.
+
+Do NOT rerun any previous Apply/Reset scripts.
+
+Just run:
+
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -Run -RunSmokeTests

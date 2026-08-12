@@ -4,6 +4,7 @@ param(
     [switch]$RestoreWeb,
     [switch]$RebuildNative,
     [switch]$RunSmokeTests,
+    [switch]$RemoteMonitorSpike,
     [switch]$Run
 )
 
@@ -16,6 +17,7 @@ $localRoot = Join-Path $repositoryRoot 'artifacts\local-test'
 $publishRoot = Join-Path $localRoot 'GrassiBoard'
 $archivePath = Join-Path $localRoot 'GrassiBoard-local-test.zip'
 $nativeBuildPath = Join-Path $repositoryRoot 'out\build\windows-x64-release\src\GrassiBoard.AudioEngine\Release\GrassiBoard.AudioEngine.dll'
+$nativeSpikeBuildPath = Join-Path $repositoryRoot 'out\build\windows-x64-remote-monitor-spike\src\GrassiBoard.AudioEngine\Release\GrassiBoard.AudioEngine.dll'
 $installedNativePath = Join-Path $env:LOCALAPPDATA 'Programs\GrassiBoard\GrassiBoard.AudioEngine.dll'
 
 function Require-Command([string]$Name) {
@@ -173,6 +175,94 @@ function Stop-GrassiBoardForLocalBuild {
     Write-Host 'GrassiBoard was terminated successfully.' -ForegroundColor Green
 }
 
+
+
+function Resolve-CMakeTool([string]$ToolName) {
+    $command = Get-Command $ToolName -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+
+    # Visual Studio's bundled CMake is not guaranteed to be on PATH.
+    # Resolve the actual VS/Build Tools installation first so custom install
+    # locations and BuildTools installations are handled reliably.
+    $vswhereCandidates = @(
+        (Join-Path ${env:ProgramFiles(x86)} 'Microsoft Visual Studio\Installer\vswhere.exe'),
+        (Join-Path $env:ProgramFiles 'Microsoft Visual Studio\Installer\vswhere.exe')
+    ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+
+    foreach ($vswhere in $vswhereCandidates) {
+        try {
+            $matches = @(
+                & $vswhere `
+                    -products * `
+                    -latest `
+                    -requires Microsoft.VisualStudio.Component.VC.CMake.Project `
+                    -find "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\$ToolName.exe" 2>$null
+            )
+
+            foreach ($match in $matches) {
+                $candidate = "$match".Trim()
+                if ($candidate -and (Test-Path -LiteralPath $candidate)) {
+                    return $candidate
+                }
+            }
+
+            $installPath = (
+                & $vswhere `
+                    -products * `
+                    -latest `
+                    -requires Microsoft.VisualStudio.Component.VC.CMake.Project `
+                    -property installationPath 2>$null |
+                Select-Object -First 1
+            )
+
+            if ($installPath) {
+                $candidate = Join-Path "$installPath".Trim() "Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\$ToolName.exe"
+                if (Test-Path -LiteralPath $candidate) { return $candidate }
+            }
+        }
+        catch {
+            # Fall through to explicit well-known-path probing below.
+        }
+    }
+
+    $programRoots = @(
+        $env:ProgramFiles,
+        ${env:ProgramFiles(x86)},
+        $env:ProgramW6432
+    ) | Where-Object { $_ } | Select-Object -Unique
+
+    $editions = @('BuildTools', 'Community', 'Professional', 'Enterprise')
+    foreach ($programRoot in $programRoots) {
+        foreach ($edition in $editions) {
+            $candidate = Join-Path $programRoot "Microsoft Visual Studio\2022\$edition\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\$ToolName.exe"
+            if (Test-Path -LiteralPath $candidate) { return $candidate }
+        }
+    }
+
+    return $null
+}
+
+function Ensure-NativeSubmodules {
+    $linearCmake = Join-Path $repositoryRoot 'third_party\signalsmith-linear\CMakeLists.txt'
+    $stretchCmake = Join-Path $repositoryRoot 'third_party\signalsmith-stretch\CMakeLists.txt'
+    if ((Test-Path -LiteralPath $linearCmake) -and (Test-Path -LiteralPath $stretchCmake)) { return }
+
+    Require-Command 'git'
+    Write-Host 'Native DSP submodules are missing. Initializing git submodules (one-time download)...' -ForegroundColor Yellow
+    Push-Location $repositoryRoot
+    try {
+        & git submodule update --init --recursive | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            throw 'git submodule update failed. Make GitHub reachable, then rerun the spike build.'
+        }
+    }
+    finally { Pop-Location }
+
+    if (-not (Test-Path -LiteralPath $linearCmake) -or -not (Test-Path -LiteralPath $stretchCmake)) {
+        throw 'Native DSP submodules are still incomplete after git submodule update.'
+    }
+}
+
 function Resolve-NativeDll {
     if ($NativeDll) {
         $candidate = [IO.Path]::GetFullPath($NativeDll)
@@ -180,35 +270,44 @@ function Resolve-NativeDll {
         return $candidate
     }
 
-    if (-not $RebuildNative -and (Test-Path -LiteralPath $nativeBuildPath)) {
-        return $nativeBuildPath
+    $cmakeExe = Resolve-CMakeTool 'cmake'
+    if (-not $cmakeExe) {
+        throw 'GrassiBoard v1.2 requires the ABI-9 native build, but CMake was not found. Install Visual Studio 2022 Build Tools with Desktop development with C++ (including CMake tools), then rerun this command.'
     }
 
-    if (-not $RebuildNative -and (Test-Path -LiteralPath $installedNativePath)) {
-        Write-Host "Reusing installed ABI-8 native engine: $installedNativePath" -ForegroundColor DarkGray
-        return $installedNativePath
-    }
+    Ensure-NativeSubmodules
 
-    Require-Command 'cmake'
-    Write-Host 'Building native engine because no reusable DLL was found (or -RebuildNative was requested)...' -ForegroundColor Cyan
+    $preset = if ($RemoteMonitorSpike) { 'windows-x64-remote-monitor-spike' } else { 'windows-x64-release' }
+    $expectedPath = if ($RemoteMonitorSpike) { $nativeSpikeBuildPath } else { $nativeBuildPath }
+
+    Write-Host "Building GrassiBoard v1.2 native ABI-9 engine with preset '$preset'..." -ForegroundColor Cyan
     Push-Location $repositoryRoot
     try {
-        & cmake --preset windows-x64-release
-        if ($LASTEXITCODE -ne 0) { throw 'cmake configure failed.' }
-        & cmake --build --preset windows-x64-release -- /m
-        if ($LASTEXITCODE -ne 0) { throw 'Native build failed.' }
+        & $cmakeExe --preset $preset | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            throw "Native v1.2 configure failed for preset '$preset'."
+        }
+        & $cmakeExe --build --preset $preset -- /m | Out-Host
+        if ($LASTEXITCODE -ne 0) {
+            throw "Native v1.2 build failed for preset '$preset'."
+        }
     }
     finally { Pop-Location }
 
-    if (-not (Test-Path -LiteralPath $nativeBuildPath)) {
-        throw "Native build completed but DLL was not found at $nativeBuildPath"
+    if (-not (Test-Path -LiteralPath $expectedPath)) {
+        throw "Native v1.2 build completed but DLL was not found at $expectedPath"
     }
-    return $nativeBuildPath
+    return $expectedPath
 }
 
 Ensure-RequiredDotNetSdk
 Require-Command 'pnpm'
 Stop-GrassiBoardForLocalBuild
+
+if ($RemoteMonitorSpike) {
+    Write-Host '-RemoteMonitorSpike is now a compatibility/diagnostic alias. v1.2 builds the accepted Remote Monitor path by default.' -ForegroundColor DarkYellow
+}
+Write-Host 'GrassiBoard v1.2 personal-stable production path is ENABLED (ABI 9 + Remote Monitor).' -ForegroundColor Green
 
 Write-Host 'Generating Nuxt Remote SPA...' -ForegroundColor Cyan
 Push-Location $remoteWebRoot
@@ -226,13 +325,42 @@ $remoteIndex = Join-Path $remoteWebRoot '.output\public\index.html'
 if (-not (Test-Path -LiteralPath $remoteIndex)) { throw 'Nuxt output index.html is missing.' }
 
 $nativeSource = Resolve-NativeDll
+if ($nativeSource -is [array]) {
+    $nativeSource = @($nativeSource | Where-Object { $_ -and (Test-Path -LiteralPath ([string]$_) -PathType Leaf) } | Select-Object -Last 1)
+    if ($nativeSource.Count -eq 1) { $nativeSource = [string]$nativeSource[0] }
+}
+if ([string]::IsNullOrWhiteSpace([string]$nativeSource) -or -not (Test-Path -LiteralPath ([string]$nativeSource) -PathType Leaf)) {
+    throw "Native engine resolution returned an invalid DLL path: '$nativeSource'"
+}
 
 if ($RunSmokeTests) {
-    Write-Host 'Running managed smoke tests...' -ForegroundColor Cyan
+    Write-Host 'Running v1.2 ABI-9 native tests...' -ForegroundColor Cyan
+    $ctestExe = Resolve-CMakeTool 'ctest'
+    if (-not $ctestExe) { throw 'ctest was not found beside the CMake installation used for the v1.2 native build.' }
+    $testPreset = if ($RemoteMonitorSpike) { 'windows-x64-remote-monitor-spike' } else { 'windows-x64-release' }
     Push-Location $repositoryRoot
     try {
-        & dotnet run --project .\tests\GrassiBoard.App.SmokeTests\GrassiBoard.App.SmokeTests.csproj --configuration Release
-        if ($LASTEXITCODE -ne 0) { throw 'Managed smoke tests failed.' }
+        & $ctestExe --preset $testPreset
+        if ($LASTEXITCODE -ne 0) { throw "v1.2 native tests failed for preset '$testPreset'." }
+    }
+    finally { Pop-Location }
+}
+
+if ($RunSmokeTests) {
+    Write-Host 'Rebuilding managed v1.2 smoke-test dependency graph...' -ForegroundColor Cyan
+    Push-Location $repositoryRoot
+    try {
+        & dotnet build .\tests\GrassiBoard.App.SmokeTests\GrassiBoard.App.SmokeTests.csproj `
+            --configuration Release `
+            --no-incremental
+        if ($LASTEXITCODE -ne 0) { throw 'Managed v1.2 smoke-test rebuild failed.' }
+
+        Write-Host 'Running managed v1.2 smoke tests...' -ForegroundColor Cyan
+        & dotnet run `
+            --project .\tests\GrassiBoard.App.SmokeTests\GrassiBoard.App.SmokeTests.csproj `
+            --configuration Release `
+            --no-build
+        if ($LASTEXITCODE -ne 0) { throw 'Managed v1.2 smoke tests failed.' }
     }
     finally { Pop-Location }
 }
@@ -249,12 +377,14 @@ try {
         finally { Pop-Location }
     }
     $dotnetVersion = (& dotnet --version).Trim()
+    $localVersion = '1.2.0'
+    $localConfiguration = if ($RemoteMonitorSpike) { 'Release-LocalV12Compat' } else { 'Release-LocalV12' }
     & (Join-Path $repositoryRoot 'tools\New-BuildInfo.ps1') `
-        -Version '1.1.0' `
+        -Version $localVersion `
         -CommitSha $commit `
         -RunNumber 'local' `
         -OutputPath $buildInfoPath `
-        -Configuration 'Release-LocalTest' `
+        -Configuration $localConfiguration `
         -TargetArchitecture 'x64' `
         -WdkVersion 'external-cable' `
         -SdkVersion 'local-windows' `
@@ -295,6 +425,6 @@ $exe = Join-Path $publishRoot 'GrassiBoard.exe'
 Write-Host ''
 Write-Host "Local test build ready: $exe" -ForegroundColor Green
 Write-Host "ZIP: $archivePath" -ForegroundColor Green
-Write-Host 'This local test build is framework-dependent for speed; GitHub Actions remains the authoritative self-contained release build.' -ForegroundColor DarkGray
+Write-Host 'This is the v1.2 personal-stable local production candidate. It is framework-dependent for fast validation; CI/installer builds remain self-contained.' -ForegroundColor DarkGray
 
 if ($Run) { Start-Process -FilePath $exe }

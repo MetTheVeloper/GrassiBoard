@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
@@ -15,10 +15,16 @@ internal sealed class MediaDeckService : IDisposable
     private const int MonitorDesiredLatencyMilliseconds = 50;
     private const uint MonitorQueueFrames = 2_880U;
     private const double MonitorQueueMilliseconds = MonitorQueueFrames * 1000.0 / SampleRate;
+    private const int RemoteMonitorTapCapacityFrames = BlockFrames * 24;
+    private const int RemoteMonitorTapPacingFrames = BlockFrames * 3;
     private readonly NativeAudioEngine _engine;
     private readonly Func<bool> _engineRunning;
     private readonly CancellationTokenSource _shutdown = new();
     private readonly object _stateLock = new();
+    // Capacity intentionally exceeds the normal native Media read-ahead + monitor
+    // alignment reservoir. This preserves oldest-frame ordering instead of dropping
+    // decoded Media when the existing Program writer fills ahead in short bursts.
+    private readonly RemoteMonitorTapBuffer _remoteMonitorTap = new(RemoteMonitorTapCapacityFrames, Channels);
     private Task? _worker;
     private string _filePath = string.Empty;
     private string _monitorDeviceId = string.Empty;
@@ -32,6 +38,7 @@ internal sealed class MediaDeckService : IDisposable
     private bool _playing;
     private int _generation;
     private float _peak;
+    private int _remoteMonitorTapEnabled;
     private bool _disposed;
 
     public MediaDeckService(NativeAudioEngine engine, Func<bool> engineRunning)
@@ -102,8 +109,36 @@ internal sealed class MediaDeckService : IDisposable
         set { lock (_stateLock) { if (_monitorDeviceId == value) return; _monitorDeviceId = value ?? string.Empty; _generation++; } }
     }
 
+    /// <summary>
+    /// Managed 48 kHz stereo float tap for the independent Remote Monitor bus.
+    /// The Media Deck worker feeds this before local endpoint routing, so the
+    /// tap never changes Program/VB-CABLE behavior.
+    /// </summary>
+    public bool RemoteMonitorTapEnabled => Volatile.Read(ref _remoteMonitorTapEnabled) != 0;
+    public int RemoteMonitorTapBufferedFrames => _remoteMonitorTap.BufferedFrames;
+
+    public void SetRemoteMonitorTapEnabled(bool enabled)
+    {
+        Volatile.Write(ref _remoteMonitorTapEnabled, enabled ? 1 : 0);
+        _remoteMonitorTap.Clear();
+        if (enabled)
+        {
+            lock (_stateLock) EnsureWorker();
+        }
+    }
+
+    public void ClearRemoteMonitorTap() => _remoteMonitorTap.Clear();
+
+    public bool TryReadRemoteMonitorTap(float[] destination, int frames)
+    {
+        if (destination is null) throw new ArgumentNullException(nameof(destination));
+        if (frames <= 0 || destination.Length < frames * Channels) return false;
+        return _remoteMonitorTap.TryRead(destination, frames);
+    }
+
     public async Task LoadAsync(string path)
     {
+        ClearRemoteMonitorTap();
         string fullPath = path;
         try
         {
@@ -171,6 +206,7 @@ internal sealed class MediaDeckService : IDisposable
         }
         _engine.ClearMedia();
         _engine.SetMediaActive(false);
+        ClearRemoteMonitorTap();
     }
 
     public void Stop()
@@ -184,6 +220,7 @@ internal sealed class MediaDeckService : IDisposable
         Volatile.Write(ref _peak, 0.0F);
         _engine.SetMediaActive(false);
         _engine.ClearMedia();
+        ClearRemoteMonitorTap();
     }
 
     public void Seek(double seconds)
@@ -195,6 +232,7 @@ internal sealed class MediaDeckService : IDisposable
         }
         _engine.SetMediaActive(false);
         _engine.ClearMedia();
+        ClearRemoteMonitorTap();
     }
 
     public void Skip(double seconds) => Seek(PositionSeconds + seconds);
@@ -245,6 +283,7 @@ internal sealed class MediaDeckService : IDisposable
                 bool playing;
                 bool monitor;
                 bool send;
+                bool remoteTap;
                 int generation;
                 lock (_stateLock)
                 {
@@ -255,6 +294,7 @@ internal sealed class MediaDeckService : IDisposable
                     playing = _playing;
                     monitor = _monitorEnabled;
                     send = _sendEnabled;
+                    remoteTap = RemoteMonitorTapEnabled;
                     generation = _generation;
                 }
 
@@ -316,7 +356,8 @@ internal sealed class MediaDeckService : IDisposable
 
                 bool canSend = send && _engineRunning();
                 bool canMonitor = monitorBuffer is not null;
-                if (!canSend && !canMonitor)
+                bool canRemoteTap = remoteTap;
+                if (!canSend && !canMonitor && !canRemoteTap)
                 {
                     await Task.Delay(25, cancellationToken);
                     continue;
@@ -332,7 +373,9 @@ internal sealed class MediaDeckService : IDisposable
                 }
                 bool monitorFull = monitorBuffer is not null &&
                     monitorBuffer.BufferedBytes >= checked((int)(MonitorQueueFrames * Channels * sizeof(float)));
-                if ((canSend && nativeFull) || (canMonitor && monitorFull))
+                bool remoteTapOnlyFull = canRemoteTap && !canSend && !canMonitor &&
+                    _remoteMonitorTap.BufferedFrames >= RemoteMonitorTapPacingFrames;
+                if ((canSend && nativeFull) || (canMonitor && monitorFull) || remoteTapOnlyFull)
                 {
                     await Task.Delay(10, cancellationToken);
                     continue;
@@ -378,6 +421,10 @@ internal sealed class MediaDeckService : IDisposable
                 {
                     Buffer.BlockCopy(samples, 0, monitorBytes, 0, frames * Channels * sizeof(float));
                     monitorBuffer.AddSamples(monitorBytes, 0, frames * Channels * sizeof(float));
+                }
+                if (canRemoteTap)
+                {
+                    _remoteMonitorTap.Write(samples, frames);
                 }
                 lock (_stateLock)
                 {
@@ -461,10 +508,88 @@ internal sealed class MediaDeckService : IDisposable
         reader = null;
     }
 
+    private sealed class RemoteMonitorTapBuffer
+    {
+        private readonly object _gate = new();
+        private readonly float[] _samples;
+        private readonly int _channels;
+        private int _readSample;
+        private int _writeSample;
+        private int _countSamples;
+
+        public RemoteMonitorTapBuffer(int capacityFrames, int channels)
+        {
+            _channels = Math.Max(1, channels);
+            _samples = new float[Math.Max(1, capacityFrames) * _channels];
+        }
+
+        public int BufferedFrames { get { lock (_gate) return _countSamples / _channels; } }
+
+        public void Clear()
+        {
+            lock (_gate)
+            {
+                _readSample = 0;
+                _writeSample = 0;
+                _countSamples = 0;
+            }
+        }
+
+        public void Write(float[] source, int frames)
+        {
+            int sampleCount = Math.Min(source.Length, Math.Max(0, frames) * _channels);
+            sampleCount -= sampleCount % _channels;
+            if (sampleCount <= 0) return;
+            lock (_gate)
+            {
+                int sourceOffset = 0;
+                if (sampleCount >= _samples.Length)
+                {
+                    sourceOffset = sampleCount - _samples.Length;
+                    sourceOffset += (_channels - sourceOffset % _channels) % _channels;
+                    sampleCount = Math.Min(_samples.Length, sampleCount - sourceOffset);
+                    _readSample = _writeSample = _countSamples = 0;
+                }
+                int overflow = _countSamples + sampleCount - _samples.Length;
+                if (overflow > 0)
+                {
+                    overflow += (_channels - overflow % _channels) % _channels;
+                    overflow = Math.Min(overflow, _countSamples);
+                    _readSample = (_readSample + overflow) % _samples.Length;
+                    _countSamples -= overflow;
+                }
+                int first = Math.Min(sampleCount, _samples.Length - _writeSample);
+                Array.Copy(source, sourceOffset, _samples, _writeSample, first);
+                int remaining = sampleCount - first;
+                if (remaining > 0) Array.Copy(source, sourceOffset + first, _samples, 0, remaining);
+                _writeSample = (_writeSample + sampleCount) % _samples.Length;
+                _countSamples += sampleCount;
+            }
+        }
+
+        public bool TryRead(float[] destination, int frames)
+        {
+            int sampleCount = Math.Max(0, frames) * _channels;
+            if (sampleCount <= 0 || destination.Length < sampleCount) return false;
+            lock (_gate)
+            {
+                if (_countSamples < sampleCount) return false;
+                int first = Math.Min(sampleCount, _samples.Length - _readSample);
+                Array.Copy(_samples, _readSample, destination, 0, first);
+                int remaining = sampleCount - first;
+                if (remaining > 0) Array.Copy(_samples, 0, destination, first, remaining);
+                _readSample = (_readSample + sampleCount) % _samples.Length;
+                _countSamples -= sampleCount;
+                return true;
+            }
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed) return;
         _disposed = true;
+        SetRemoteMonitorTapEnabled(false);
         _shutdown.Cancel();
         try { _worker?.Wait(TimeSpan.FromSeconds(2)); } catch (AggregateException) { }
         _shutdown.Dispose();

@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 
@@ -63,6 +63,17 @@ struct gb_audio_statistics {
     std::uint32_t media_active;
     std::uint32_t media_alignment_frames;
 };
+
+
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+struct gb_monitor_tap_statistics {
+    std::uint32_t struct_size;
+    std::uint32_t enabled;
+    std::uint32_t fill_frames;
+    std::uint32_t capacity_frames;
+    std::uint64_t overrun_count;
+};
+#endif
 
 struct gb_mixer_settings {
     std::uint32_t struct_size;
@@ -146,6 +157,44 @@ GB_API gb_result GB_CALL gb_set_mixer_settings(
 GB_API gb_result GB_CALL gb_get_audio_statistics(
     gb_engine_handle engine,
     gb_audio_statistics* statistics) noexcept;
+
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+// ABI 9 experimental Remote Monitor source tap. The realtime render thread
+// writes the raw Soundboard branch (post per-pad volume, pre Program gain) into
+// a bounded SPSC ring. Managed code reads it from a worker thread. These calls
+// never modify the Program/VB-CABLE mix.
+GB_API gb_result GB_CALL gb_monitor_tap_set_enabled(
+    gb_engine_handle engine,
+    std::uint32_t enabled) noexcept;
+GB_API gb_result GB_CALL gb_monitor_tap_clear(gb_engine_handle engine) noexcept;
+GB_API gb_result GB_CALL gb_monitor_tap_read(
+    gb_engine_handle engine,
+    float* interleaved_stereo_samples,
+    std::uint32_t capacity_frames,
+    std::uint32_t* read_frames) noexcept;
+GB_API gb_result GB_CALL gb_monitor_tap_get_statistics(
+    gb_engine_handle engine,
+    gb_monitor_tap_statistics* statistics) noexcept;
+
+// ABI 9 experimental processed microphone source tap. The realtime render
+// thread writes the Voice-DSP microphone branch after Pitch/Formant + mute,
+// but before Program Mic Gain/dynamics/Master. Managed Remote Monitor code
+// drains it continuously and decides whether My Voice is audible. The tap can
+// never modify the Program/VB-CABLE mix.
+GB_API gb_result GB_CALL gb_voice_monitor_tap_set_enabled(
+    gb_engine_handle engine,
+    std::uint32_t enabled) noexcept;
+GB_API gb_result GB_CALL gb_voice_monitor_tap_clear(gb_engine_handle engine) noexcept;
+GB_API gb_result GB_CALL gb_voice_monitor_tap_read(
+    gb_engine_handle engine,
+    float* interleaved_stereo_samples,
+    std::uint32_t capacity_frames,
+    std::uint32_t* read_frames) noexcept;
+GB_API gb_result GB_CALL gb_voice_monitor_tap_get_statistics(
+    gb_engine_handle engine,
+    gb_monitor_tap_statistics* statistics) noexcept;
+#endif
+
 GB_API gb_result GB_CALL gb_get_last_error(
     gb_engine_handle engine,
     char* buffer,

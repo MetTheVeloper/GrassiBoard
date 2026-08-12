@@ -1,8 +1,11 @@
-#pragma once
+﻿#pragma once
 
 #include "grassiboard/audio_engine.h"
 #include "mixer_processor.h"
 #include "media_stream.h"
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+#include "monitor_tap_buffer.h"
+#endif
 #include "pitch_processor.h"
 #include "soundboard_mixer.h"
 
@@ -65,6 +68,17 @@ public:
     void SetMicrophoneMuted(bool muted) noexcept;
     void SetMixerSettings(const gb_mixer_settings& settings) noexcept;
     void GetStatistics(gb_audio_statistics& statistics) const noexcept;
+
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    void SetMonitorTapEnabled(bool enabled) noexcept;
+    void ClearMonitorTap() noexcept;
+    std::uint32_t ReadMonitorTap(float* stereoSamples, std::uint32_t capacityFrames) noexcept;
+    void GetMonitorTapStatistics(gb_monitor_tap_statistics& statistics) const noexcept;
+    void SetVoiceMonitorTapEnabled(bool enabled) noexcept;
+    void ClearVoiceMonitorTap() noexcept;
+    std::uint32_t ReadVoiceMonitorTap(float* stereoSamples, std::uint32_t capacityFrames) noexcept;
+    void GetVoiceMonitorTapStatistics(gb_monitor_tap_statistics& statistics) const noexcept;
+#endif
     std::string GetLastError() const;
 
 private:
@@ -87,6 +101,12 @@ private:
     MixerDynamicsProcessor mixer_processor_;
     SoundboardMixer soundboard_mixer_;
     MediaStreamBuffer media_stream_;
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    MonitorTapBuffer monitor_tap_;
+    MonitorTapBuffer voice_monitor_tap_;
+    std::atomic<bool> monitor_tap_enabled_{false};
+    std::atomic<bool> voice_monitor_tap_enabled_{false};
+#endif
     std::vector<float> pitch_input_buffer_;
     std::vector<float> pitch_output_buffer_;
     std::atomic<float> pitch_semitones_{0.0F};

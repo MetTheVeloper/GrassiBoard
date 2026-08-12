@@ -1,4 +1,4 @@
-# Third-party licenses
+﻿# Third-party licenses
 
 ## Signalsmith Stretch
 
@@ -81,3 +81,9 @@ The MIT notice is included in `THIRD-PARTY-NOTICES.txt`.
 - Usage: stable Material 3 Web Components used by the generated GrassiMote static SPA; bundled at build time with no runtime CDN requirement
 
 Material Web is isolated behind GrassiBoard `Gb*` Vue wrappers where application-level consistency benefits from the abstraction. No experimental `labs` component is required by the v1.1 UI redesign candidate. The Apache-2.0 attribution is recorded in `THIRD-PARTY-NOTICES.txt`; the repository `LICENSE` contains the Apache License 2.0 text.
+
+### SIPSorcery 10.0.13
+Used for the v1.2 WebRTC transport. Upstream licensing is BSD 3-Clause plus an Additional Use Restriction. Current GrassiBoard use is private/personal; re-review the upstream license before any future public distribution.
+
+### Concentus 2.2.2
+Used for managed Opus encoding. See the upstream Concentus LICENSE and included third-party notices.

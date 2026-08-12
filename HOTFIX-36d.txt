@@ -1,0 +1,38 @@
+GrassiBoard v1.2.0 — Hotfix 36d
+Managed product-version contract fix
+
+Result from the previous build
+------------------------------
+The clean normal v1.2 native build is now healthy:
+  7/7 native tests PASSED
+
+The build then stopped at the first managed smoke check:
+  Managed version/native ABI contract is inconsistent.
+
+Cause
+-----
+`GrassiBoard.Shared/BuildInfo.cs` still had:
+  CurrentVersion = "1.0.1"
+
+while the promoted v1.2 production contract correctly requires:
+  version = 1.2.0
+  native ABI = 9
+
+Fix
+---
+- Update the shared managed CurrentVersion to 1.2.0.
+- Improve the smoke-test error so any future mismatch prints actual version + ABI.
+
+No runtime audio/WebRTC/UI behavior changes.
+
+Apply
+-----
+Extract this ZIP into the GrassiBoard repository root and overwrite files.
+
+Do NOT rerun:
+- Apply-Hotfix36-V12PersonalStable.ps1
+- Reset-Hotfix36c-NativeBuild.ps1
+
+Just rerun the normal v1.2 build:
+
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -Run -RunSmokeTests

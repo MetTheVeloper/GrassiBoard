@@ -1,4 +1,4 @@
-#include "grassiboard/audio_engine.h"
+﻿#include "grassiboard/audio_engine.h"
 
 #include <cstdint>
 #include <cstring>
@@ -8,13 +8,26 @@
 int main()
 {
     static_assert(sizeof(gb_audio_statistics) == 144U, "Native statistics ABI layout changed unexpectedly.");
-    if (gb_get_api_version() != 8U) {
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    constexpr std::uint32_t expectedApiVersion = 9U;
+    constexpr const char* expectedEngineVersion = "1.2.0";
+#else
+    constexpr std::uint32_t expectedApiVersion = 8U;
+    constexpr const char* expectedEngineVersion = "1.0.1";
+#endif
+    if (gb_get_api_version() != expectedApiVersion) {
         std::cerr << "Unexpected native API version.\n";
         return 1;
     }
 
-    if (std::strcmp(gb_get_version(), "1.0.1") != 0) {
-        std::cerr << "Unexpected native engine version.\n";
+    const char* const actualEngineVersion = gb_get_version();
+    if (actualEngineVersion == nullptr || std::strcmp(actualEngineVersion, expectedEngineVersion) != 0) {
+        std::cerr
+            << "Unexpected native engine version. Expected '"
+            << expectedEngineVersion
+            << "', got '"
+            << (actualEngineVersion != nullptr ? actualEngineVersion : "<null>")
+            << "'.\n";
         return 2;
     }
 
@@ -25,7 +38,7 @@ int main()
     }
 
     gb_engine_handle engine = nullptr;
-    if (gb_engine_create(8U, &engine) != GB_OK || engine == nullptr) {
+    if (gb_engine_create(expectedApiVersion, &engine) != GB_OK || engine == nullptr) {
         std::cerr << "Engine creation failed.\n";
         return 4;
     }
@@ -110,10 +123,40 @@ int main()
         return 10;
     }
 
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    gb_monitor_tap_statistics tapStatistics{};
+    float tapBuffer[8]{};
+    std::uint32_t tapReadFrames = 99U;
+    if (gb_monitor_tap_set_enabled(engine, 1U) != GB_OK ||
+        gb_monitor_tap_set_enabled(engine, 2U) != GB_ERROR_INVALID_ARGUMENT ||
+        gb_monitor_tap_read(engine, tapBuffer, 4U, &tapReadFrames) != GB_OK ||
+        tapReadFrames != 0U ||
+        gb_monitor_tap_get_statistics(engine, &tapStatistics) != GB_OK ||
+        tapStatistics.struct_size != sizeof(gb_monitor_tap_statistics) ||
+        tapStatistics.enabled != 1U ||
+        tapStatistics.capacity_frames < 48'000U ||
+        gb_monitor_tap_clear(engine) != GB_OK ||
+        gb_monitor_tap_set_enabled(engine, 0U) != GB_OK ||
+        gb_voice_monitor_tap_set_enabled(engine, 1U) != GB_OK ||
+        gb_voice_monitor_tap_set_enabled(engine, 2U) != GB_ERROR_INVALID_ARGUMENT ||
+        gb_voice_monitor_tap_read(engine, tapBuffer, 4U, &tapReadFrames) != GB_OK ||
+        tapReadFrames != 0U ||
+        gb_voice_monitor_tap_get_statistics(engine, &tapStatistics) != GB_OK ||
+        tapStatistics.struct_size != sizeof(gb_monitor_tap_statistics) ||
+        tapStatistics.enabled != 1U ||
+        tapStatistics.capacity_frames < 48'000U ||
+        gb_voice_monitor_tap_clear(engine) != GB_OK ||
+        gb_voice_monitor_tap_set_enabled(engine, 0U) != GB_OK) {
+        std::cerr << "Remote Monitor ABI-9 Soundboard/My Voice tap contract failed.\n";
+        gb_engine_destroy(engine);
+        return 11;
+    }
+#endif
+
     if (gb_engine_stop(engine) != GB_OK) {
         std::cerr << "Stopping an idle engine failed.\n";
         gb_engine_destroy(engine);
-        return 11;
+        return 12;
     }
     gb_engine_destroy(engine);
 

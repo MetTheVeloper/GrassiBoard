@@ -1,4 +1,4 @@
-#include "wasapi_engine.h"
+﻿#include "wasapi_engine.h"
 
 #include "device_enumerator.h"
 
@@ -23,6 +23,9 @@ constexpr std::uint16_t kCaptureChannels = 1U;
 constexpr std::uint16_t kRenderChannels = 2U;
 constexpr std::size_t kRingCapacityFrames = kSampleRate * 2U;
 constexpr std::size_t kMediaCapacityFrames = kSampleRate * 4U;
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+constexpr std::size_t kMonitorTapCapacityFrames = kSampleRate * 2U;
+#endif
 
 WAVEFORMATEX MakeFloatFormat(const std::uint16_t channels) noexcept
 {
@@ -135,6 +138,10 @@ std::size_t FloatRingBuffer::Size() const noexcept
 WasapiEngine::WasapiEngine()
     : ring_buffer_(kRingCapacityFrames)
     , media_stream_(kMediaCapacityFrames)
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    , monitor_tap_(kMonitorTapCapacityFrames)
+    , voice_monitor_tap_(kMonitorTapCapacityFrames)
+#endif
 {
 }
 
@@ -377,6 +384,68 @@ void WasapiEngine::GetStatistics(gb_audio_statistics& statistics) const noexcept
     statistics.media_alignment_frames = media_alignment_frames_.load(std::memory_order_relaxed);
 }
 
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+void WasapiEngine::SetMonitorTapEnabled(const bool enabled) noexcept
+{
+    if (enabled) {
+        monitor_tap_.Reset();
+    }
+    monitor_tap_enabled_.store(enabled, std::memory_order_release);
+}
+
+void WasapiEngine::ClearMonitorTap() noexcept
+{
+    monitor_tap_.Reset();
+}
+
+std::uint32_t WasapiEngine::ReadMonitorTap(
+    float* const stereoSamples,
+    const std::uint32_t capacityFrames) noexcept
+{
+    return monitor_tap_.Read(stereoSamples, capacityFrames);
+}
+
+void WasapiEngine::GetMonitorTapStatistics(gb_monitor_tap_statistics& statistics) const noexcept
+{
+    statistics = {};
+    statistics.struct_size = sizeof(gb_monitor_tap_statistics);
+    statistics.enabled = monitor_tap_enabled_.load(std::memory_order_acquire) ? 1U : 0U;
+    statistics.fill_frames = monitor_tap_.FillFrames();
+    statistics.capacity_frames = monitor_tap_.CapacityFrames();
+    statistics.overrun_count = monitor_tap_.OverrunCount();
+}
+
+void WasapiEngine::SetVoiceMonitorTapEnabled(const bool enabled) noexcept
+{
+    if (enabled) {
+        voice_monitor_tap_.Reset();
+    }
+    voice_monitor_tap_enabled_.store(enabled, std::memory_order_release);
+}
+
+void WasapiEngine::ClearVoiceMonitorTap() noexcept
+{
+    voice_monitor_tap_.Reset();
+}
+
+std::uint32_t WasapiEngine::ReadVoiceMonitorTap(
+    float* const stereoSamples,
+    const std::uint32_t capacityFrames) noexcept
+{
+    return voice_monitor_tap_.Read(stereoSamples, capacityFrames);
+}
+
+void WasapiEngine::GetVoiceMonitorTapStatistics(gb_monitor_tap_statistics& statistics) const noexcept
+{
+    statistics = {};
+    statistics.struct_size = sizeof(gb_monitor_tap_statistics);
+    statistics.enabled = voice_monitor_tap_enabled_.load(std::memory_order_acquire) ? 1U : 0U;
+    statistics.fill_frames = voice_monitor_tap_.FillFrames();
+    statistics.capacity_frames = voice_monitor_tap_.CapacityFrames();
+    statistics.overrun_count = voice_monitor_tap_.OverrunCount();
+}
+#endif
+
 std::string WasapiEngine::GetLastError() const
 {
     const HRESULT result = last_hresult_.load(std::memory_order_acquire);
@@ -437,6 +506,10 @@ void WasapiEngine::ResetStatistics() noexcept
     media_stream_.Clear();
     media_stream_.SetActive(false);
     soundboard_mixer_.ResetPlayback();
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    monitor_tap_.Reset();
+    voice_monitor_tap_.Reset();
+#endif
     mixer_processor_.Reset();
 }
 
@@ -661,10 +734,28 @@ void WasapiEngine::Worker() noexcept
                             if (microphone_muted_.load(std::memory_order_relaxed)) {
                                 microphoneSample = 0.0F;
                             }
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+                            if (voice_monitor_tap_enabled_.load(std::memory_order_relaxed)) {
+                                // My Voice tap: post Pitch/Formant + Mic Mute, but pre
+                                // Program Mic Gain/dynamics/Master. Duplicate mono into
+                                // stereo so the managed monitor worker can share the same
+                                // bounded 48 kHz stereo framing as the other source taps.
+                                const float processedVoice = SafeSample(microphoneSample);
+                                voice_monitor_tap_.Push(processedVoice, processedVoice);
+                            }
+#endif
 
                             float boardLeft = 0.0F;
                             float boardRight = 0.0F;
                             soundboard_mixer_.MixFrame(boardLeft, boardRight);
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+                            if (monitor_tap_enabled_.load(std::memory_order_relaxed)) {
+                                // Raw Soundboard source tap: post per-pad volume, pre Program
+                                // Soundboard gain/master processing. The tap is write-only from
+                                // this realtime thread and cannot alter the Program mix.
+                                monitor_tap_.Push(SafeSample(boardLeft), SafeSample(boardRight));
+                            }
+#endif
                             float mediaLeft = 0.0F;
                             float mediaRight = 0.0F;
                             if (media_stream_.IsActive() && !media_stream_.Pop(mediaLeft, mediaRight)) {
@@ -752,6 +843,10 @@ void WasapiEngine::Worker() noexcept
     media_stream_.Clear();
     media_stream_.SetActive(false);
     soundboard_mixer_.ResetPlayback();
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    monitor_tap_.Reset();
+    voice_monitor_tap_.Reset();
+#endif
 
     if (mmcssHandle != nullptr) {
         AvRevertMmThreadCharacteristics(mmcssHandle);

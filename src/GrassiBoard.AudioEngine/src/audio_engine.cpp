@@ -1,4 +1,4 @@
-#include "grassiboard/audio_engine.h"
+﻿#include "grassiboard/audio_engine.h"
 
 #include "device_enumerator.h"
 #include "wasapi_engine.h"
@@ -9,8 +9,13 @@
 #include <string>
 
 namespace {
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+constexpr std::uint32_t kApiVersion = 9;
+constexpr char kEngineVersion[] = "1.2.0";
+#else
 constexpr std::uint32_t kApiVersion = 8;
 constexpr char kEngineVersion[] = "1.0.1";
+#endif
 
 gb_result WriteUtf8Result(
     const std::string& value,
@@ -340,6 +345,99 @@ gb_result GB_CALL gb_get_audio_statistics(
     static_cast<grassiboard::WasapiEngine*>(engine)->GetStatistics(*statistics);
     return GB_OK;
 }
+
+
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+gb_result GB_CALL gb_monitor_tap_set_enabled(
+    const gb_engine_handle engine,
+    const std::uint32_t enabled) noexcept
+{
+    if (engine == nullptr || enabled > 1U) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetMonitorTapEnabled(enabled != 0U);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_monitor_tap_clear(const gb_engine_handle engine) noexcept
+{
+    if (engine == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->ClearMonitorTap();
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_monitor_tap_read(
+    const gb_engine_handle engine,
+    float* const interleaved_stereo_samples,
+    const std::uint32_t capacity_frames,
+    std::uint32_t* const read_frames) noexcept
+{
+    if (engine == nullptr || interleaved_stereo_samples == nullptr || capacity_frames == 0U || read_frames == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    *read_frames = static_cast<grassiboard::WasapiEngine*>(engine)->ReadMonitorTap(
+        interleaved_stereo_samples, capacity_frames);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_monitor_tap_get_statistics(
+    const gb_engine_handle engine,
+    gb_monitor_tap_statistics* const statistics) noexcept
+{
+    if (engine == nullptr || statistics == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->GetMonitorTapStatistics(*statistics);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_voice_monitor_tap_set_enabled(
+    const gb_engine_handle engine,
+    const std::uint32_t enabled) noexcept
+{
+    if (engine == nullptr || enabled > 1U) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetVoiceMonitorTapEnabled(enabled != 0U);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_voice_monitor_tap_clear(const gb_engine_handle engine) noexcept
+{
+    if (engine == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->ClearVoiceMonitorTap();
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_voice_monitor_tap_read(
+    const gb_engine_handle engine,
+    float* const interleaved_stereo_samples,
+    const std::uint32_t capacity_frames,
+    std::uint32_t* const read_frames) noexcept
+{
+    if (engine == nullptr || interleaved_stereo_samples == nullptr || capacity_frames == 0U || read_frames == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    *read_frames = static_cast<grassiboard::WasapiEngine*>(engine)->ReadVoiceMonitorTap(
+        interleaved_stereo_samples, capacity_frames);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_voice_monitor_tap_get_statistics(
+    const gb_engine_handle engine,
+    gb_monitor_tap_statistics* const statistics) noexcept
+{
+    if (engine == nullptr || statistics == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->GetVoiceMonitorTapStatistics(*statistics);
+    return GB_OK;
+}
+#endif
 
 gb_result GB_CALL gb_get_last_error(
     const gb_engine_handle engine,

@@ -1,10 +1,10 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
-    <Version>1.1.0</Version>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
-    <InformationalVersion Condition="'$(SourceRevisionId)' == ''">1.1.0+local</InformationalVersion>
-    <InformationalVersion Condition="'$(SourceRevisionId)' != ''">1.1.0+$(SourceRevisionId)</InformationalVersion>
+    <Version>1.2.0</Version>
+    <AssemblyVersion>1.2.0.0</AssemblyVersion>
+    <FileVersion>1.2.0.0</FileVersion>
+    <InformationalVersion Condition="'$(SourceRevisionId)' == ''">1.2.0+local</InformationalVersion>
+    <InformationalVersion Condition="'$(SourceRevisionId)' != ''">1.2.0+$(SourceRevisionId)</InformationalVersion>
     <Company>GrassiBoard</Company>
     <Product>GrassiBoard</Product>
     <Copyright>Copyright © GrassiBoard contributors</Copyright>
@@ -19,6 +19,8 @@
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- v1.2 personal-stable baseline: the already accepted Remote Monitor path is built by default. -->
+    <EnableRemoteMonitorSpike Condition="'$(EnableRemoteMonitorSpike)' == ''">true</EnableRemoteMonitorSpike>
 
   </PropertyGroup>
   <PropertyGroup Condition="'$(MSBuildProjectExtension)' == '.vcxproj'">

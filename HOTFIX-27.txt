@@ -1,0 +1,8 @@
+GrassiBoard v1.2.0 Hotfix 27 — CMake discovery
+
+Fixes local ABI-9 Remote Monitor spike builds when Visual Studio 2022 Build Tools and C++ CMake Tools are installed but cmake.exe is not on PATH.
+
+Apply: extract this ZIP into the repository root and overwrite files.
+
+Then rerun:
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -RemoteMonitorSpike -Run -RunSmokeTests

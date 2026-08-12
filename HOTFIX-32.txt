@@ -1,0 +1,106 @@
+GrassiBoard v1.2.0 — Hotfix / Implementation 32
+Gate 4C: Processed My Voice Remote Monitor opt-in
+
+Baseline / accepted gates
+-------------------------
+Apply this on top of the current working tree with Hotfix 31 applied.
+
+Gate 4B is now recorded as USER ACCEPTED (2026-08-12):
+- direct Media contribution works with Media local monitoring OFF;
+- Media monitor-only gain affects only the phone in direct mode;
+- same-endpoint Media local monitoring is detected and the direct copy is suppressed;
+- while suppressed, Media correctly follows Windows / Space rather than the dedicated Media gain;
+- Windows / Space -> 0% removes that embedded Media copy;
+- Monitor Master -> 0% silences the whole phone monitor;
+- Program/VB-CABLE remains isolated.
+
+What Gate 4C adds
+-----------------
+1. Experimental ABI-9 My Voice native tap
+   - second bounded SPSC stereo-float ring;
+   - realtime producer is the existing native render callback;
+   - source point is AFTER Pitch/Formant + Mic Mute;
+   - source point is BEFORE Program Mic Gain/dynamics/Master;
+   - mono processed mic is duplicated into stereo only for monitor framing;
+   - no network, Opus, logging, allocation, or blocking work is added to the callback.
+
+2. Lockstep native pacing
+   - Soundboard and My Voice taps are drained together on the same accepted native render clock;
+   - complete 20 ms frames are required from both rings before the monitor frame is mixed;
+   - My Voice is drained even while inaudible so enabling it cannot replay stale voice.
+
+3. Explicit safe opt-in
+   - GrassiMote adds Enable My Voice / Disable My Voice;
+   - audible My Voice state defaults to OFF;
+   - retained My Voice level defaults to 10%;
+   - explicit Stop Monitor resets the next manually started session to OFF;
+   - automatic recovery of an already-live session preserves the current choice.
+
+4. Monitor-only independence
+   - My Voice level affects only the phone monitor;
+   - Program Mic Gain and Program Master do not set the My Voice phone level;
+   - Pitch/Formant changes are heard in My Voice;
+   - Mic Mute makes My Voice silent;
+   - Program/VB-CABLE is never modified by the tap.
+
+5. Existing accepted paths preserved
+   - Windows / Space, Soundboard, Media duplicate prevention and Monitor Master remain;
+   - monitor-only peak limiter remains;
+   - Opus remains 128 kbps VBR / complexity 10;
+   - normal/release ABI remains 8; this local spike remains experimental ABI 9;
+   - service-worker shell cache advances to grassimote-shell-v15.
+
+Safety note
+-----------
+My Voice is network self-monitoring, so some audible latency is expected even on a
+good LAN. Use headphones/earbuds. Phone-speaker playback can feed acoustically into
+the microphone and create echo/feedback; My Voice therefore stays OFF unless the
+user explicitly enables it.
+
+Apply
+-----
+Extract this ZIP into the current GrassiBoard repository root and overwrite files.
+
+Build / run
+-----------
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -RemoteMonitorSpike -Run -RunSmokeTests
+
+Focused Gate 4C manual test
+---------------------------
+1. Start the GrassiBoard Engine.
+2. GrassiMote -> Monitor -> stop any preserved session.
+3. Select Monitor mix -> Start Monitor Mix.
+4. Confirm My Voice says OFF by default.
+5. Speak into the selected GrassiBoard microphone:
+   - there should be no new self-monitor from My Voice while OFF.
+6. Put on headphones/earbuds and tap Enable My Voice.
+7. Speak:
+   - processed voice should now be audible on the phone.
+8. My Voice -> 0%:
+   - only self-monitor disappears;
+   - Windows / Space, Soundboard and Media continue;
+   - Program/VB-CABLE is unchanged.
+9. Restore My Voice to about 10-20%.
+10. Change Pitch and Formant while speaking:
+    - phone My Voice must follow those changes live.
+11. Toggle Mic Mute:
+    - My Voice must immediately become silent;
+    - unmute must restore it.
+12. Change normal Program Mic Gain and Program Master:
+    - target/Program behavior may change normally;
+    - My Voice phone level should stay independent.
+13. Run Windows audio + Soundboard + Media + My Voice together for a few minutes.
+    Listen for crackle, micro-stutter, clipping, drift, growing delay or feedback.
+14. Disable My Voice while talking:
+    - self-monitor stops without stopping the rest of Monitor Mix.
+    Re-enable it and confirm there is no stale voice replay/catch-up.
+15. Explicitly Stop Monitor, then start a new Monitor Mix:
+    - My Voice must be OFF again.
+16. Report receive bitrate, jitter, packet loss, and subjective My Voice latency.
+
+Acceptance
+----------
+Do not judge My Voice by zero-latency self-monitoring; Wi-Fi/WebRTC self-monitor
+latency is expected. Gate 4C passes when it is stable, artifact-free, explicitly
+gated, follows Voice FX + Mic Mute, remains independent from Program gain/master,
+does not feed stale voice, and does not regress the accepted monitor sources.

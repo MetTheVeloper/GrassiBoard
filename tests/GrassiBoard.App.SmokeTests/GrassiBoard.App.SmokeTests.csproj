@@ -7,6 +7,10 @@
     <PlatformTarget>x64</PlatformTarget>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(EnableRemoteMonitorSpike)' == 'true'">
+    <DefineConstants>$(DefineConstants);REMOTE_MONITOR_SPIKE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\GrassiBoard.Shared\GrassiBoard.Shared.csproj" />
     <ProjectReference Include="..\..\src\GrassiBoard.App\GrassiBoard.App.csproj" />

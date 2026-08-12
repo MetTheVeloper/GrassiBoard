@@ -1,9 +1,9 @@
 {
-  "Version": "1.1.0",
+  "Version": "1.2.0",
   "CommitSha": "local",
   "BuildDate": "local",
   "WorkflowRunNumber": "local",
-  "Configuration": "Debug",
+  "Configuration": "Release-LocalV12",
   "TargetArchitecture": "x64",
   "WdkVersion": "external-cable",
   "SdkVersion": "windows-runner",

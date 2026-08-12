@@ -23,6 +23,13 @@ target_include_directories(GrassiBoard.AudioEngine
 target_link_libraries(GrassiBoard.AudioEngine PRIVATE signalsmith-stretch)
 
 target_compile_definitions(GrassiBoard.AudioEngine PRIVATE GRASSIBOARD_AUDIO_ENGINE_EXPORTS)
+if(GRASSIBOARD_REMOTE_MONITOR_TAP)
+  target_sources(GrassiBoard.AudioEngine PRIVATE
+    src/monitor_tap_buffer.cpp
+    src/monitor_tap_buffer.h
+  )
+  target_compile_definitions(GrassiBoard.AudioEngine PRIVATE GRASSIBOARD_REMOTE_MONITOR_TAP=1)
+endif()
 target_compile_definitions(GrassiBoard.AudioEngine PRIVATE _WIN32_WINNT=0x0A00 WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(GrassiBoard.AudioEngine PRIVATE avrt ole32)
 
