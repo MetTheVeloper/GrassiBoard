@@ -32,6 +32,11 @@ enum gb_result : std::int32_t {
     GB_ERROR_QUEUE_FULL = 10
 };
 
+enum gb_input_source_mode : std::uint32_t {
+    GB_INPUT_SOURCE_WINDOWS = 0,
+    GB_INPUT_SOURCE_REMOTE = 1
+};
+
 struct gb_audio_statistics {
     std::uint32_t struct_size;
     std::uint32_t running;
@@ -72,6 +77,18 @@ struct gb_monitor_tap_statistics {
     std::uint32_t fill_frames;
     std::uint32_t capacity_frames;
     std::uint64_t overrun_count;
+};
+
+struct gb_remote_input_statistics {
+    std::uint32_t struct_size;
+    std::uint32_t requested_source_mode;
+    std::uint32_t active_source_mode;
+    std::uint32_t fill_frames;
+    std::uint32_t capacity_frames;
+    std::uint64_t pushed_frames;
+    std::uint64_t consumed_frames;
+    std::uint64_t underrun_frames;
+    std::uint64_t overrun_frames;
 };
 #endif
 
@@ -193,6 +210,22 @@ GB_API gb_result GB_CALL gb_voice_monitor_tap_read(
 GB_API gb_result GB_CALL gb_voice_monitor_tap_get_statistics(
     gb_engine_handle engine,
     gb_monitor_tap_statistics* statistics) noexcept;
+
+// ABI 10 Remote Phone Mic input. Managed code supplies bounded 48 kHz mono
+// float PCM from a non-realtime worker. The realtime render thread only reads
+// this SPSC ring or zero-fills on starvation.
+GB_API gb_result GB_CALL gb_set_input_source_mode(
+    gb_engine_handle engine,
+    std::uint32_t source_mode) noexcept;
+GB_API gb_result GB_CALL gb_remote_input_push(
+    gb_engine_handle engine,
+    const float* mono_samples,
+    std::uint32_t frame_count,
+    std::uint32_t* accepted_frames) noexcept;
+GB_API gb_result GB_CALL gb_remote_input_reset(gb_engine_handle engine) noexcept;
+GB_API gb_result GB_CALL gb_get_remote_input_statistics(
+    gb_engine_handle engine,
+    gb_remote_input_statistics* statistics) noexcept;
 #endif
 
 GB_API gb_result GB_CALL gb_get_last_error(

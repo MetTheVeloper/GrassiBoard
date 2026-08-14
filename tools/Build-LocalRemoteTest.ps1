@@ -272,7 +272,7 @@ function Resolve-NativeDll {
 
     $cmakeExe = Resolve-CMakeTool 'cmake'
     if (-not $cmakeExe) {
-        throw 'GrassiBoard v1.2 requires the ABI-9 native build, but CMake was not found. Install Visual Studio 2022 Build Tools with Desktop development with C++ (including CMake tools), then rerun this command.'
+        throw 'GrassiBoard v1.3 Gate 2 requires the ABI-10 native build, but CMake was not found. Install Visual Studio 2022 Build Tools with Desktop development with C++ (including CMake tools), then rerun this command.'
     }
 
     Ensure-NativeSubmodules
@@ -280,22 +280,22 @@ function Resolve-NativeDll {
     $preset = if ($RemoteMonitorSpike) { 'windows-x64-remote-monitor-spike' } else { 'windows-x64-release' }
     $expectedPath = if ($RemoteMonitorSpike) { $nativeSpikeBuildPath } else { $nativeBuildPath }
 
-    Write-Host "Building GrassiBoard v1.2 native ABI-9 engine with preset '$preset'..." -ForegroundColor Cyan
+    Write-Host "Building GrassiBoard v1.3 Gate 2 native ABI-10 engine with preset '$preset'..." -ForegroundColor Cyan
     Push-Location $repositoryRoot
     try {
         & $cmakeExe --preset $preset | Out-Host
         if ($LASTEXITCODE -ne 0) {
-            throw "Native v1.2 configure failed for preset '$preset'."
+            throw "Native v1.3 Gate 2 configure failed for preset '$preset'."
         }
         & $cmakeExe --build --preset $preset -- /m | Out-Host
         if ($LASTEXITCODE -ne 0) {
-            throw "Native v1.2 build failed for preset '$preset'."
+            throw "Native v1.3 Gate 2 build failed for preset '$preset'."
         }
     }
     finally { Pop-Location }
 
     if (-not (Test-Path -LiteralPath $expectedPath)) {
-        throw "Native v1.2 build completed but DLL was not found at $expectedPath"
+        throw "Native v1.3 Gate 2 build completed but DLL was not found at $expectedPath"
     }
     return $expectedPath
 }
@@ -305,9 +305,9 @@ Require-Command 'pnpm'
 Stop-GrassiBoardForLocalBuild
 
 if ($RemoteMonitorSpike) {
-    Write-Host '-RemoteMonitorSpike is now a compatibility/diagnostic alias. v1.2 builds the accepted Remote Monitor path by default.' -ForegroundColor DarkYellow
+    Write-Host '-RemoteMonitorSpike remains a compatibility/diagnostic alias. Gate 2 keeps the accepted Remote Monitor path enabled by default.' -ForegroundColor DarkYellow
 }
-Write-Host 'GrassiBoard v1.2 personal-stable production path is ENABLED (ABI 9 + Remote Monitor).' -ForegroundColor Green
+Write-Host 'GrassiBoard v1.3 Gate 2 development path is ENABLED (ABI 10 + Remote Phone Mic).' -ForegroundColor Green
 
 Write-Host 'Generating Nuxt Remote SPA...' -ForegroundColor Cyan
 Push-Location $remoteWebRoot
@@ -334,7 +334,7 @@ if ([string]::IsNullOrWhiteSpace([string]$nativeSource) -or -not (Test-Path -Lit
 }
 
 if ($RunSmokeTests) {
-    Write-Host 'Running v1.2 ABI-9 native tests...' -ForegroundColor Cyan
+    Write-Host 'Running v1.3 Gate 2 ABI-10 native tests...' -ForegroundColor Cyan
     $ctestExe = Resolve-CMakeTool 'ctest'
     if (-not $ctestExe) { throw 'ctest was not found beside the CMake installation used for the v1.2 native build.' }
     $testPreset = if ($RemoteMonitorSpike) { 'windows-x64-remote-monitor-spike' } else { 'windows-x64-release' }
@@ -347,7 +347,7 @@ if ($RunSmokeTests) {
 }
 
 if ($RunSmokeTests) {
-    Write-Host 'Rebuilding managed v1.2 smoke-test dependency graph...' -ForegroundColor Cyan
+    Write-Host 'Rebuilding managed v1.3 Gate 2 smoke-test dependency graph...' -ForegroundColor Cyan
     Push-Location $repositoryRoot
     try {
         & dotnet build .\tests\GrassiBoard.App.SmokeTests\GrassiBoard.App.SmokeTests.csproj `
@@ -355,7 +355,7 @@ if ($RunSmokeTests) {
             --no-incremental
         if ($LASTEXITCODE -ne 0) { throw 'Managed v1.2 smoke-test rebuild failed.' }
 
-        Write-Host 'Running managed v1.2 smoke tests...' -ForegroundColor Cyan
+        Write-Host 'Running managed v1.3 Gate 2 smoke tests...' -ForegroundColor Cyan
         & dotnet run `
             --project .\tests\GrassiBoard.App.SmokeTests\GrassiBoard.App.SmokeTests.csproj `
             --configuration Release `
@@ -425,6 +425,6 @@ $exe = Join-Path $publishRoot 'GrassiBoard.exe'
 Write-Host ''
 Write-Host "Local test build ready: $exe" -ForegroundColor Green
 Write-Host "ZIP: $archivePath" -ForegroundColor Green
-Write-Host 'This is the v1.2 personal-stable local production candidate. It is framework-dependent for fast validation; CI/installer builds remain self-contained.' -ForegroundColor DarkGray
+Write-Host 'This is the v1.3 Gate 2 development build on the frozen v1.2.0 product baseline. It is framework-dependent for fast validation.' -ForegroundColor DarkGray
 
 if ($Run) { Start-Process -FilePath $exe }

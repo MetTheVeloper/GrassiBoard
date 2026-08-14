@@ -1,4 +1,4 @@
-add_executable(GrassiBoard.AudioEngine.Tests audio_engine_tests.cpp)
+﻿add_executable(GrassiBoard.AudioEngine.Tests audio_engine_tests.cpp)
 target_compile_features(GrassiBoard.AudioEngine.Tests PRIVATE cxx_std_20)
 target_link_libraries(GrassiBoard.AudioEngine.Tests PRIVATE GrassiBoard.AudioEngine)
 if(GRASSIBOARD_REMOTE_MONITOR_TAP)
@@ -35,3 +35,20 @@ else()
   target_compile_options(GrassiBoard.MonitorTap.Tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 endif()
 add_test(NAME GrassiBoard.AudioEngine.MonitorTapRingTest COMMAND GrassiBoard.MonitorTap.Tests)
+
+if(GRASSIBOARD_REMOTE_MONITOR_TAP)
+  add_executable(GrassiBoard.RemoteInput.Tests
+    remote_input_buffer_tests.cpp
+    ${CMAKE_SOURCE_DIR}/src/GrassiBoard.AudioEngine/src/remote_input_buffer.cpp
+  )
+  target_compile_features(GrassiBoard.RemoteInput.Tests PRIVATE cxx_std_20)
+  target_include_directories(GrassiBoard.RemoteInput.Tests PRIVATE
+    ${CMAKE_SOURCE_DIR}/src/GrassiBoard.AudioEngine/src
+  )
+  if(MSVC)
+    target_compile_options(GrassiBoard.RemoteInput.Tests PRIVATE /W4 /WX /permissive- /EHsc)
+  else()
+    target_compile_options(GrassiBoard.RemoteInput.Tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+  endif()
+  add_test(NAME GrassiBoard.AudioEngine.RemoteInputRingTest COMMAND GrassiBoard.RemoteInput.Tests)
+endif()

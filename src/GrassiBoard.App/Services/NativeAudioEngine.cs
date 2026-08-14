@@ -7,7 +7,7 @@ namespace GrassiBoard.Services;
 internal sealed partial class NativeAudioEngine : IDisposable
 {
     #if REMOTE_MONITOR_SPIKE
-    internal const uint ExpectedApiVersion = 9U;
+    internal const uint ExpectedApiVersion = 10U;
 #else
     internal const uint ExpectedApiVersion = 8U;
 #endif
@@ -145,6 +145,28 @@ internal sealed partial class NativeAudioEngine : IDisposable
 
     public NativeResult GetVoiceMonitorTapStatistics(out MonitorTapStatistics statistics) =>
         NativeMethods.GetVoiceMonitorTapStatistics(_engine, out statistics);
+
+    public NativeResult SetInputSourceMode(RemoteInputSourceMode mode) =>
+        NativeMethods.SetInputSourceMode(_engine, (uint)mode);
+
+    public NativeResult ResetRemoteInput() => NativeMethods.ResetRemoteInput(_engine);
+
+    public unsafe NativeResult PushRemoteInput(float[] monoSamples, uint frameCount, out uint acceptedFrames)
+    {
+        if (frameCount == 0U || frameCount > monoSamples.LongLength)
+        {
+            acceptedFrames = 0U;
+            return NativeResult.InvalidArgument;
+        }
+
+        fixed (float* pointer = monoSamples)
+        {
+            return NativeMethods.PushRemoteInput(_engine, pointer, frameCount, out acceptedFrames);
+        }
+    }
+
+    public NativeResult GetRemoteInputStatistics(out RemoteInputStatistics statistics) =>
+        NativeMethods.GetRemoteInputStatistics(_engine, out statistics);
 #endif
 
     public unsafe NativeResult LoadSound(ulong key, float[] samples, ulong frameCount)
@@ -309,6 +331,20 @@ internal sealed partial class NativeAudioEngine : IDisposable
 
         [LibraryImport(LibraryName, EntryPoint = "gb_voice_monitor_tap_get_statistics")]
         internal static partial NativeResult GetVoiceMonitorTapStatistics(nint engine, out MonitorTapStatistics statistics);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_set_input_source_mode")]
+        internal static partial NativeResult SetInputSourceMode(nint engine, uint sourceMode);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_remote_input_push")]
+        internal static partial NativeResult PushRemoteInput(
+            nint engine, float* monoSamples, uint frameCount, out uint acceptedFrames);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_remote_input_reset")]
+        internal static partial NativeResult ResetRemoteInput(nint engine);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_get_remote_input_statistics")]
+        internal static partial NativeResult GetRemoteInputStatistics(
+            nint engine, out RemoteInputStatistics statistics);
 #endif
 
         [LibraryImport(LibraryName, EntryPoint = "gb_get_last_error")]
@@ -326,6 +362,26 @@ internal struct MonitorTapStatistics
     public uint FillFrames;
     public uint CapacityFrames;
     public ulong OverrunCount;
+}
+
+internal enum RemoteInputSourceMode : uint
+{
+    Windows = 0U,
+    Remote = 1U
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct RemoteInputStatistics
+{
+    public uint StructSize;
+    public uint RequestedSourceMode;
+    public uint ActiveSourceMode;
+    public uint FillFrames;
+    public uint CapacityFrames;
+    public ulong PushedFrames;
+    public ulong ConsumedFrames;
+    public ulong UnderrunFrames;
+    public ulong OverrunFrames;
 }
 #endif
 

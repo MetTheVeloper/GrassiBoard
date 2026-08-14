@@ -1,4 +1,4 @@
-add_library(GrassiBoard.AudioEngine SHARED
+﻿add_library(GrassiBoard.AudioEngine SHARED
   include/grassiboard/audio_engine.h
   src/audio_engine.cpp
   src/device_enumerator.cpp
@@ -27,6 +27,8 @@ if(GRASSIBOARD_REMOTE_MONITOR_TAP)
   target_sources(GrassiBoard.AudioEngine PRIVATE
     src/monitor_tap_buffer.cpp
     src/monitor_tap_buffer.h
+    src/remote_input_buffer.cpp
+    src/remote_input_buffer.h
   )
   target_compile_definitions(GrassiBoard.AudioEngine PRIVATE GRASSIBOARD_REMOTE_MONITOR_TAP=1)
 endif()

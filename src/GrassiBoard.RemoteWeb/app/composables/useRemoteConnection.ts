@@ -1,4 +1,4 @@
-import type { ConnectionState, PairResponse, RemoteEnvelope, RemoteStateSnapshot } from '~/types/remote'
+﻿import type { ConnectionState, PairResponse, RemoteEnvelope, RemoteStateSnapshot } from '~/types/remote'
 
 interface RemoteSnackbar {
   id: number
@@ -15,6 +15,7 @@ interface RemoteInfo {
   stableHost?: string
   mdnsAvailable?: boolean
   remoteMonitorSpikeAvailable?: boolean
+  remotePhoneMicSpikeAvailable?: boolean
 }
 
 type RemoteMessageHandler = (message: RemoteEnvelope<any>) => void | Promise<void>

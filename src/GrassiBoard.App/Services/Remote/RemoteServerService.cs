@@ -28,9 +28,12 @@ internal sealed class RemoteServerService : IAsyncDisposable
     private readonly RemoteMdnsService _mdns = new();
 #if REMOTE_MONITOR_SPIKE
     private readonly RemoteMonitorWebRtcSpikeService _monitorSpike;
+    private readonly RemotePhoneMicWebRtcSpikeService _phoneMicSpike;
     private const bool RemoteMonitorSpikeAvailable = true;
+    private const bool RemotePhoneMicSpikeAvailable = true;
 #else
     private const bool RemoteMonitorSpikeAvailable = false;
+    private const bool RemotePhoneMicSpikeAvailable = false;
 #endif
     private readonly Channel<long> _invalidations = Channel.CreateBounded<long>(new BoundedChannelOptions(1)
     {
@@ -53,6 +56,7 @@ internal sealed class RemoteServerService : IAsyncDisposable
         RemoteStatePublisher statePublisher
 #if REMOTE_MONITOR_SPIKE
         , RemoteMonitorWebRtcSpikeService monitorSpike
+        , RemotePhoneMicWebRtcSpikeService phoneMicSpike
 #endif
         )
     {
@@ -63,6 +67,7 @@ internal sealed class RemoteServerService : IAsyncDisposable
         _statePublisher = statePublisher;
 #if REMOTE_MONITOR_SPIKE
         _monitorSpike = monitorSpike;
+        _phoneMicSpike = phoneMicSpike;
 #endif
         _statePublisher.Invalidated += OnStateInvalidated;
     }
@@ -137,7 +142,8 @@ internal sealed class RemoteServerService : IAsyncDisposable
             onboardingOrigin = OnboardingAddress,
             stableHost = RemoteTlsService.StableHostName,
             mdnsAvailable = _mdns.IsRunning,
-            remoteMonitorSpikeAvailable = RemoteMonitorSpikeAvailable
+            remoteMonitorSpikeAvailable = RemoteMonitorSpikeAvailable,
+            remotePhoneMicSpikeAvailable = RemotePhoneMicSpikeAvailable
         }, RemoteProtocol.JsonOptions));
 
         app.MapGet("/api/remote/ca.cer", () =>
@@ -250,6 +256,7 @@ internal sealed class RemoteServerService : IAsyncDisposable
         lock (_clientsGate) clients = _clients.ToArray();
 #if REMOTE_MONITOR_SPIKE
         await _monitorSpike.CloseAllAsync("Remote server stopped");
+        await _phoneMicSpike.CloseAllAsync("Remote server stopped");
 #endif
         foreach (RemoteClientConnection client in clients)
         {
@@ -464,6 +471,7 @@ internal sealed class RemoteServerService : IAsyncDisposable
             await client.SendSnapshotAsync(initial);
 #if REMOTE_MONITOR_SPIKE
             await _monitorSpike.RebindClientAsync(client.ClientId, client.SendEventAsync);
+            await _phoneMicSpike.RebindClientAsync(client.ClientId, client.SendEventAsync);
 #endif
 
             while (socket.State == WebSocketState.Open && !context.RequestAborted.IsCancellationRequested)
@@ -528,6 +536,39 @@ internal sealed class RemoteServerService : IAsyncDisposable
                         envelope.MessageId,
                         "monitor_spike_unavailable",
                         "This build does not include the v1.2 Remote Monitor technology spike.");
+#endif
+                    continue;
+                }
+
+                if (envelope.Type.StartsWith("mic.spike.", StringComparison.Ordinal))
+                {
+#if REMOTE_MONITOR_SPIKE
+                    RemoteCommandResult phoneMicResult = envelope.Type switch
+                    {
+                        "mic.spike.offer" => await _phoneMicSpike.HandleOfferAsync(
+                            client.ClientId, envelope.Payload, client.SendEventAsync),
+                        "mic.spike.ice" => await _phoneMicSpike.HandleIceCandidateAsync(
+                            client.ClientId, envelope.Payload),
+                        "mic.spike.stop" => await _phoneMicSpike.StopAsync(client.ClientId),
+                        "mic.spike.route.set" => await _phoneMicSpike.HandleRouteAsync(
+                            client.ClientId, envelope.Payload),
+                        _ => RemoteCommandResult.Fail(
+                            "mic_spike_unknown_message",
+                            "Unknown Remote Phone Microphone Gate 2 message.")
+                    };
+
+                    if (phoneMicResult.Success)
+                        await client.SendAckAsync(envelope.MessageId, envelope.Type);
+                    else
+                        await client.SendErrorAsync(
+                            envelope.MessageId,
+                            phoneMicResult.ErrorCode ?? "mic_spike_failed",
+                            phoneMicResult.ErrorMessage ?? "Remote Phone Microphone Gate 2 command failed.");
+#else
+                    await client.SendErrorAsync(
+                        envelope.MessageId,
+                        "mic_spike_unavailable",
+                        "This build does not include v1.3 Remote Phone Microphone Gate 2.");
 #endif
                     continue;
                 }
@@ -649,6 +690,7 @@ internal sealed class RemoteServerService : IAsyncDisposable
         _statePublisher.Invalidated -= OnStateInvalidated;
         await StopAsync();
 #if REMOTE_MONITOR_SPIKE
+        await _phoneMicSpike.DisposeAsync();
         await _monitorSpike.DisposeAsync();
 #endif
         await _mdns.DisposeAsync();

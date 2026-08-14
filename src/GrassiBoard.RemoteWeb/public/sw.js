@@ -1,4 +1,4 @@
-﻿const CACHE_NAME = 'grassimote-shell-v17'
+﻿const CACHE_NAME = 'grassimote-shell-v22'
 const SHELL = ['/', '/index.html', '/offline.html', '/manifest.webmanifest', '/icons/grassimote-192.png', '/icons/grassimote-512.png']
 
 async function cacheGeneratedShell(cache) {

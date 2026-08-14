@@ -9,8 +9,8 @@ int main()
 {
     static_assert(sizeof(gb_audio_statistics) == 144U, "Native statistics ABI layout changed unexpectedly.");
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-    constexpr std::uint32_t expectedApiVersion = 9U;
-    constexpr const char* expectedEngineVersion = "1.2.0";
+    constexpr std::uint32_t expectedApiVersion = 10U;
+    constexpr const char* expectedEngineVersion = "1.3.0-gate2";
 #else
     constexpr std::uint32_t expectedApiVersion = 8U;
     constexpr const char* expectedEngineVersion = "1.0.1";
@@ -124,6 +124,7 @@ int main()
     }
 
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    static_assert(sizeof(gb_remote_input_statistics) == 56U, "Remote Input ABI statistics layout changed unexpectedly.");
     gb_monitor_tap_statistics tapStatistics{};
     float tapBuffer[8]{};
     std::uint32_t tapReadFrames = 99U;
@@ -147,9 +148,32 @@ int main()
         tapStatistics.capacity_frames < 48'000U ||
         gb_voice_monitor_tap_clear(engine) != GB_OK ||
         gb_voice_monitor_tap_set_enabled(engine, 0U) != GB_OK) {
-        std::cerr << "Remote Monitor ABI-9 Soundboard/My Voice tap contract failed.\n";
+        std::cerr << "Remote Monitor ABI-10 Soundboard/My Voice tap contract failed.\n";
         gb_engine_destroy(engine);
         return 11;
+    }
+
+    const float remoteInputSamples[]{0.1F, -0.2F, 0.3F, -0.4F};
+    std::uint32_t acceptedRemoteFrames = 0U;
+    gb_remote_input_statistics remoteStatistics{};
+    if (gb_set_input_source_mode(engine, GB_INPUT_SOURCE_REMOTE) != GB_OK ||
+        gb_set_input_source_mode(engine, 2U) != GB_ERROR_INVALID_ARGUMENT ||
+        gb_remote_input_push(engine, remoteInputSamples, 4U, &acceptedRemoteFrames) != GB_OK ||
+        acceptedRemoteFrames != 4U ||
+        gb_get_remote_input_statistics(engine, &remoteStatistics) != GB_OK ||
+        remoteStatistics.struct_size != sizeof(gb_remote_input_statistics) ||
+        remoteStatistics.requested_source_mode != GB_INPUT_SOURCE_REMOTE ||
+        remoteStatistics.active_source_mode != GB_INPUT_SOURCE_WINDOWS ||
+        remoteStatistics.fill_frames != 4U ||
+        remoteStatistics.capacity_frames < 4U ||
+        remoteStatistics.pushed_frames != 4U ||
+        gb_remote_input_reset(engine) != GB_OK ||
+        gb_get_remote_input_statistics(engine, &remoteStatistics) != GB_OK ||
+        remoteStatistics.fill_frames != 0U ||
+        gb_set_input_source_mode(engine, GB_INPUT_SOURCE_WINDOWS) != GB_OK) {
+        std::cerr << "Remote Phone Mic ABI-10 input contract failed.\n";
+        gb_engine_destroy(engine);
+        return 13;
     }
 #endif
 

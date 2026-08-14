@@ -1,8 +1,8 @@
 ﻿# Current status
 
-- Version: `v1.0.1` stable
-- Milestone: stable release with device-specific Media synchronization calibration
-- Status: v1.0.0 installer, routing, UI, and audio baseline accepted by the user; v1.0.1 adds the final live calibration control
+- Version: `v1.2.0` personal-stable / USER ACCEPTED
+- Milestone: GrassiMote Remote Control + independent Remote Monitor complete; v1.3 Remote Phone Microphone now in gated development
+- Status: v1.2.0 is frozen at tag `v1.2.0` / commit `c3cf4da1`; native ABI 9 and external VB-CABLE Program routing are the accepted regression baseline
 - Target: Windows 10/11 x64
 - DSP: live Pitch/Fine Pitch, Formant preservation/shift, Bypass, and three quality configurations
 - Default: Balanced, selected by the committed benchmark policy
@@ -22,6 +22,13 @@ The accepted native audio baseline remains unchanged: native ABI 8, physical-mic
 
 v1.2 is now unlocked. The first gate is an isolated, local-only WebRTC/Opus spike that reuses the authenticated Remote WSS signaling channel and sends a synthetic sine tone from Windows to Android. It does not yet capture Windows audio or touch Program mix/native ABI. The temporary WebRTC dependency is enabled only with `EnableRemoteMonitorSpike=true` / `-RemoteMonitorSpike` and is blocked from production adoption pending real-device success and an explicit license review. See `docs/remote-monitor-spike.md`.
 
+## v1.2.0 Remote Monitor — USER ACCEPTED / PERSONAL-STABLE
+
+On 2026-08-12 the user froze and tagged the accepted v1.2.0 baseline at commit `c3cf4da1`. Remote Control and Remote Monitor are accepted on real Windows + Android. Native ABI is 9 and Program output remains the external VB-CABLE route.
+
+## v1.3 Remote Phone Microphone — GATE 1
+
+Gate 1 adds only Android `getUserMedia()` → WebRTC/Opus → existing authenticated WSS signaling → Windows RTP receive → managed Opus decode/counters. It intentionally remains on ABI 9 and does not route Phone Mic PCM through Pitch/Formant, Mixer, or VB-CABLE yet.
 ## v1.0.0 final release candidate
 
 The final candidate corrects remaining humanized labels, green-button foregrounds, and Media transport text. Native ABI 8 reports the total Media Vocal Sync delay and aligns the virtual Media send to capture, active Pitch, current microphone ring, and the estimated local-monitor path so a vocal recorded over a monitored beat shares the same time base.

@@ -141,8 +141,9 @@ internal sealed class MainViewModel : ObservableObject, IDisposable
         var remoteCommandDispatcher = new RemoteCommandDispatcher(this, _dispatcher);
 #if REMOTE_MONITOR_SPIKE
         var remoteMonitorSpike = new RemoteMonitorWebRtcSpikeService(_engine, _mediaDeck);
+        var remotePhoneMicSpike = new RemotePhoneMicWebRtcSpikeService(_engine);
         _remoteServer = new RemoteServerService(
-            remoteSettingsStore, remoteSettings, remotePairing, remoteCommandDispatcher, _remoteStatePublisher, remoteMonitorSpike);
+            remoteSettingsStore, remoteSettings, remotePairing, remoteCommandDispatcher, _remoteStatePublisher, remoteMonitorSpike, remotePhoneMicSpike);
 #else
         _remoteServer = new RemoteServerService(
             remoteSettingsStore, remoteSettings, remotePairing, remoteCommandDispatcher, _remoteStatePublisher);

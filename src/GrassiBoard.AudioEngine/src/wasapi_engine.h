@@ -5,6 +5,7 @@
 #include "media_stream.h"
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
 #include "monitor_tap_buffer.h"
+#include "remote_input_buffer.h"
 #endif
 #include "pitch_processor.h"
 #include "soundboard_mixer.h"
@@ -78,6 +79,10 @@ public:
     void ClearVoiceMonitorTap() noexcept;
     std::uint32_t ReadVoiceMonitorTap(float* stereoSamples, std::uint32_t capacityFrames) noexcept;
     void GetVoiceMonitorTapStatistics(gb_monitor_tap_statistics& statistics) const noexcept;
+    void SetInputSourceMode(std::uint32_t sourceMode) noexcept;
+    std::uint32_t WriteRemoteInput(const float* monoSamples, std::uint32_t frameCount) noexcept;
+    void ResetRemoteInput() noexcept;
+    void GetRemoteInputStatistics(gb_remote_input_statistics& statistics) const noexcept;
 #endif
     std::string GetLastError() const;
 
@@ -104,8 +109,11 @@ private:
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
     MonitorTapBuffer monitor_tap_;
     MonitorTapBuffer voice_monitor_tap_;
+    RemoteInputBuffer remote_input_;
     std::atomic<bool> monitor_tap_enabled_{false};
     std::atomic<bool> voice_monitor_tap_enabled_{false};
+    std::atomic<std::uint32_t> input_source_mode_{GB_INPUT_SOURCE_WINDOWS};
+    std::atomic<std::uint32_t> active_input_source_mode_{GB_INPUT_SOURCE_WINDOWS};
 #endif
     std::vector<float> pitch_input_buffer_;
     std::vector<float> pitch_output_buffer_;

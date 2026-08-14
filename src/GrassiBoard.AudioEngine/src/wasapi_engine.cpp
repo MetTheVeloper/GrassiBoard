@@ -25,6 +25,7 @@ constexpr std::size_t kRingCapacityFrames = kSampleRate * 2U;
 constexpr std::size_t kMediaCapacityFrames = kSampleRate * 4U;
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
 constexpr std::size_t kMonitorTapCapacityFrames = kSampleRate * 2U;
+constexpr std::size_t kRemoteInputCapacityFrames = kSampleRate / 4U; // 250 ms hard native bound
 #endif
 
 WAVEFORMATEX MakeFloatFormat(const std::uint16_t channels) noexcept
@@ -141,6 +142,7 @@ WasapiEngine::WasapiEngine()
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
     , monitor_tap_(kMonitorTapCapacityFrames)
     , voice_monitor_tap_(kMonitorTapCapacityFrames)
+    , remote_input_(kRemoteInputCapacityFrames)
 #endif
 {
 }
@@ -339,10 +341,19 @@ void WasapiEngine::UpdatePitchTarget() noexcept
 void WasapiEngine::UpdateMediaAlignment() noexcept
 {
     const std::uint32_t pitchLatency = pitch_processor_.GetLatencySamples();
-    const std::uint64_t microphonePath =
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    const bool remoteInput =
+        active_input_source_mode_.load(std::memory_order_relaxed) == GB_INPUT_SOURCE_REMOTE;
+    const std::uint64_t sourceBufferFrames = remoteInput
+        ? remote_input_.FillFrames()
+        : static_cast<std::uint64_t>(capture_buffer_frames_.load(std::memory_order_relaxed)) +
+            ring_buffer_fill_frames_.load(std::memory_order_relaxed);
+#else
+    const std::uint64_t sourceBufferFrames =
         static_cast<std::uint64_t>(capture_buffer_frames_.load(std::memory_order_relaxed)) +
-        pitchLatency +
         ring_buffer_fill_frames_.load(std::memory_order_relaxed);
+#endif
+    const std::uint64_t microphonePath = sourceBufferFrames + pitchLatency;
     const std::uint64_t monitorPath = media_monitor_latency_frames_.load(std::memory_order_relaxed);
     const std::uint64_t aligned = std::min<std::uint64_t>(
         microphonePath + monitorPath, static_cast<std::uint64_t>(kMediaCapacityFrames - 1U));
@@ -444,6 +455,39 @@ void WasapiEngine::GetVoiceMonitorTapStatistics(gb_monitor_tap_statistics& stati
     statistics.capacity_frames = voice_monitor_tap_.CapacityFrames();
     statistics.overrun_count = voice_monitor_tap_.OverrunCount();
 }
+
+void WasapiEngine::SetInputSourceMode(const std::uint32_t sourceMode) noexcept
+{
+    input_source_mode_.store(
+        sourceMode == GB_INPUT_SOURCE_REMOTE ? GB_INPUT_SOURCE_REMOTE : GB_INPUT_SOURCE_WINDOWS,
+        std::memory_order_release);
+}
+
+std::uint32_t WasapiEngine::WriteRemoteInput(
+    const float* const monoSamples,
+    const std::uint32_t frameCount) noexcept
+{
+    return remote_input_.Write(monoSamples, frameCount);
+}
+
+void WasapiEngine::ResetRemoteInput() noexcept
+{
+    remote_input_.Reset();
+}
+
+void WasapiEngine::GetRemoteInputStatistics(gb_remote_input_statistics& statistics) const noexcept
+{
+    statistics = {};
+    statistics.struct_size = sizeof(gb_remote_input_statistics);
+    statistics.requested_source_mode = input_source_mode_.load(std::memory_order_acquire);
+    statistics.active_source_mode = active_input_source_mode_.load(std::memory_order_acquire);
+    statistics.fill_frames = remote_input_.FillFrames();
+    statistics.capacity_frames = remote_input_.CapacityFrames();
+    statistics.pushed_frames = remote_input_.PushedFrames();
+    statistics.consumed_frames = remote_input_.ConsumedFrames();
+    statistics.underrun_frames = remote_input_.UnderrunFrames();
+    statistics.overrun_frames = remote_input_.OverrunFrames();
+}
 #endif
 
 std::string WasapiEngine::GetLastError() const
@@ -509,6 +553,9 @@ void WasapiEngine::ResetStatistics() noexcept
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
     monitor_tap_.Reset();
     voice_monitor_tap_.Reset();
+    input_source_mode_.store(GB_INPUT_SOURCE_WINDOWS, std::memory_order_release);
+    active_input_source_mode_.store(GB_INPUT_SOURCE_WINDOWS, std::memory_order_release);
+    remote_input_.Reset();
 #endif
     mixer_processor_.Reset();
 }
@@ -587,9 +634,10 @@ void WasapiEngine::Worker() noexcept
         render_buffer_frames_.store(renderFrames, std::memory_order_relaxed);
 
         try {
-            pitch_input_buffer_.resize(captureFrames);
-            pitch_output_buffer_.resize(captureFrames);
-            if (!pitch_processor_.Prepare(kSampleRate, kCaptureChannels, captureFrames)) {
+            const UINT32 maximumBlockFrames = std::max(captureFrames, renderFrames);
+            pitch_input_buffer_.resize(maximumBlockFrames);
+            pitch_output_buffer_.resize(maximumBlockFrames);
+            if (!pitch_processor_.Prepare(kSampleRate, kCaptureChannels, maximumBlockFrames)) {
                 result = E_FAIL;
             }
             mixer_processor_.Prepare(kSampleRate);
@@ -638,6 +686,11 @@ void WasapiEngine::Worker() noexcept
     HANDLE mmcssHandle = AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcssTaskIndex);
     const std::array<HANDLE, 3> events{stop_event_, captureEvent, renderEvent};
     bool active = true;
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    std::uint32_t workerInputSourceMode =
+        input_source_mode_.load(std::memory_order_acquire);
+    active_input_source_mode_.store(workerInputSourceMode, std::memory_order_release);
+#endif
 
     while (active) {
         const DWORD waitResult = WaitForMultipleObjects(
@@ -671,25 +724,33 @@ void WasapiEngine::Worker() noexcept
 
                 const bool silent = (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0U || data == nullptr;
                 const float* samples = reinterpret_cast<const float*>(data);
-                bool overrun = false;
-                for (UINT32 frame = 0; frame < packetFrames; ++frame) {
-                    const float sample = silent ? 0.0F : SafeSample(samples[frame]);
-                    pitch_input_buffer_[frame] = sample;
-                }
-
-                pitch_processor_.Process(
-                    pitch_input_buffer_.data(), pitch_output_buffer_.data(), packetFrames);
-                for (UINT32 frame = 0; frame < packetFrames; ++frame) {
-                    if (!ring_buffer_.Push(SafeSample(pitch_output_buffer_[frame]))) {
-                        overrun = true;
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+                const bool useWindowsInput =
+                    active_input_source_mode_.load(std::memory_order_relaxed) == GB_INPUT_SOURCE_WINDOWS;
+#else
+                constexpr bool useWindowsInput = true;
+#endif
+                if (useWindowsInput) {
+                    bool overrun = false;
+                    for (UINT32 frame = 0; frame < packetFrames; ++frame) {
+                        const float sample = silent ? 0.0F : SafeSample(samples[frame]);
+                        pitch_input_buffer_[frame] = sample;
                     }
+
+                    pitch_processor_.Process(
+                        pitch_input_buffer_.data(), pitch_output_buffer_.data(), packetFrames);
+                    for (UINT32 frame = 0; frame < packetFrames; ++frame) {
+                        if (!ring_buffer_.Push(SafeSample(pitch_output_buffer_[frame]))) {
+                            overrun = true;
+                        }
+                    }
+                    if (overrun) {
+                        overrun_count_.fetch_add(1U, std::memory_order_relaxed);
+                    }
+                    captured_frames_.fetch_add(packetFrames, std::memory_order_relaxed);
+                    ring_buffer_fill_frames_.store(
+                        static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
                 }
-                if (overrun) {
-                    overrun_count_.fetch_add(1U, std::memory_order_relaxed);
-                }
-                captured_frames_.fetch_add(packetFrames, std::memory_order_relaxed);
-                ring_buffer_fill_frames_.store(
-                    static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
 
                 result = captureService->ReleaseBuffer(packetFrames);
                 if (FAILED(result)) {
@@ -726,8 +787,40 @@ void WasapiEngine::Worker() noexcept
                         }
                         media_stream_.SynchronizeDelay(
                             media_alignment_frames_.load(std::memory_order_relaxed));
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+                        const std::uint32_t requestedInputSourceMode =
+                            input_source_mode_.load(std::memory_order_acquire);
+                        if (requestedInputSourceMode != workerInputSourceMode) {
+                            // Both source branches are already 48 kHz mono and enter the same
+                            // prepared Voice DSP. Do not reset/reconfigure Pitch here: source
+                            // switching runs on the realtime worker and must stay allocation-free.
+                            // Clearing the physical staging ring is sufficient to prevent stale
+                            // Windows frames from reappearing after the atomic source handoff.
+                            ring_buffer_.Reset();
+                            workerInputSourceMode = requestedInputSourceMode;
+                            active_input_source_mode_.store(workerInputSourceMode, std::memory_order_release);
+                            UpdateMediaAlignment();
+                        }
+
+                        std::uint32_t remoteReadFrames = 0U;
+                        if (workerInputSourceMode == GB_INPUT_SOURCE_REMOTE) {
+                            remoteReadFrames = remote_input_.Read(pitch_input_buffer_.data(), available);
+                            pitch_processor_.Process(
+                                pitch_input_buffer_.data(), pitch_output_buffer_.data(), available);
+                            captured_frames_.fetch_add(remoteReadFrames, std::memory_order_relaxed);
+                            if (remoteReadFrames < available) {
+                                underrun = true;
+                            }
+                        }
+#endif
                         for (UINT32 frame = 0; frame < available; ++frame) {
                             float microphoneSample = 0.0F;
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+                            if (workerInputSourceMode == GB_INPUT_SOURCE_REMOTE) {
+                                microphoneSample = SafeSample(pitch_output_buffer_[frame]);
+                            }
+                            else
+#endif
                             if (!ring_buffer_.Pop(microphoneSample)) {
                                 underrun = true;
                             }
@@ -810,8 +903,16 @@ void WasapiEngine::Worker() noexcept
                         media_peak_.store(mediaPeak, std::memory_order_relaxed);
                         media_rms_.store(mediaRms, std::memory_order_relaxed);
                         rendered_frames_.fetch_add(available, std::memory_order_relaxed);
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+                        ring_buffer_fill_frames_.store(
+                            workerInputSourceMode == GB_INPUT_SOURCE_REMOTE
+                                ? remote_input_.FillFrames()
+                                : static_cast<std::uint32_t>(ring_buffer_.Size()),
+                            std::memory_order_relaxed);
+#else
                         ring_buffer_fill_frames_.store(
                             static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
+#endif
                         result = renderService->ReleaseBuffer(available, 0U);
                     }
                 }
@@ -846,6 +947,9 @@ void WasapiEngine::Worker() noexcept
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
     monitor_tap_.Reset();
     voice_monitor_tap_.Reset();
+    input_source_mode_.store(GB_INPUT_SOURCE_WINDOWS, std::memory_order_release);
+    active_input_source_mode_.store(GB_INPUT_SOURCE_WINDOWS, std::memory_order_release);
+    remote_input_.Reset();
 #endif
 
     if (mmcssHandle != nullptr) {

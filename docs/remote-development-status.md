@@ -4,12 +4,12 @@
 
 ## Current accepted baseline
 
-- Published/stable desktop baseline: **v1.0.1 USER ACCEPTED**
+- Published/stable desktop baseline: **v1.2.0 USER ACCEPTED / PERSONAL-STABLE**
 - Native ABI baseline: **9 for the v1.2 personal-stable production candidate**; v1.0.1 remains the historical ABI-8 stable baseline
 - Virtual microphone route: **external VB-CABLE, unchanged**
-- Current accepted Remote stage: **v1.1.0 GrassiMote Remote Control — USER ACCEPTED / CI VERIFIED**
+- Current accepted Remote stage: **v1.2.0 GrassiMote Remote Monitor — USER ACCEPTED / PERSONAL-STABLE**
 - Accepted UI stage: **Material 3 GrassiMote redesign — USER ACCEPTED**
-- Current development stage: **v1.2 Remote Monitor — PERSONAL-STABLE PRODUCTION CANDIDATE / FINAL SOAK PENDING**
+- Current development stage: **v1.3 Remote Phone Microphone — GATE 1 IMPLEMENTED / REAL-DEVICE TEST PENDING**
 
 ## v1.1 manual acceptance — PASSED
 
@@ -252,3 +252,23 @@ The explicit 128 kbps VBR / complexity-10 profile removed the earlier audible de
 The installed PWA can keep the monitor session alive across GrassiMote route changes. On this Android device, ordinary minimization can suspend/local-mute audible playback even though the session is retained and restored automatically on foreground; keeping the PWA in the system overlay/floating view preserves continuous playback. This is accepted as a non-blocking browser/OS limitation for the web-only v1.2 path.
 
 See `docs/remote-monitor-spike.md`.
+
+## v1.2.0 final baseline freeze — USER ACCEPTED / TAGGED 2026-08-12
+
+The user explicitly completed the v1.2 line, committed/pushed the stable baseline, and created annotated tag `v1.2.0`.
+
+- Baseline commit: `c3cf4da1a65a7f97314c265ab581dc9694d1b631`
+- Native ABI: **9**
+- Remote Control and Remote Monitor: accepted
+- Windows/Space + Soundboard + Media + processed My Voice monitor mix: accepted
+- Media duplicate prevention and brutal-minimal interactive Monitor quick tiles: accepted
+- Program/VB-CABLE route: unchanged
+- SIPSorcery 10.0.13 remains accepted for current private/personal use.
+
+## v1.3 Gate 1 — Remote Phone Microphone transport
+
+Status: **IMPLEMENTED / REAL WINDOWS + ANDROID TEST PENDING**
+
+Gate 1 validates only `Android getUserMedia → WebRTC/Opus → existing authenticated WSS → Windows SIPSorcery RTP receive → managed Opus decode diagnostics`.
+
+It reuses HTTPS/pairing/WSS/host-ICE, requests mic permission only after explicit user action, supports Communication and Clean/headset capture modes, preserves a still-live MediaStream through transient recovery where Android allows it, keeps native ABI 9, and never routes decoded Phone Mic PCM into the Audio Engine yet. Physical Windows Mic, Voice DSP, Mixer, Remote Monitor, Program Mix, and VB-CABLE remain the accepted v1.2 paths. ABI 10 is locked until explicit Gate 1 approval.

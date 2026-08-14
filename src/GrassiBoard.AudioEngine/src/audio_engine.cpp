@@ -10,8 +10,8 @@
 
 namespace {
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-constexpr std::uint32_t kApiVersion = 9;
-constexpr char kEngineVersion[] = "1.2.0";
+constexpr std::uint32_t kApiVersion = 10;
+constexpr char kEngineVersion[] = "1.3.0-gate2";
 #else
 constexpr std::uint32_t kApiVersion = 8;
 constexpr char kEngineVersion[] = "1.0.1";
@@ -435,6 +435,51 @@ gb_result GB_CALL gb_voice_monitor_tap_get_statistics(
         return GB_ERROR_INVALID_ARGUMENT;
     }
     static_cast<grassiboard::WasapiEngine*>(engine)->GetVoiceMonitorTapStatistics(*statistics);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_set_input_source_mode(
+    const gb_engine_handle engine,
+    const std::uint32_t source_mode) noexcept
+{
+    if (engine == nullptr || source_mode > GB_INPUT_SOURCE_REMOTE) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetInputSourceMode(source_mode);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_remote_input_push(
+    const gb_engine_handle engine,
+    const float* const mono_samples,
+    const std::uint32_t frame_count,
+    std::uint32_t* const accepted_frames) noexcept
+{
+    if (engine == nullptr || mono_samples == nullptr || frame_count == 0U || accepted_frames == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    *accepted_frames = static_cast<grassiboard::WasapiEngine*>(engine)->WriteRemoteInput(
+        mono_samples, frame_count);
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_remote_input_reset(const gb_engine_handle engine) noexcept
+{
+    if (engine == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->ResetRemoteInput();
+    return GB_OK;
+}
+
+gb_result GB_CALL gb_get_remote_input_statistics(
+    const gb_engine_handle engine,
+    gb_remote_input_statistics* const statistics) noexcept
+{
+    if (engine == nullptr || statistics == nullptr) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    static_cast<grassiboard::WasapiEngine*>(engine)->GetRemoteInputStatistics(*statistics);
     return GB_OK;
 }
 #endif

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 const remote = useRemoteConnection()
 const pwa = usePwaInstall()
 const scannerOpen = ref(false)
@@ -17,7 +17,9 @@ const navItems = computed(() => [
   { to: '/', label: 'Board', icon: 'board' },
   { to: '/voice', label: 'Voice', icon: 'voice' },
   { to: '/mixer', label: 'Mixer', icon: 'mixer' },
-  { to: '/media', label: 'Media', icon: 'media' },
+  ...(remote.serverInfo.value?.remotePhoneMicSpikeAvailable
+    ? [{ to: '/remote-mic', label: 'Mic', icon: 'mic' }]
+    : []),
   ...(remote.serverInfo.value?.remoteMonitorSpikeAvailable
     ? [{ to: '/monitor', label: 'Monitor', icon: 'headphones' }]
     : [])

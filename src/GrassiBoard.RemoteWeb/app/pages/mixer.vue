@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 const remote = useRemoteConnection()
 const state = computed(() => remote.snapshot.value?.mixer)
 const mic = ref(0)
@@ -74,6 +74,8 @@ function setMasterGain(value: number) { setGain('master', value) }
           <GbSlider :model-value="master" :min="-24" :max="12" :step="0.5" label="Master Gain" :value-text="`${master >= 0 ? '+' : ''}${master.toFixed(1)} dB`" @input="setMasterGain" />
         </section>
       </div>
+
+      <RemoteMediaMiniPlayer />
     </template>
   </section>
 </template>
