@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 using GrassiBoard.Models.Looper;
 using GrassiBoard.Services.Looper;
 
@@ -7,6 +8,8 @@ internal static class LooperGate1Smoke
     [ModuleInitializer]
     internal static void Run()
     {
+        VerifyWebRtcDependencyBaseline();
+
         var analysis = new WaveformAnalysisService();
         float[] synthetic =
         [
@@ -62,6 +65,23 @@ internal static class LooperGate1Smoke
         if (!rejected)
         {
             throw new InvalidOperationException("Gate 1 must lock Master redefinition after child tracks exist.");
+        }
+    }
+
+    private static void VerifyWebRtcDependencyBaseline()
+    {
+        string projectPath = Path.Combine(
+            Environment.CurrentDirectory, "src", "GrassiBoard.App", "GrassiBoard.App.csproj");
+        XDocument project = XDocument.Load(projectPath);
+        XElement[] sipsorceryReferences = project
+            .Descendants("PackageReference")
+            .Where(element => string.Equals((string?)element.Attribute("Include"), "SIPSorcery", StringComparison.Ordinal))
+            .ToArray();
+        if (sipsorceryReferences.Length != 1 ||
+            !string.Equals((string?)sipsorceryReferences[0].Attribute("Version"), "10.0.15", StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Gate 1 requires the real SIPSorcery PackageReference to remain exactly 10.0.15; legacy migration comments do not count.");
         }
     }
 
