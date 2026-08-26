@@ -6,6 +6,8 @@
 
 - GrassiBoard feature baseline: **v1.3.0 Full Remote Audio / Remote Phone Microphone — USER ACCEPTED / PERSONAL-STABLE by real local Windows + Android testing**
 - Frozen v1.3 implementation commit: `f27b39055971da14bb8fa3753f28d5b690757a8f`
+- Gate 0 freeze commit on `main`: `819b1e3449b91b9502886fda997eca70764a37ac`
+- GrassiLooper development branch: `feature/grassilooper-v1.4`
 - Current native ABI in source: **10**
 - Native engine source version string at the frozen baseline: `1.3.0-gate2`
 - Program microphone route: **external VB-CABLE, unchanged**
@@ -18,68 +20,19 @@
 - Source of truth: `docs/looper-roadmap.md`
 - Target release family: **v1.4.x**
 - Development model: **Gate-based**
-- The numbered roadmap sections are requirements/design rules inside the Gates; they are **not 98 independent implementation stages**.
+- Long-lived integration branch: `feature/grassilooper-v1.4`
+- `main` remains frozen until all nine implementation/acceptance Gates complete and the final merge is explicitly approved.
 
-## Current Gate
+## Gate 0 — Freeze/document v1.3 baseline
 
-### Gate 0 — Freeze/document v1.3 baseline
+Status: **USER ACCEPTED — 2026-08-26**
 
-Status: **IMPLEMENTED / AWAITING USER CONFIRMATION**
-
-Completed before Gate 0:
-
-- [x] GrassiLooper product concept agreed
-- [x] Imported-audio Master workflow agreed
-- [x] Empty-project / first-microphone Master workflow agreed
-- [x] Shared sample-accurate Master Loop concept agreed
-- [x] Reusable WPF waveform/component architecture agreed
-- [x] Master Trim vs child Track Trim semantics agreed
-- [x] Shared transport behavior agreed
-- [x] No live microphone self-monitoring for MVP agreed
-- [x] Three recording modes agreed: One Cycle / Loop Replace / Overdub
-- [x] Loop Replace 12-second-on-8-second reference behavior agreed
-- [x] Same existing Voice FX engine will be reused
-- [x] Per-Track Voice FX snapshots agreed
-- [x] Pre-Looper Voice state restore agreed
-- [x] Dry source / non-destructive Track FX deferred to future architecture
-- [x] Extend / multiply Master cycle deferred to future architecture
-- [x] DAW-ready aligned stem ZIP export agreed
-- [x] Master roadmap committed to repository
-- [x] Looper status tracker created
-
-Gate 0 implementation result:
-
-- [x] Updated `docs/current-status.md` to record the real v1.3 USER ACCEPTED / PERSONAL-STABLE feature baseline.
-- [x] Updated `docs/remote-development-status.md` to reflect completed real-device v1.3 acceptance.
-- [x] Preserved the explicit distinction between accepted feature behavior and unverified final package/installer state.
-- [x] Recorded/froze the v1.3 implementation baseline at commit `f27b39055971da14bb8fa3753f28d5b690757a8f`.
-- [x] Reviewed `CHANGELOG.md`; no v1.3 release-promotion entry is added in Gate 0 because the final v1.3 CI/package/installer gate is not verified. The authoritative personal-stable state is recorded in the status documents instead.
-
-## Gate 0 verification
-
-This iteration is documentation-only. It changes no C#, C++, XAML, RemoteWeb, native ABI, build script, routing, DSP, Soundboard, Media, Remote, or VB-CABLE runtime behavior.
-
-Baseline verification recorded from the frozen v1.3 implementation:
-
-```text
-GitHub Actions Build #86 / run 31789622279
-Remote Web install/generate     PASS
-Native configure               PASS
-Native build                   PASS
-Native tests                   PASS
-Managed smoke tests            FAIL
-Publish/package/installer      SKIPPED
-```
-
-The real local Windows + Android v1.3 feature path had already been accepted before GrassiLooper planning began. Gate 0 does not claim a new runtime build or a new installer test.
-
-User action required for Gate 0:
-
-```text
-[ ] Confirm that this frozen baseline accurately reflects the accepted v1.3 state
-[ ] Accept the explicit CI/package/installer caveat
-[ ] Explicitly approve Gate 0 before Gate 1 begins
-```
+- [x] `docs/current-status.md` records the real v1.3 USER ACCEPTED / PERSONAL-STABLE feature baseline.
+- [x] `docs/remote-development-status.md` records completed real-device v1.3 acceptance.
+- [x] Feature acceptance is explicitly separated from the unverified final CI/package/installer state.
+- [x] v1.3 implementation baseline frozen at `f27b39055971da14bb8fa3753f28d5b690757a8f`.
+- [x] Freeze committed to `main` as `819b1e3449b91b9502886fda997eca70764a37ac`.
+- [x] User explicitly approved Gate 0 on 2026-08-26.
 
 Known baseline caveats carried forward:
 
@@ -87,53 +40,84 @@ Known baseline caveats carried forward:
 - final v1.3 GitHub Actions run is not fully green because managed smoke tests failed;
 - native engine source version string still reports `1.3.0-gate2` even though the accepted feature baseline is v1.3.0.
 
-These are frozen facts, not silent regressions introduced by Looper work.
-
-## Next Gate
+## Current Gate
 
 ### Gate 1 — UI foundation + project model + reusable waveform architecture
 
-Status: **LOCKED UNTIL GATE 0 IS EXPLICITLY USER ACCEPTED**
+Status: **IMPLEMENTED / AUTOMATED CI PENDING**
 
-Planned scope:
+Implemented in this iteration:
 
-- Looper navigation page
-- empty-project screen
-- project model/store
-- reusable `WaveformView`
-- `WaveformAnalysisService`
-- componentized Track row architecture
-- imported Master audio
-- large Master trim editor
-- Set As Master workflow
+- [x] dedicated Looper workspace added to desktop navigation without changing native audio routing;
+- [x] empty-project UX with Import Audio and deliberately locked Record First Loop action;
+- [x] `LooperProjectModel`, `LooperMasterModel`, `LooperTrackModel`, and in-memory `LooperProjectStore` foundation;
+- [x] reusable `WaveformEnvelope` plus `WaveformAnalysisService` running decode/resample/envelope work outside the UI thread;
+- [x] reusable `WaveformView` implemented as a `FrameworkElement` using `DrawingContext` / `OnRender`, not thousands of XAML shapes;
+- [x] reusable `LooperTrackRow` component created for future child layers;
+- [x] WAV/MP3 imported-Master path at 48 kHz stereo;
+- [x] large waveform trim editor with draggable START / END handles;
+- [x] Set As Master workflow copies the selected sample region and establishes the sample-defined Master frame count;
+- [x] Master redefinition is blocked once dependent child tracks exist;
+- [x] deterministic Gate 1 smoke coverage added for envelope analysis, WAV import/resample contract, sample-defined Master storage, and Master-length lock semantics.
 
-No multi-track recording engine belongs in Gate 1.
+Deliberately not implemented in Gate 1:
+
+- transport/sample clock;
+- Master playback/local monitor;
+- microphone recording;
+- native ABI 11;
+- child-track recording;
+- One Cycle / Loop Replace / Overdub;
+- persistence/export.
+
+Automated verification still required:
+
+```text
+[ ] Windows x64 GitHub Actions build
+[ ] Native regression tests
+[ ] Managed smoke tests including Looper Gate 1 module initializer
+[ ] Self-contained publish/package verification if CI reaches packaging
+```
+
+Manual Gate 1 test after CI is green:
+
+```text
+[ ] Looper appears between Mixer and Routing
+[ ] Existing Board / Voice / Mixer / Routing / Settings navigation still works
+[ ] Empty Looper project shows Import Audio + disabled Record First Loop
+[ ] Import a WAV and an MP3
+[ ] Waveform renders without UI freeze
+[ ] START / END handles drag correctly
+[ ] Selection time label follows trim
+[ ] Set As Master produces the selected Master only
+[ ] Master duration/frame count look correct
+[ ] Import a replacement Master before child tracks exist
+[ ] Existing Windows Mic / Phone Mic / Voice FX / Soundboard / Media / Remote / VB-CABLE behavior is unchanged
+```
+
+## Next Gate
+
+### Gate 2 — Master Loop + transport + local monitor
+
+Status: **LOCKED UNTIL GATE 1 IS CI-GREEN AND EXPLICITLY USER ACCEPTED**
+
+No Gate 2 implementation is permitted yet.
 
 ## Gate sequence
 
 ```text
-Gate 0  Freeze v1.3 baseline
-Gate 1  UI + project + waveform
-Gate 2  Master Loop + transport + local monitor
-Gate 3  First Mic Master + processed Record Tap / ABI
-Gate 4  Child layers + One Cycle / Replace / Overdub
-Gate 5  Record alignment / latency compensation
-Gate 6  Voice FX snapshots + Looper session restore
-Gate 7  Track editor + mixer polish
-Gate 8  Persistence + DAW-ready ZIP export
-Gate 9  Regression + soak + final user acceptance
+Gate 0  Freeze v1.3 baseline                         USER ACCEPTED
+Gate 1  UI + project + waveform                     CURRENT
+Gate 2  Master Loop + transport + local monitor     LOCKED
+Gate 3  First Mic Master + processed Record Tap     LOCKED
+Gate 4  Child layers + recording modes              LOCKED
+Gate 5  Record alignment / latency compensation     LOCKED
+Gate 6  Voice FX snapshots + session restore        LOCKED
+Gate 7  Track editor + mixer polish                 LOCKED
+Gate 8  Persistence + DAW-ready ZIP export          LOCKED
+Gate 9  Regression + soak + final acceptance        LOCKED
 ```
 
 ## Working rule
 
-After every implementation iteration, update this file with:
-
-- current Gate;
-- what was implemented;
-- automated-test result;
-- what the user still needs to test;
-- known issues/hotfixes;
-- explicit user acceptance when received;
-- next permitted Gate.
-
-Do not rewrite the long roadmap for ordinary progress tracking.
+After every implementation iteration, update this file with current Gate, implementation result, automated-test result, required user test, known issues/hotfixes, explicit acceptance, and next permitted Gate.

@@ -1,0 +1,29 @@
+<UserControl x:Class="GrassiBoard.Views.Looper.LooperTrackRow"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:looper="clr-namespace:GrassiBoard.Views.Looper">
+    <Border Style="{StaticResource CardStyle}" Padding="12" Margin="0,0,0,8">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="150" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="48 kHz · aligned" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
+            </StackPanel>
+            <Border Grid.Column="2" CornerRadius="6" ClipToBounds="True" Height="54">
+                <looper:WaveformView WaveformData="{Binding Waveform}"
+                                     WaveformColor="{Binding DisplayColor}"
+                                     CompactMode="True" />
+            </Border>
+            <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                <CheckBox Content="M" IsChecked="{Binding Muted, Mode=TwoWay}" Margin="0,0,10,0" ToolTip="Mute track" />
+                <CheckBox Content="S" IsChecked="{Binding Solo, Mode=TwoWay}" ToolTip="Solo track" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>
