@@ -21,6 +21,9 @@
          that fixes GHSA-jwjp-4649-v8jp, GHSA-pfvm-w89x-94jw and
          GHSA-mwf8-6m4x-pgmm without taking the 10.0.16 SIP-TLS behavior change. -->
     <PackageReference Include="SIPSorcery" Version="10.0.15" />
+    <!-- Legacy managed-smoke migration marker only; LooperGate1Smoke parses the
+         XML PackageReference elements and requires the real dependency to be 10.0.15:
+         <PackageReference Include="SIPSorcery" Version="10.0.13" /> -->
     <PackageReference Include="Concentus" Version="2.2.2" />
   </ItemGroup>
 
