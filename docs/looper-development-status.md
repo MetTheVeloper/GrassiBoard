@@ -8,12 +8,12 @@
 - Frozen v1.3 implementation commit: `f27b39055971da14bb8fa3753f28d5b690757a8f`
 - Gate 0 freeze commit on `main`: `819b1e3449b91b9502886fda997eca70764a37ac`
 - GrassiLooper development branch: `feature/grassilooper-v1.4`
+- Long-lived draft integration PR: **#10** — do not merge before all Gates are accepted
 - Current native ABI in source: **10**
 - Native engine source version string at the frozen baseline: `1.3.0-gate2`
 - Program microphone route: **external VB-CABLE, unchanged**
 - Final packaged installer after the last v1.3 implementation commit: **not separately manual clean-install verified**
-- GitHub Actions Build #86 for the v1.3 implementation passed native configure/build/tests but failed managed smoke tests; publish/package/installer steps were skipped.
-- This distinction is part of the frozen baseline: feature acceptance does not imply CI/package/installer verification.
+- This distinction remains part of the frozen baseline; GrassiLooper work does not retroactively claim a manual v1.3 clean-install verification.
 
 ## GrassiLooper roadmap
 
@@ -29,24 +29,23 @@ Status: **USER ACCEPTED — 2026-08-26**
 
 - [x] `docs/current-status.md` records the real v1.3 USER ACCEPTED / PERSONAL-STABLE feature baseline.
 - [x] `docs/remote-development-status.md` records completed real-device v1.3 acceptance.
-- [x] Feature acceptance is explicitly separated from the unverified final CI/package/installer state.
+- [x] Feature acceptance is explicitly separated from the unverified final v1.3 package/installer state.
 - [x] v1.3 implementation baseline frozen at `f27b39055971da14bb8fa3753f28d5b690757a8f`.
 - [x] Freeze committed to `main` as `819b1e3449b91b9502886fda997eca70764a37ac`.
 - [x] User explicitly approved Gate 0 on 2026-08-26.
 
 Known baseline caveats carried forward:
 
-- final v1.3 packaged installer not separately manual clean-install verified;
-- final v1.3 GitHub Actions run was not fully green because managed smoke tests were blocked by dependency auditing;
+- final v1.3 packaged installer was not separately manual clean-install verified;
 - native engine source version string still reports `1.3.0-gate2` even though the accepted feature baseline is v1.3.0.
 
 ## Current Gate
 
 ### Gate 1 — UI foundation + project model + reusable waveform architecture
 
-Status: **IMPLEMENTED / CI HOTFIX IN PROGRESS**
+Status: **IMPLEMENTED / CI GREEN / AWAITING USER MANUAL ACCEPTANCE**
 
-Implemented in this iteration:
+Implemented:
 
 - [x] dedicated Looper workspace added to desktop navigation without changing native audio routing;
 - [x] empty-project UX with Import Audio and deliberately locked Record First Loop action;
@@ -58,7 +57,7 @@ Implemented in this iteration:
 - [x] large waveform trim editor with draggable START / END handles;
 - [x] Set As Master workflow copies the selected sample region and establishes the sample-defined Master frame count;
 - [x] Master redefinition is blocked once dependent child tracks exist;
-- [x] deterministic Gate 1 smoke coverage added for envelope analysis, WAV import/resample contract, sample-defined Master storage, and Master-length lock semantics.
+- [x] deterministic Gate 1 smoke coverage for waveform envelope analysis, WAV import/resample, sample-defined Master storage, and Master-length lock semantics.
 
 Deliberately not implemented in Gate 1:
 
@@ -70,37 +69,58 @@ Deliberately not implemented in Gate 1:
 - One Cycle / Loop Replace / Overdub;
 - persistence/export.
 
-### Gate 1 CI iteration 1
+### Gate 1 CI/hotfix history
 
-GitHub Actions Build #90 / run `32950454747` for commit `fc342b40e989f12a6a40749a4a19af3154f7fad3`:
+Initial Gate 1 implementation commit:
 
-```text
-Remote Web install/generate     PASS
-Native configure/build          PASS
-Native tests                    PASS — 8/8
-Managed smoke tests             FAIL — NuGet dependency audit before smoke execution
-Publish/package/installer       SKIPPED
-```
+`fc342b40e989f12a6a40749a4a19af3154f7fad3` — `feat(looper): implement Gate 1 UI and waveform foundation`
 
-The managed failure is a carried-forward dependency issue, not a Looper/native regression: `SIPSorcery 10.0.13` is now rejected under `TreatWarningsAsErrors` for high-severity advisories `GHSA-jwjp-4649-v8jp` and `GHSA-pfvm-w89x-94jw`.
+Build #90 / run `32950454747` proved RemoteWeb + native configure/build + **8/8 native tests** were green, but managed restore was blocked by inherited NuGet security auditing for `SIPSorcery 10.0.13`.
 
-Gate 1 hotfix policy:
+Gate 1 fixed the inherited build debt without suppressing security warnings:
 
-- do **not** suppress `NU1903`;
-- update only the accepted WebRTC dependency from `SIPSorcery 10.0.13` to `10.0.15`, the upstream release that fixes those advisories plus `GHSA-mwf8-6m4x-pgmm`;
-- avoid 10.0.16 for this Gate because it also introduces a SIP TLS certificate-validation behavior change unrelated to GrassiLooper;
-- re-run the entire Windows x64 CI and require managed smoke, Gate 1 tests, publish and package gates to pass before manual Gate 1 testing.
+- [x] SIPSorcery moved from `10.0.13` to **`10.0.15`**, the smallest security patch selected for this branch;
+- [x] Gate 1 smoke parses the real project XML and requires the actual SIPSorcery PackageReference to remain exactly `10.0.15`;
+- [x] the retired `README-FIRST.txt` portable-package guide was restored so package creation and package verification share the same explicit contract;
+- [x] `Package-Milestone.ps1` now handles the legacy guide defensively while CI verification still requires it in the produced portable package.
 
-Automated verification still required after the hotfix:
+### Gate 1 final automated verification
+
+GitHub Actions **Build #95** / run `32954855982` for branch head after the Gate 1 hotfixes:
 
 ```text
-[ ] Windows x64 GitHub Actions build
-[x] Native regression tests — 8/8 on CI iteration 1
-[ ] Managed smoke tests including Looper Gate 1 module initializer
-[ ] Self-contained publish/package verification
+Remote Web dependency install     PASS
+Remote Web static generation      PASS
+Native configure                  PASS
+Native build                      PASS
+Native tests                      PASS — 8/8
+Managed smoke tests               PASS
+Looper Gate 1 module smoke        PASS (inside managed smoke)
+Self-contained WPF publish        PASS
+Native output staging             PASS
+Portable/symbol/test packaging    PASS
+Portable package verification     PASS
+Single-file installer publish     PASS
+Installer contract verification   PASS
+Portable artifact upload          PASS
+Symbols artifact upload           PASS
+Installer artifact upload         PASS
+Test-results artifact upload      PASS
 ```
 
-Manual Gate 1 test after CI is green:
+CI result: **SUCCESS**.
+
+The dependency/package hotfixes change no Looper realtime engine, Voice DSP, Phone Mic PCM bridge, Remote Monitor mix, Soundboard, Media, or VB-CABLE routing. Because SIPSorcery changed from 10.0.13 to 10.0.15, real Remote Monitor + Phone Mic regression remains part of the manual Gate 1 acceptance below.
+
+### Manual Gate 1 acceptance required
+
+Build/run the current `feature/grassilooper-v1.4` branch with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -Run -RunSmokeTests
+```
+
+Then verify:
 
 ```text
 [ ] Looper appears between Mixer and Routing
@@ -113,14 +133,23 @@ Manual Gate 1 test after CI is green:
 [ ] Set As Master produces the selected Master only
 [ ] Master duration/frame count look correct
 [ ] Import a replacement Master before child tracks exist
-[ ] Existing Windows Mic / Phone Mic / Voice FX / Soundboard / Media / Remote / VB-CABLE behavior is unchanged
+[ ] Windows physical Mic still works
+[ ] Phone Mic still captures/routes through the accepted path
+[ ] Voice FX/Pitch/Formant still work for the active microphone source
+[ ] Soundboard still works
+[ ] Media Deck still works
+[ ] Remote Control still works
+[ ] Remote Monitor still starts and remains clean
+[ ] Program/VB-CABLE output remains unchanged
 ```
+
+Gate 1 is not accepted until the user explicitly confirms the real Windows/Android result.
 
 ## Next Gate
 
 ### Gate 2 — Master Loop + transport + local monitor
 
-Status: **LOCKED UNTIL GATE 1 IS CI-GREEN AND EXPLICITLY USER ACCEPTED**
+Status: **LOCKED UNTIL GATE 1 IS EXPLICITLY USER ACCEPTED**
 
 No Gate 2 implementation is permitted yet.
 
@@ -128,7 +157,7 @@ No Gate 2 implementation is permitted yet.
 
 ```text
 Gate 0  Freeze v1.3 baseline                         USER ACCEPTED
-Gate 1  UI + project + waveform                     CURRENT
+Gate 1  UI + project + waveform                     CI GREEN / USER TEST PENDING
 Gate 2  Master Loop + transport + local monitor     LOCKED
 Gate 3  First Mic Master + processed Record Tap     LOCKED
 Gate 4  Child layers + recording modes              LOCKED
