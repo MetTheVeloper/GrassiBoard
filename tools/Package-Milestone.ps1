@@ -31,7 +31,10 @@ Copy-Item -Path (Join-Path $PublishDirectory '*') -Destination $portableStage -R
 Copy-Item -Path (Join-Path $NativeDirectory 'GrassiBoard.AudioEngine.dll') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\CHANGELOG.md') -Destination $portableStage -Force
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\README-FIRST.txt') -Destination $portableStage -Force
+$legacyReadme = Join-Path $PSScriptRoot '..\README-FIRST.txt'
+if (Test-Path -LiteralPath $legacyReadme) {
+    Copy-Item -LiteralPath $legacyReadme -Destination $portableStage -Force
+}
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\THIRD-PARTY-NOTICES.txt') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\LICENSES.md') -Destination $portableStage -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\docs\external-virtual-cable.md') `
