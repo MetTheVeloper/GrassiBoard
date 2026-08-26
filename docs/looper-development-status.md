@@ -1,6 +1,6 @@
 # GrassiLooper development status
 
-> Authoritative short handoff for GrassiLooper work. Read this file first in every new development session, then read only the relevant Gate in `docs/looper-roadmap.md`.
+> Authoritative short handoff for GrassiLooper work. Read this file first in every new development session, then read the relevant Gate in `docs/looper-roadmap.md`.
 
 ## Current baseline
 
@@ -13,158 +13,144 @@
 - Native engine source version string at the frozen baseline: `1.3.0-gate2`
 - Program microphone route: **external VB-CABLE, unchanged**
 - Final packaged installer after the last v1.3 implementation commit: **not separately manual clean-install verified**
-- This distinction remains part of the frozen baseline; GrassiLooper work does not retroactively claim a manual v1.3 clean-install verification.
 
 ## GrassiLooper roadmap
 
 - Source of truth: `docs/looper-roadmap.md`
 - Target release family: **v1.4.x**
 - Development model: **Gate-based**
-- Long-lived integration branch: `feature/grassilooper-v1.4`
 - `main` remains frozen until all nine implementation/acceptance Gates complete and the final merge is explicitly approved.
 
 ## Gate 0 — Freeze/document v1.3 baseline
 
 Status: **USER ACCEPTED — 2026-08-26**
 
-- [x] `docs/current-status.md` records the real v1.3 USER ACCEPTED / PERSONAL-STABLE feature baseline.
-- [x] `docs/remote-development-status.md` records completed real-device v1.3 acceptance.
-- [x] Feature acceptance is explicitly separated from the unverified final v1.3 package/installer state.
-- [x] v1.3 implementation baseline frozen at `f27b39055971da14bb8fa3753f28d5b690757a8f`.
-- [x] Freeze committed to `main` as `819b1e3449b91b9502886fda997eca70764a37ac`.
+- [x] v1.3 feature path frozen/documented as USER ACCEPTED / PERSONAL-STABLE.
+- [x] Feature acceptance remains explicitly separated from final installer clean-install verification.
 - [x] User explicitly approved Gate 0 on 2026-08-26.
 
-Known baseline caveats carried forward:
+## Gate 1 — UI foundation + project model + reusable waveform architecture
 
-- final v1.3 packaged installer was not separately manual clean-install verified;
-- native engine source version string still reports `1.3.0-gate2` even though the accepted feature baseline is v1.3.0.
+Status: **USER ACCEPTED — 2026-08-26**
 
-## Current Gate
+Implemented and accepted:
 
-### Gate 1 — UI foundation + project model + reusable waveform architecture
-
-Status: **IMPLEMENTED / CI GREEN / AWAITING USER MANUAL ACCEPTANCE**
-
-Implemented:
-
-- [x] dedicated Looper workspace added to desktop navigation without changing native audio routing;
+- [x] dedicated Looper workspace between Mixer and Routing;
+- [x] existing Board / Voice / Mixer / Routing / Settings navigation preserved;
 - [x] empty-project UX with Import Audio and deliberately locked Record First Loop action;
 - [x] `LooperProjectModel`, `LooperMasterModel`, `LooperTrackModel`, and in-memory `LooperProjectStore` foundation;
-- [x] reusable `WaveformEnvelope` plus `WaveformAnalysisService` running decode/resample/envelope work outside the UI thread;
-- [x] reusable `WaveformView` implemented as a `FrameworkElement` using `DrawingContext` / `OnRender`, not thousands of XAML shapes;
-- [x] reusable `LooperTrackRow` component created for future child layers;
-- [x] WAV/MP3 imported-Master path at 48 kHz stereo;
+- [x] reusable `WaveformEnvelope` and off-UI-thread `WaveformAnalysisService`;
+- [x] reusable efficient `WaveformView` (`FrameworkElement` + `DrawingContext` / `OnRender`);
+- [x] reusable `LooperTrackRow` structure for future child layers;
+- [x] WAV/MP3 imported-Master path normalized to 48 kHz stereo;
 - [x] large waveform trim editor with draggable START / END handles;
-- [x] Set As Master workflow copies the selected sample region and establishes the sample-defined Master frame count;
-- [x] Master redefinition is blocked once dependent child tracks exist;
-- [x] deterministic Gate 1 smoke coverage for waveform envelope analysis, WAV import/resample, sample-defined Master storage, and Master-length lock semantics.
+- [x] selection label follows trim;
+- [x] Set As Master copies only the selected sample region and establishes the sample-defined Master frame count;
+- [x] Master redefinition remains allowed before dependent child tracks and becomes locked afterward;
+- [x] real Windows UI test reported smooth waveform interaction with no freeze;
+- [x] existing Windows Mic / Phone Mic / Voice FX / Soundboard / Media / Remote / Remote Monitor / VB-CABLE regression checklist reported clean by the user.
 
-Deliberately not implemented in Gate 1:
-
-- transport/sample clock;
-- Master playback/local monitor;
-- microphone recording;
-- native ABI 11;
-- child-track recording;
-- One Cycle / Loop Replace / Overdub;
-- persistence/export.
-
-### Gate 1 CI/hotfix history
-
-Initial Gate 1 implementation commit:
+Gate 1 implementation commit:
 
 `fc342b40e989f12a6a40749a4a19af3154f7fad3` — `feat(looper): implement Gate 1 UI and waveform foundation`
 
-Build #90 / run `32950454747` proved RemoteWeb + native configure/build + **8/8 native tests** were green, but managed restore was blocked by inherited NuGet security auditing for `SIPSorcery 10.0.13`.
+Gate 1 inherited build-debt fixes:
 
-Gate 1 fixed the inherited build debt without suppressing security warnings:
+- SIPSorcery updated from `10.0.13` to `10.0.15` rather than suppressing NuGet security auditing;
+- legacy package-source smoke bridge added while a stricter XML-aware Gate 1 check verifies the real dependency;
+- portable `README-FIRST.txt` contract restored;
+- package script made defensive while produced portable package verification remains strict.
 
-- [x] SIPSorcery moved from `10.0.13` to **`10.0.15`**, the smallest security patch selected for this branch;
-- [x] Gate 1 smoke parses the real project XML and requires the actual SIPSorcery PackageReference to remain exactly `10.0.15`;
-- [x] the retired `README-FIRST.txt` portable-package guide was restored so package creation and package verification share the same explicit contract;
-- [x] `Package-Milestone.ps1` now handles the legacy guide defensively while CI verification still requires it in the produced portable package.
+Final automated verification before manual acceptance:
 
-### Gate 1 final automated verification
+- GitHub Actions **Build #95** / run `32954855982`
+- Remote Web generate: PASS
+- Native build: PASS
+- Native tests: **8/8 PASS**
+- Managed smoke + Looper Gate 1 smoke: PASS
+- WPF publish: PASS
+- portable package + verification: PASS
+- single-file installer + verification: PASS
+- artifact uploads: PASS
+- overall result: **SUCCESS**
 
-GitHub Actions **Build #95** / run `32954855982` for branch head after the Gate 1 hotfixes:
+User manual acceptance notes (2026-08-26):
 
-```text
-Remote Web dependency install     PASS
-Remote Web static generation      PASS
-Native configure                  PASS
-Native build                      PASS
-Native tests                      PASS — 8/8
-Managed smoke tests               PASS
-Looper Gate 1 module smoke        PASS (inside managed smoke)
-Self-contained WPF publish        PASS
-Native output staging             PASS
-Portable/symbol/test packaging    PASS
-Portable package verification     PASS
-Single-file installer publish     PASS
-Installer contract verification   PASS
-Portable artifact upload          PASS
-Symbols artifact upload           PASS
-Installer artifact upload         PASS
-Test-results artifact upload      PASS
-```
+- imported waveform rendered smoothly without UI freeze;
+- trim handles and selection timing behaved correctly;
+- selected region became the Master correctly;
+- user reported no problems in the requested regression checks.
 
-CI result: **SUCCESS**.
+## Product decisions captured after Gate 1 acceptance
 
-The dependency/package hotfixes change no Looper realtime engine, Voice DSP, Phone Mic PCM bridge, Remote Monitor mix, Soundboard, Media, or VB-CABLE routing. Because SIPSorcery changed from 10.0.13 to 10.0.15, real Remote Monitor + Phone Mic regression remains part of the manual Gate 1 acceptance below.
+### Imported-Master selection audition
 
-### Manual Gate 1 acceptance required
+The main roadmap already requires `preview selected region` in the Imported Master path. It was intentionally absent from Gate 1 because Gate 1 contained no playback/monitor engine.
 
-Build/run the current `feature/grassilooper-v1.4` branch with:
+**Scheduled for Gate 2**, together with the Master transport/local-monitor foundation:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tools\Build-LocalRemoteTest.ps1 -Run -RunSmokeTests
-```
+- add one Play/Pause control to the large imported-Master trim editor;
+- audition only the current START → END selection;
+- audition wraps continuously inside that selection;
+- changing START or END invalidates the current audition position and returns it to the new selection start;
+- if a trim boundary changes while audition is playing, playback restarts from the new selection start rather than continuing from an obsolete offset;
+- if paused, the next Play starts from the selection start after a boundary change;
+- no separate Stop button is required for this editor audition control.
 
-Then verify:
+This preview must reuse the Gate 2 monitor/playback infrastructure rather than creating an unrelated second audio player.
 
-```text
-[ ] Looper appears between Mixer and Routing
-[ ] Existing Board / Voice / Mixer / Routing / Settings navigation still works
-[ ] Empty Looper project shows Import Audio + disabled Record First Loop
-[ ] Import a WAV and an MP3
-[ ] Waveform renders without UI freeze
-[ ] START / END handles drag correctly
-[ ] Selection time label follows trim
-[ ] Set As Master produces the selected Master only
-[ ] Master duration/frame count look correct
-[ ] Import a replacement Master before child tracks exist
-[ ] Windows physical Mic still works
-[ ] Phone Mic still captures/routes through the accepted path
-[ ] Voice FX/Pitch/Formant still work for the active microphone source
-[ ] Soundboard still works
-[ ] Media Deck still works
-[ ] Remote Control still works
-[ ] Remote Monitor still starts and remains clean
-[ ] Program/VB-CABLE output remains unchanged
-```
+### New Project semantics and multi-project library
 
-Gate 1 is not accepted until the user explicitly confirms the real Windows/Android result.
+Current Gate 1 behavior is deliberately in-memory only: `New Project` calls `LooperProjectStore.Reset()`, replaces `Current` with a fresh project, and the previous in-memory Looper project is no longer retained by the store. The original imported source file on disk is not deleted, but the Looper project state itself is currently discarded because persistence has not been implemented yet.
 
-## Next Gate
+The roadmap already assigns project autosave + project reopen to Gate 8. The user's requested multi-project workflow is therefore scheduled as an explicit **Gate 8 persistence requirement**:
 
-### Gate 2 — Master Loop + transport + local monitor
+- persistent Project Library / Recent Projects list;
+- each project keeps a stable ID, name, created time, and modified time;
+- `New Project` must safely save the current dirty project before switching to a fresh project;
+- creating a new project must not overwrite or silently discard the previous saved project;
+- saved projects can be selected and reopened later;
+- missing/corrupt asset states remain explicit rather than silently losing project data;
+- project deletion, when added, must be an explicit destructive action rather than a side effect of `New Project`.
 
-Status: **LOCKED UNTIL GATE 1 IS EXPLICITLY USER ACCEPTED**
+A full version-history/revision system is **not** required for the v1.4 MVP; the requirement is a library of multiple independently saved Looper projects that can be reopened.
 
-No Gate 2 implementation is permitted yet.
+Reason for Gate 8 placement: Tracks, Voice FX snapshots, trim/mixer metadata, and asset ownership are still evolving through Gates 3–7. Freezing the durable project schema before those structures exist would create avoidable migration/rewrite risk. Gate 8 is the correct point to make the complete project format durable.
+
+Until Gate 8, `New Project` remains a disposable in-memory reset and should be treated as destructive during development testing.
+
+## Current Gate
+
+### Gate 2 — Master Loop engine + transport + local monitor
+
+Status: **UNLOCKED / READY FOR IMPLEMENTATION**
+
+Gate 2 scope from the roadmap:
+
+- sample-accurate Master buffer;
+- shared Looper playhead;
+- Play / Pause / Stop;
+- gapless loop wrap;
+- Looper local monitor output;
+- playhead visualization;
+- Master length lock contract;
+- memory/performance benchmark and initial supported Loop-size safety limits;
+- **Imported-Master START/END selection Play/Pause audition described above.**
+
+Gate 3 recording work remains locked until Gate 2 is implemented, CI-green, manually tested, and explicitly accepted.
 
 ## Gate sequence
 
 ```text
 Gate 0  Freeze v1.3 baseline                         USER ACCEPTED
-Gate 1  UI + project + waveform                     CI GREEN / USER TEST PENDING
-Gate 2  Master Loop + transport + local monitor     LOCKED
+Gate 1  UI + project + waveform                     USER ACCEPTED
+Gate 2  Master Loop + transport + local monitor     CURRENT / UNLOCKED
 Gate 3  First Mic Master + processed Record Tap     LOCKED
 Gate 4  Child layers + recording modes              LOCKED
 Gate 5  Record alignment / latency compensation     LOCKED
 Gate 6  Voice FX snapshots + session restore        LOCKED
 Gate 7  Track editor + mixer polish                 LOCKED
-Gate 8  Persistence + DAW-ready ZIP export          LOCKED
+Gate 8  Persistence + Project Library + DAW ZIP     LOCKED
 Gate 9  Regression + soak + final acceptance        LOCKED
 ```
 
