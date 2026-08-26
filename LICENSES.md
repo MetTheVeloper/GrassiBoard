@@ -82,8 +82,8 @@ The MIT notice is included in `THIRD-PARTY-NOTICES.txt`.
 
 Material Web is isolated behind GrassiBoard `Gb*` Vue wrappers where application-level consistency benefits from the abstraction. No experimental `labs` component is required by the v1.1 UI redesign candidate. The Apache-2.0 attribution is recorded in `THIRD-PARTY-NOTICES.txt`; the repository `LICENSE` contains the Apache License 2.0 text.
 
-### SIPSorcery 10.0.13
-Used for the v1.2 WebRTC transport. Upstream licensing is BSD 3-Clause plus an Additional Use Restriction. Current GrassiBoard use is private/personal; re-review the upstream license before any future public distribution.
+### SIPSorcery 10.0.15
+Used for the accepted v1.2/v1.3 WebRTC transport. v10.0.15 replaces the frozen v1.3 `10.0.13` package because NuGet now reports high-severity advisories against the older package; 10.0.15 contains the upstream fixes for GHSA-jwjp-4649-v8jp, GHSA-pfvm-w89x-94jw and GHSA-mwf8-6m4x-pgmm. Upstream licensing remains subject to the previously recorded Additional Use Restriction. Current GrassiBoard use is private/personal; re-review the upstream license before any future public distribution.
 
 ### Concentus 2.2.2
 Used for managed Opus encoding. See the upstream Concentus LICENSE and included third-party notices.

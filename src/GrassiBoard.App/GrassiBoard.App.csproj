@@ -16,12 +16,11 @@
   </PropertyGroup>
 
   <ItemGroup Condition="'$(EnableRemoteMonitorSpike)' == 'true'">
-    <!-- v1.2 technology-spike dependency only. The original SpawnDev.SIPSorcery
-         candidate did not expose Opus through AudioEncoder in the real-device test.
-         This official SIPSorcery candidate includes managed Opus via Concentus.
-         Do not enable for release builds until the real-device WebRTC test and
-         license gate are explicitly accepted. -->
-    <PackageReference Include="SIPSorcery" Version="10.0.13" />
+    <!-- The accepted Remote Monitor/Phone Mic WebRTC transport remains enabled
+         in normal personal builds. 10.0.15 is the minimum security baseline
+         that fixes GHSA-jwjp-4649-v8jp, GHSA-pfvm-w89x-94jw and
+         GHSA-mwf8-6m4x-pgmm without taking the 10.0.16 SIP-TLS behavior change. -->
+    <PackageReference Include="SIPSorcery" Version="10.0.15" />
     <PackageReference Include="Concentus" Version="2.2.2" />
   </ItemGroup>
 

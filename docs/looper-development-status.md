@@ -37,14 +37,14 @@ Status: **USER ACCEPTED — 2026-08-26**
 Known baseline caveats carried forward:
 
 - final v1.3 packaged installer not separately manual clean-install verified;
-- final v1.3 GitHub Actions run is not fully green because managed smoke tests failed;
+- final v1.3 GitHub Actions run was not fully green because managed smoke tests were blocked by dependency auditing;
 - native engine source version string still reports `1.3.0-gate2` even though the accepted feature baseline is v1.3.0.
 
 ## Current Gate
 
 ### Gate 1 — UI foundation + project model + reusable waveform architecture
 
-Status: **IMPLEMENTED / AUTOMATED CI PENDING**
+Status: **IMPLEMENTED / CI HOTFIX IN PROGRESS**
 
 Implemented in this iteration:
 
@@ -70,13 +70,34 @@ Deliberately not implemented in Gate 1:
 - One Cycle / Loop Replace / Overdub;
 - persistence/export.
 
-Automated verification still required:
+### Gate 1 CI iteration 1
+
+GitHub Actions Build #90 / run `32950454747` for commit `fc342b40e989f12a6a40749a4a19af3154f7fad3`:
+
+```text
+Remote Web install/generate     PASS
+Native configure/build          PASS
+Native tests                    PASS — 8/8
+Managed smoke tests             FAIL — NuGet dependency audit before smoke execution
+Publish/package/installer       SKIPPED
+```
+
+The managed failure is a carried-forward dependency issue, not a Looper/native regression: `SIPSorcery 10.0.13` is now rejected under `TreatWarningsAsErrors` for high-severity advisories `GHSA-jwjp-4649-v8jp` and `GHSA-pfvm-w89x-94jw`.
+
+Gate 1 hotfix policy:
+
+- do **not** suppress `NU1903`;
+- update only the accepted WebRTC dependency from `SIPSorcery 10.0.13` to `10.0.15`, the upstream release that fixes those advisories plus `GHSA-mwf8-6m4x-pgmm`;
+- avoid 10.0.16 for this Gate because it also introduces a SIP TLS certificate-validation behavior change unrelated to GrassiLooper;
+- re-run the entire Windows x64 CI and require managed smoke, Gate 1 tests, publish and package gates to pass before manual Gate 1 testing.
+
+Automated verification still required after the hotfix:
 
 ```text
 [ ] Windows x64 GitHub Actions build
-[ ] Native regression tests
+[x] Native regression tests — 8/8 on CI iteration 1
 [ ] Managed smoke tests including Looper Gate 1 module initializer
-[ ] Self-contained publish/package verification if CI reaches packaging
+[ ] Self-contained publish/package verification
 ```
 
 Manual Gate 1 test after CI is green:
