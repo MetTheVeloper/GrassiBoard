@@ -58,6 +58,9 @@ try {
     Write-Host '=== GrassiLooper Gate 3 LOCAL validation ===' -ForegroundColor Cyan
     Write-Host '1/4 Building native engine, Remote Web and local WPF package...' -ForegroundColor Cyan
     & $buildScript
+    if ($LASTEXITCODE -ne 0) {
+        throw "Local build failed with exit code $LASTEXITCODE."
+    }
 
     Write-Host '2/4 Running native deterministic tests locally...' -ForegroundColor Cyan
     $ctest = Resolve-Ctest
@@ -66,12 +69,12 @@ try {
         throw "Native ctest failed with exit code $LASTEXITCODE."
     }
 
-    Write-Host '3/4 Compiling the managed smoke dependency graph locally...' -ForegroundColor Cyan
-    & dotnet build .\tests\GrassiBoard.App.SmokeTests\GrassiBoard.App.SmokeTests.csproj `
-        --configuration Release `
-        --no-incremental
+    Write-Host '3/4 Running managed smoke tests locally...' -ForegroundColor Cyan
+    & dotnet run `
+        --project .\tests\GrassiBoard.App.SmokeTests\GrassiBoard.App.SmokeTests.csproj `
+        --configuration Release
     if ($LASTEXITCODE -ne 0) {
-        throw "Managed smoke dependency build failed with exit code $LASTEXITCODE."
+        throw "Managed smoke tests failed with exit code $LASTEXITCODE."
     }
 
     Write-Host '4/4 Checking Gate 3 ABI / Record Tap source contracts...' -ForegroundColor Cyan
