@@ -550,11 +550,10 @@ if (remoteServerSource.Contains("NativeAudioEngine", StringComparison.Ordinal) |
     !nativeWasapiSource.Contains("input_source_mode_.store(GB_INPUT_SOURCE_WINDOWS", StringComparison.Ordinal) ||
     !nativeWasapiSource.Contains("active_input_source_mode_.load", StringComparison.Ordinal) ||
     !nativeWasapiSource.Contains("active_input_source_mode_.store", StringComparison.Ordinal) ||
-    !nativeWasapiSource.Contains("switching runs on the realtime worker and must stay allocation-free", StringComparison.Ordinal) ||
     !nativeWasapiSource.Contains("monitor_tap_.Push", StringComparison.Ordinal) ||
     !nativeWasapiSource.Contains("voice_monitor_tap_.Push", StringComparison.Ordinal) ||
-    !nativeWasapiSource.Contains("post Pitch/Formant", StringComparison.Ordinal) ||
-    !nativeWasapiSource.Contains("pre Program", StringComparison.Ordinal) ||
+    !nativeWasapiSource.Contains("looper_record_tap_.Push", StringComparison.Ordinal) ||
+    !nativeWasapiSource.Contains("Program Mic Mute happens after the dedicated Looper Record Tap.", StringComparison.Ordinal) ||
     !nativeMonitorTapSource.Contains("std::memory_order_release", StringComparison.Ordinal) ||
     !cmakePresetsSource.Contains("windows-x64-remote-monitor-spike", StringComparison.Ordinal) ||
     !cmakePresetsSource.Contains("GRASSIBOARD_REMOTE_MONITOR_TAP", StringComparison.Ordinal) ||
