@@ -1,4 +1,4 @@
-﻿#if REMOTE_MONITOR_SPIKE
+#if REMOTE_MONITOR_SPIKE
 using System.Net;
 using System.Text.Json;
 using GrassiBoard.Services;
@@ -10,7 +10,7 @@ namespace GrassiBoard.Services.Remote;
 
 /// <summary>
 /// v1.3 Gate 2: authenticated Phone Mic WebRTC/Opus receive, bounded managed
-/// jitter/drift adaptation, and explicit ABI-10 routing into the native Audio Engine.
+/// jitter/drift adaptation, and explicit ABI-11 routing into the native Audio Engine.
 /// Windows Mic remains the default source until the paired client explicitly routes Phone Mic.
 /// </summary>
 internal sealed class RemotePhoneMicWebRtcSpikeService : IAsyncDisposable
@@ -446,7 +446,7 @@ internal sealed class RemotePhoneMicWebRtcSpikeService : IAsyncDisposable
                 rmsDbfs = rms,
                 peakDbfs = peak,
                 transportOnly = false,
-                nativeAbi = 10,
+                nativeAbi = 11,
                 routeRequested = bridge.RouteRequested,
                 routedToAudioEngine = bridge.Routed,
                 nativeRequestedSourceMode = bridge.NativeRequestedSourceMode,
