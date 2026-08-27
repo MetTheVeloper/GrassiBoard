@@ -5,7 +5,10 @@ add_executable(GrassiBoard.Mixer.Tests
 )
 
 target_compile_features(GrassiBoard.Mixer.Tests PRIVATE cxx_std_20)
-target_include_directories(GrassiBoard.Mixer.Tests PRIVATE ../../src/GrassiBoard.AudioEngine/src)
+target_include_directories(GrassiBoard.Mixer.Tests PRIVATE
+  ../../src/GrassiBoard.AudioEngine/include
+  ../../src/GrassiBoard.AudioEngine/src
+)
 
 if(MSVC)
   target_compile_options(GrassiBoard.Mixer.Tests PRIVATE /W4 /WX /permissive- /EHsc)
