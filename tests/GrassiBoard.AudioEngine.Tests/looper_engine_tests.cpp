@@ -69,10 +69,17 @@ int main()
     }
     if (looper.ReadMonitor(rendered.data(), 6U) != 0U) return Fail("Pause must drain stale monitor PCM.");
 
+    if (looper.Seek(1U) != GB_OK) return Fail("Paused seek failed.");
+    looper.GetState(state);
+    if (state.transport != GB_LOOPER_PAUSED || state.playhead_frame != 1U || state.monitor_fill_frames != 0U) {
+        return Fail("Seek must move the exact playhead and clear stale monitor PCM without changing Pause state.");
+    }
+    if (looper.Seek(4U) != GB_ERROR_INVALID_ARGUMENT) return Fail("Seek must reject frame == loop length.");
+
     if (looper.SetTransport(GB_LOOPER_PLAYING) != GB_OK) return Fail("Resume failed.");
     looper.RenderFrame();
     looper.GetState(state);
-    if (state.playhead_frame != 3U) return Fail("Resume must continue from the paused frame.");
+    if (state.playhead_frame != 2U) return Fail("Resume after seek must continue from the sought frame.");
 
     if (looper.SetTransport(GB_LOOPER_STOPPED) != GB_OK) return Fail("Stop failed.");
     looper.GetState(state);

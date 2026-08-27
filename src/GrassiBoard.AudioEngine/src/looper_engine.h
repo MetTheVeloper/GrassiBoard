@@ -23,6 +23,7 @@ public:
     gb_result LoadMaster(const float* stereoSamples, std::uint64_t frameCount);
     void Clear() noexcept;
     gb_result SetTransport(std::uint32_t transport) noexcept;
+    gb_result Seek(std::uint64_t frame) noexcept;
     void RenderFrame() noexcept;
     std::uint32_t ReadMonitor(float* stereoSamples, std::uint32_t capacityFrames) noexcept;
     void GetState(gb_looper_state& state) const noexcept;

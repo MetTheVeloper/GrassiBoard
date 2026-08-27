@@ -38,30 +38,43 @@
                 <StackPanel>
                     <Grid>
                         <StackPanel>
-                            <TextBlock Text="IMPORTED MASTER" Style="{StaticResource EyebrowTextStyle}" />
+                            <TextBlock Text="MASTER TRIM EDITOR" Style="{StaticResource EyebrowTextStyle}" />
                             <TextBlock Text="{Binding PendingFileName}" FontSize="18" FontWeight="SemiBold" Margin="0,4,0,0" />
                         </StackPanel>
                         <TextBlock Text="{Binding PendingDurationLabel}" HorizontalAlignment="Right" VerticalAlignment="Center"
                                    FontFamily="{StaticResource MonoFont}" Foreground="{DynamicResource MutedTextBrush}" />
                     </Grid>
-                    <Border Margin="0,16,0,0" Height="210" CornerRadius="8" ClipToBounds="True" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                        <looper:WaveformView WaveformData="{Binding PendingWaveform}"
+
+                    <Border Margin="0,16,0,0" Height="230" CornerRadius="8" ClipToBounds="True"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <looper:WaveformView x:Name="PendingWaveformEditor"
+                                             WaveformData="{Binding PendingWaveform}"
                                              PlayheadPosition="{Binding PendingPlayheadPosition}"
                                              SelectionStart="{Binding SelectionStart, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              SelectionEnd="{Binding SelectionEnd, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                             IsEditable="True" ShowTrimHandles="True" />
+                                             IsEditable="True" IsSeekable="True" ShowTrimHandles="True"
+                                             SeekCommand="{Binding AuditionSeekCommand}" />
                     </Border>
-                    <Grid Margin="0,12,0,0">
+
+                    <Grid Margin="0,10,0,0">
                         <TextBlock Text="{Binding SelectionLabel}" FontFamily="{StaticResource MonoFont}" FontSize="11" VerticalAlignment="Center" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="−" Width="38" ToolTip="Zoom out" Style="{StaticResource SecondaryButtonStyle}"
+                                    Click="OnZoomOutClick" Margin="0,0,6,0" />
+                            <Button Content="+" Width="38" ToolTip="Zoom in" Style="{StaticResource SecondaryButtonStyle}"
+                                    Click="OnZoomInClick" Margin="0,0,6,0" />
+                            <Button Content="Fit selection" ToolTip="Zoom to the current START / END" Style="{StaticResource SecondaryButtonStyle}"
+                                    Click="OnFitSelectionClick" Margin="0,0,8,0" />
                             <Button Content="{Binding AuditionPlayPauseLabel}" Command="{Binding AuditionPlayPauseCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" MinWidth="112" Margin="0,0,8,0" />
                             <Button Content="Cancel" Command="{Binding CancelImportCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" />
-                            <Button Content="Set As Master Loop" Command="{Binding SetAsMasterCommand}" />
+                            <Button Content="{Binding SetMasterActionLabel}" Command="{Binding SetAsMasterCommand}" />
                         </StackPanel>
                     </Grid>
-                    <TextBlock Text="Changing START or END resets audition to the new START; active playback restarts after the trim gesture settles."
+                    <TextBlock Text="Click or drag the white playhead to audition any point · mouse wheel zooms · Shift+drag or middle-drag pans · yellow lines are START / END."
                                Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,9,0,0" />
+                    <TextBlock Text="Changing START or END resets audition to the new START; active playback restarts after the trim gesture settles."
+                               Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
                     <TextBlock Text="{Binding EngineRequirementLabel}" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
                 </StackPanel>
             </Border>
@@ -95,8 +108,22 @@
                                 <TextBlock Text="{Binding MasterPositionLabel}" FontFamily="{StaticResource MonoFont}" FontSize="11"
                                            VerticalAlignment="Center" Margin="14,0,0,0" />
                             </StackPanel>
-                            <Button Content="Import different Master" Command="{Binding ImportAudioCommand}"
-                                    Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Right" />
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Edit Master" Command="{Binding EditMasterCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" />
+                                <Button Content="Import different Master" Command="{Binding ImportAudioCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}" />
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,14,0,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="MONITOR OUTPUT" Style="{StaticResource EyebrowTextStyle}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <ComboBox x:Name="LooperMonitorOutputCombo" MinWidth="300" MaxWidth="430"
+                                          SelectionChanged="OnMonitorOutputSelectionChanged" />
+                            </StackPanel>
+                            <TextBlock Text="Shared with Media Deck monitor" Style="{StaticResource MutedTextStyle}"
+                                       HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
 
                         <Grid Margin="0,12,0,0">

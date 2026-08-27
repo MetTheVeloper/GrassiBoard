@@ -104,6 +104,18 @@ gb_result LooperEngine::SetTransport(const std::uint32_t transport) noexcept
     return GB_OK;
 }
 
+gb_result LooperEngine::Seek(const std::uint64_t frame) noexcept
+{
+    const std::uint64_t loopFrames = loop_frames_.load(std::memory_order_acquire);
+    if (loopFrames == 0U || frame >= loopFrames) return GB_ERROR_INVALID_ARGUMENT;
+
+    BeginMutation();
+    monitor_tap_.Reset();
+    playhead_frame_.store(frame, std::memory_order_release);
+    EndMutation();
+    return GB_OK;
+}
+
 void LooperEngine::RenderFrame() noexcept
 {
     if (mutation_requested_.load(std::memory_order_acquire)) return;

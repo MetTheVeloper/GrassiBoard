@@ -41,6 +41,15 @@ gb_result GB_CALL gb_looper_set_transport(
         : AsEngine(engine)->SetLooperTransport(transport);
 }
 
+gb_result GB_CALL gb_looper_seek(
+    const gb_engine_handle engine,
+    const std::uint64_t frame) noexcept
+{
+    return engine == nullptr
+        ? GB_ERROR_INVALID_ARGUMENT
+        : AsEngine(engine)->SeekLooper(frame);
+}
+
 gb_result GB_CALL gb_looper_get_state(
     const gb_engine_handle engine,
     gb_looper_state* const state) noexcept

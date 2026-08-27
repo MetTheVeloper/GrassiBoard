@@ -17,9 +17,12 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
         Master
     }
 
+    private const int EditorWaveformBuckets = 65_536;
+
     private readonly LooperProjectStore _projectStore;
     private readonly WaveformAnalysisService _analysisService;
     private readonly LooperMonitorService _monitorService;
+    private readonly Func<string?> _monitorDeviceNameProvider;
     private readonly DispatcherTimer _transportTimer;
     private readonly DispatcherTimer _selectionRestartTimer;
     private WaveformAnalysisResult? _pendingImport;
@@ -27,6 +30,7 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
     private PlaybackContext _playbackContext;
     private LooperNativeState _nativeState;
     private bool _selectionRestartShouldPlay;
+    private bool _editingMaster;
     private double _selectionStart;
     private double _selectionEnd = 1.0;
     private double _pendingPlayheadPosition;
@@ -40,17 +44,21 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
         LooperProjectStore? projectStore = null,
         WaveformAnalysisService? analysisService = null,
         Func<string?>? monitorDeviceIdProvider = null,
+        Func<string?>? monitorDeviceNameProvider = null,
         LooperMonitorService? monitorService = null)
     {
         _projectStore = projectStore ?? new LooperProjectStore();
         _analysisService = analysisService ?? new WaveformAnalysisService();
+        _monitorDeviceNameProvider = monitorDeviceNameProvider ?? (() => null);
         _monitorService = monitorService ?? new LooperMonitorService(monitorDeviceIdProvider);
 
         ImportAudioCommand = new AsyncRelayCommand(_ => ChooseImportAsync(), _ => CanImportAudio);
+        EditMasterCommand = new AsyncRelayCommand(_ => EditMasterAsync(), _ => CanEditMaster);
         SetAsMasterCommand = new RelayCommand(_ => SetAsMaster(), _ => _pendingImport is not null && !IsBusy);
         CancelImportCommand = new RelayCommand(_ => CancelImport(), _ => _pendingImport is not null && !IsBusy);
         NewProjectCommand = new RelayCommand(_ => NewProject(), _ => !IsBusy);
         AuditionPlayPauseCommand = new RelayCommand(_ => ToggleAudition(), _ => CanAuditionSelection);
+        AuditionSeekCommand = new RelayCommand(SeekPendingSelection, _ => CanAuditionSelection);
         TransportPlayPauseCommand = new RelayCommand(_ => ToggleMasterPlayback(), _ => CanUseMasterTransport);
         TransportStopCommand = new RelayCommand(_ => StopPlayback(), _ => HasMaster && !IsBusy);
 
@@ -64,10 +72,12 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
     }
 
     public AsyncRelayCommand ImportAudioCommand { get; }
+    public AsyncRelayCommand EditMasterCommand { get; }
     public RelayCommand SetAsMasterCommand { get; }
     public RelayCommand CancelImportCommand { get; }
     public RelayCommand NewProjectCommand { get; }
     public RelayCommand AuditionPlayPauseCommand { get; }
+    public RelayCommand AuditionSeekCommand { get; }
     public RelayCommand TransportPlayPauseCommand { get; }
     public RelayCommand TransportStopCommand { get; }
 
@@ -77,8 +87,10 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
     public bool HasPendingImport => _pendingImport is not null;
     public bool IsEmptyProject => !HasMaster && !HasPendingImport;
     public bool HasChildTracks => Project.Tracks.Count > 0;
+    public bool IsEditingMaster => _editingMaster;
     public bool EngineReady => _monitorService.IsProgramEngineRunning;
     public bool CanImportAudio => !IsBusy && Project.CanRedefineMaster;
+    public bool CanEditMaster => Master is not null && !IsBusy && Project.CanRedefineMaster;
     public bool CanAuditionSelection => _pendingImport is not null && !IsBusy && EngineReady;
     public bool CanUseMasterTransport => Master is not null && !IsBusy && EngineReady;
     public WaveformEnvelope PendingWaveform => _pendingImport?.Envelope ?? WaveformEnvelope.Empty;
@@ -92,6 +104,7 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
         _nativeState.Transport == (uint)LooperTransportState.Playing;
     public string TransportPlayPauseLabel => IsMasterPlaying ? "Pause" : "Play";
     public string AuditionPlayPauseLabel => IsAuditionPlaying ? "Pause" : "Play selection";
+    public string SetMasterActionLabel => IsEditingMaster ? "Apply Master Changes" : "Set As Master Loop";
     public double PendingPlayheadPosition { get => _pendingPlayheadPosition; private set => SetProperty(ref _pendingPlayheadPosition, value); }
     public double MasterPlayheadPosition { get => _masterPlayheadPosition; private set => SetProperty(ref _masterPlayheadPosition, value); }
     public string MasterPositionLabel => Master is null
@@ -100,7 +113,14 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
     public string EngineRequirementLabel => EngineReady
         ? "Program engine: Running · native Looper clock active"
         : "Program engine: Stopped · start GrassiBoard before Play";
-    public string MonitorRouteLabel => $"Local monitor: {_monitorService.MonitorDeviceName}";
+    public string MonitorRouteLabel
+    {
+        get
+        {
+            string? sharedName = _monitorDeviceNameProvider()?.Trim();
+            return $"Local monitor: {(string.IsNullOrWhiteSpace(sharedName) ? _monitorService.MonitorDeviceName : sharedName)}";
+        }
+    }
     public string LoopSafetyLabel => Master is null
         ? $"Hard safety limit: {LooperMonitorService.MaxSupportedLoopMinutes} min · 48 kHz stereo float"
         : $"Master memory: {FormatMebibytes(Master.FrameCount * 2L * sizeof(float))} managed + same native copy · hard max {LooperMonitorService.MaxSupportedLoopMinutes} min";
@@ -165,20 +185,58 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
         StatusMessage = "Analyzing waveform…";
         try
         {
-            WaveformAnalysisResult result = await _analysisService.AnalyzeFileAsync(path, 2_048, cancellationToken);
+            WaveformAnalysisResult result = await _analysisService.AnalyzeFileAsync(path, EditorWaveformBuckets, cancellationToken);
             _pendingImport = result;
             _pendingSourcePath = path;
             PendingFileName = Path.GetFileName(path);
+            _editingMaster = false;
             _selectionStart = 0.0;
             _selectionEnd = 1.0;
             PendingPlayheadPosition = 0.0;
             RaisePendingProperties();
-            StatusMessage = "Drag START / END, use Play selection to hear the exact looping range, then set it as Master.";
+            StatusMessage = "Drag START / END, click or drag the white playhead to audition any point, then set it as Master.";
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException or InvalidDataException)
         {
             StatusMessage = exception.Message;
             throw;
+        }
+        finally
+        {
+            IsBusy = false;
+            RaiseCommandStates();
+        }
+    }
+
+    private async Task EditMasterAsync()
+    {
+        LooperMasterModel? master = Master;
+        if (master is null || !Project.CanRedefineMaster) return;
+        if (string.IsNullOrWhiteSpace(master.SourcePath) || !File.Exists(master.SourcePath))
+        {
+            StatusMessage = "The original Master source file is missing. Reconnect the source file before editing its trim.";
+            return;
+        }
+
+        StopPlayback(clearSource: true);
+        IsBusy = true;
+        StatusMessage = "Opening the original Master source…";
+        try
+        {
+            WaveformAnalysisResult result = await _analysisService.AnalyzeFileAsync(master.SourcePath, EditorWaveformBuckets);
+            _pendingImport = result;
+            _pendingSourcePath = master.SourcePath;
+            PendingFileName = master.SourceFileName;
+            _editingMaster = true;
+            _selectionStart = Math.Clamp(master.SourceStartFrame / (double)Math.Max(1L, result.FrameCount), 0.0, 1.0);
+            _selectionEnd = Math.Clamp(master.SourceEndFrame / (double)Math.Max(1L, result.FrameCount), _selectionStart + MinimumSelectionWidth, 1.0);
+            PendingPlayheadPosition = _selectionStart;
+            RaisePendingProperties();
+            StatusMessage = "Editing Master trim. Cancel keeps the current Master unchanged; Apply commits the new START / END.";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or NotSupportedException or InvalidDataException)
+        {
+            StatusMessage = exception.Message;
         }
         finally
         {
@@ -215,22 +273,12 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
             Waveform = _analysisService.BuildEnvelope(selectedSamples)
         };
         _projectStore.SetMaster(master);
-        _pendingImport = null;
-        _pendingSourcePath = string.Empty;
-        PendingFileName = string.Empty;
+        bool wasEditing = _editingMaster;
+        ClearPendingEditor();
         MasterPlayheadPosition = 0.0;
-        PendingPlayheadPosition = 0.0;
-        OnPropertyChanged(nameof(Project));
-        OnPropertyChanged(nameof(Master));
-        OnPropertyChanged(nameof(HasMaster));
-        OnPropertyChanged(nameof(HasChildTracks));
-        RaisePendingProperties();
-        OnPropertyChanged(nameof(MasterDurationLabel));
-        OnPropertyChanged(nameof(MasterFrameLabel));
-        OnPropertyChanged(nameof(MasterPositionLabel));
-        OnPropertyChanged(nameof(LoopSafetyLabel));
+        RaiseMasterProperties();
         StatusMessage = EngineReady
-            ? "Master Loop is defined. Native Gate 2 transport is ready."
+            ? (wasEditing ? "Master trim updated. Native Gate 2 transport is ready." : "Master Loop is defined. Native Gate 2 transport is ready.")
             : "Master Loop is defined. Start the GrassiBoard engine to use native transport.";
         RaiseAvailabilityProperties();
     }
@@ -257,13 +305,22 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
     private void CancelImport()
     {
         if (_playbackContext == PlaybackContext.PendingSelection) StopPlayback(clearSource: true);
+        bool wasEditing = _editingMaster;
+        ClearPendingEditor();
+        StatusMessage = HasMaster
+            ? (wasEditing ? "Master edit cancelled; current Master is unchanged." : "Master Loop unchanged.")
+            : "Create a Master Loop to start the project.";
+        RaiseAvailabilityProperties();
+    }
+
+    private void ClearPendingEditor()
+    {
         _pendingImport = null;
         _pendingSourcePath = string.Empty;
         PendingFileName = string.Empty;
+        _editingMaster = false;
         PendingPlayheadPosition = 0.0;
         RaisePendingProperties();
-        StatusMessage = HasMaster ? "Master Loop unchanged." : "Create a Master Loop to start the project.";
-        RaiseAvailabilityProperties();
     }
 
     private void NewProject()
@@ -273,19 +330,13 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
         _pendingImport = null;
         _pendingSourcePath = string.Empty;
         PendingFileName = string.Empty;
+        _editingMaster = false;
         _selectionStart = 0.0;
         _selectionEnd = 1.0;
         PendingPlayheadPosition = 0.0;
         MasterPlayheadPosition = 0.0;
-        OnPropertyChanged(nameof(Project));
-        OnPropertyChanged(nameof(Master));
-        OnPropertyChanged(nameof(HasMaster));
-        OnPropertyChanged(nameof(HasChildTracks));
+        RaiseMasterProperties();
         RaisePendingProperties();
-        OnPropertyChanged(nameof(MasterDurationLabel));
-        OnPropertyChanged(nameof(MasterFrameLabel));
-        OnPropertyChanged(nameof(MasterPositionLabel));
-        OnPropertyChanged(nameof(LoopSafetyLabel));
         StatusMessage = "Create a Master Loop to start the project.";
         RaiseAvailabilityProperties();
     }
@@ -311,11 +362,57 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
         }
         if (_monitorService.Play())
         {
-            StatusMessage = $"Looping the selected range on {_monitorService.MonitorDeviceName}.";
+            StatusMessage = $"Looping the selected range on {CurrentMonitorName}.";
         }
         else
         {
             StatusMessage = _monitorService.LastError;
+        }
+        RefreshNativeState();
+        RaiseTransportProperties();
+    }
+
+    private void SeekPendingSelection(object? parameter)
+    {
+        if (_pendingImport is null || !TryReadNormalized(parameter, out double normalized)) return;
+        _selectionRestartTimer.Stop();
+        _selectionRestartShouldPlay = false;
+
+        bool resume = IsAuditionPlaying;
+        if (_playbackContext != PlaybackContext.PendingSelection || _nativeState.LoopFrames == 0U)
+        {
+            if (!ConfigurePendingSelection()) return;
+            resume = false;
+        }
+
+        (long startFrame, long endFrame) = GetSelectionFrames();
+        long sourceFrame = Math.Clamp(
+            (long)Math.Floor(Math.Clamp(normalized, SelectionStart, SelectionEnd) * _pendingImport.FrameCount),
+            startFrame,
+            endFrame - 1L);
+        ulong relativeFrame = checked((ulong)(sourceFrame - startFrame));
+        NativeAudioEngine? engine = NativeAudioEngine.FindRunningProcessEngine();
+        if (engine is null)
+        {
+            StatusMessage = "Program engine stopped before seek.";
+            return;
+        }
+
+        _monitorService.Pause();
+        NativeResult result = engine.SeekLooper(relativeFrame);
+        if (result != NativeResult.Ok)
+        {
+            StatusMessage = $"Looper seek failed ({result}).";
+            return;
+        }
+        PendingPlayheadPosition = sourceFrame / (double)_pendingImport.FrameCount;
+        if (resume && !_monitorService.Play())
+        {
+            StatusMessage = _monitorService.LastError;
+        }
+        else
+        {
+            StatusMessage = $"Selection playhead moved to {FormatSeconds(sourceFrame / (double)LooperMonitorService.SampleRate)}.";
         }
         RefreshNativeState();
         RaiseTransportProperties();
@@ -339,7 +436,7 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
         }
         if (_monitorService.Play())
         {
-            StatusMessage = $"Master Loop playing on {_monitorService.MonitorDeviceName}.";
+            StatusMessage = $"Master Loop playing on {CurrentMonitorName}.";
         }
         else
         {
@@ -468,7 +565,24 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
             StatusMessage = _monitorService.LastError;
         }
         OnPropertyChanged(nameof(MonitorDiagnosticsLabel));
+        OnPropertyChanged(nameof(MonitorRouteLabel));
         RaiseTransportProperties();
+    }
+
+    internal void OnMonitorOutputChanged()
+    {
+        if (_playbackContext != PlaybackContext.None) StopPlayback();
+        OnPropertyChanged(nameof(MonitorRouteLabel));
+        StatusMessage = $"Local monitor changed to {CurrentMonitorName}. Press Play to continue on the new output.";
+    }
+
+    private string CurrentMonitorName
+    {
+        get
+        {
+            string? name = _monitorDeviceNameProvider()?.Trim();
+            return string.IsNullOrWhiteSpace(name) ? _monitorService.MonitorDeviceName : name;
+        }
     }
 
     private void RefreshNativeState()
@@ -485,6 +599,22 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
         return (startFrame, endFrame);
     }
 
+    private static bool TryReadNormalized(object? value, out double normalized)
+    {
+        switch (value)
+        {
+            case double number when double.IsFinite(number):
+                normalized = Math.Clamp(number, 0.0, 1.0);
+                return true;
+            case float number when float.IsFinite(number):
+                normalized = Math.Clamp(number, 0.0F, 1.0F);
+                return true;
+            default:
+                normalized = 0.0;
+                return false;
+        }
+    }
+
     private void RaisePendingProperties()
     {
         OnPropertyChanged(nameof(PendingWaveform));
@@ -495,11 +625,27 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(SelectionLabel));
         OnPropertyChanged(nameof(HasPendingImport));
         OnPropertyChanged(nameof(IsEmptyProject));
+        OnPropertyChanged(nameof(IsEditingMaster));
+        OnPropertyChanged(nameof(SetMasterActionLabel));
+    }
+
+    private void RaiseMasterProperties()
+    {
+        OnPropertyChanged(nameof(Project));
+        OnPropertyChanged(nameof(Master));
+        OnPropertyChanged(nameof(HasMaster));
+        OnPropertyChanged(nameof(HasChildTracks));
+        OnPropertyChanged(nameof(IsEmptyProject));
+        OnPropertyChanged(nameof(MasterDurationLabel));
+        OnPropertyChanged(nameof(MasterFrameLabel));
+        OnPropertyChanged(nameof(MasterPositionLabel));
+        OnPropertyChanged(nameof(LoopSafetyLabel));
     }
 
     private void RaiseAvailabilityProperties()
     {
         OnPropertyChanged(nameof(CanImportAudio));
+        OnPropertyChanged(nameof(CanEditMaster));
         OnPropertyChanged(nameof(CanAuditionSelection));
         OnPropertyChanged(nameof(CanUseMasterTransport));
         OnPropertyChanged(nameof(EngineReady));
@@ -520,10 +666,12 @@ internal sealed class LooperViewModel : ObservableObject, IDisposable
     private void RaiseCommandStates()
     {
         ImportAudioCommand.RaiseCanExecuteChanged();
+        EditMasterCommand.RaiseCanExecuteChanged();
         SetAsMasterCommand.RaiseCanExecuteChanged();
         CancelImportCommand.RaiseCanExecuteChanged();
         NewProjectCommand.RaiseCanExecuteChanged();
         AuditionPlayPauseCommand.RaiseCanExecuteChanged();
+        AuditionSeekCommand.RaiseCanExecuteChanged();
         TransportPlayPauseCommand.RaiseCanExecuteChanged();
         TransportStopCommand.RaiseCanExecuteChanged();
     }

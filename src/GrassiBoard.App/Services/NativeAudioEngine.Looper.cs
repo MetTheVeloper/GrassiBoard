@@ -15,8 +15,6 @@ internal sealed partial class NativeAudioEngine
         }
     }
 
-    // Normal GrassiBoard operation owns one running Program engine. Gate 2 finds
-    // that already-running wrapper instead of creating a second WASAPI clock domain.
     internal static NativeAudioEngine? FindRunningProcessEngine()
     {
         lock (ProcessRegistrySync)
@@ -38,7 +36,6 @@ internal sealed partial class NativeAudioEngine
                 }
                 catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException or BadImageFormatException)
                 {
-                    // Source-only smoke environments may construct the wrapper without a loadable native DLL.
                 }
             }
             return null;
@@ -65,6 +62,7 @@ internal sealed partial class NativeAudioEngine
 
     public NativeResult ClearLooper() => NativeMethods.ClearLooper(_engine);
     public NativeResult SetLooperTransport(LooperTransportState state) => NativeMethods.SetLooperTransport(_engine, (uint)state);
+    public NativeResult SeekLooper(ulong frame) => NativeMethods.SeekLooper(_engine, frame);
     public NativeResult GetLooperState(out LooperNativeState state) => NativeMethods.GetLooperState(_engine, out state);
 
     public unsafe NativeResult ReadLooperMonitor(float[] interleavedStereo, uint capacityFrames, out uint readFrames)
@@ -91,6 +89,9 @@ internal sealed partial class NativeAudioEngine
 
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_set_transport")]
         internal static partial NativeResult SetLooperTransport(nint engine, uint transport);
+
+        [LibraryImport(LibraryName, EntryPoint = "gb_looper_seek")]
+        internal static partial NativeResult SeekLooper(nint engine, ulong frame);
 
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_get_state")]
         internal static partial NativeResult GetLooperState(nint engine, out LooperNativeState state);

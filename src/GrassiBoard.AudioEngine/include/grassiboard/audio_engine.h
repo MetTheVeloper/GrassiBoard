@@ -131,8 +131,6 @@ GB_API std::uint32_t GB_CALL gb_get_api_version() noexcept;
 GB_API const char* GB_CALL gb_get_version() noexcept;
 GB_API std::uint32_t GB_CALL gb_engine_ping(std::uint32_t value) noexcept;
 
-// Device lists are returned as UTF-8 JSON. Call with a null buffer to obtain
-// the required byte count (including the null terminator).
 GB_API gb_result GB_CALL gb_enumerate_input_devices(
     char* buffer,
     std::uint32_t capacity,
@@ -170,6 +168,9 @@ GB_API gb_result GB_CALL gb_looper_clear(gb_engine_handle engine) noexcept;
 GB_API gb_result GB_CALL gb_looper_set_transport(
     gb_engine_handle engine,
     std::uint32_t transport) noexcept;
+GB_API gb_result GB_CALL gb_looper_seek(
+    gb_engine_handle engine,
+    std::uint64_t frame) noexcept;
 GB_API gb_result GB_CALL gb_looper_get_state(
     gb_engine_handle engine,
     gb_looper_state* state) noexcept;
@@ -179,8 +180,6 @@ GB_API gb_result GB_CALL gb_looper_monitor_read(
     std::uint32_t capacity_frames,
     std::uint32_t* read_frames) noexcept;
 
-// Sound clips must be decoded to interleaved 48 kHz stereo float PCM before
-// they cross this boundary. The engine copies clip data outside the render callback.
 GB_API gb_result GB_CALL gb_load_sound_clip(
     gb_engine_handle engine,
     std::uint64_t clip_key,
@@ -194,8 +193,6 @@ GB_API gb_result GB_CALL gb_play_sound_clip(
     std::uint32_t restart) noexcept;
 GB_API gb_result GB_CALL gb_stop_sound_clip(gb_engine_handle engine, std::uint64_t clip_key) noexcept;
 GB_API gb_result GB_CALL gb_stop_all_sounds(gb_engine_handle engine) noexcept;
-// Long-form media is decoded and resampled away from the real-time callback.
-// This bounded call copies as many interleaved 48 kHz stereo float frames as fit.
 GB_API gb_result GB_CALL gb_media_write(
     gb_engine_handle engine,
     const float* interleaved_stereo_samples,
@@ -215,10 +212,6 @@ GB_API gb_result GB_CALL gb_get_audio_statistics(
     gb_audio_statistics* statistics) noexcept;
 
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-// ABI 9 experimental Remote Monitor source tap. The realtime render thread
-// writes the raw Soundboard branch (post per-pad volume, pre Program gain) into
-// a bounded SPSC ring. Managed code reads it from a worker thread. These calls
-// never modify the Program/VB-CABLE mix.
 GB_API gb_result GB_CALL gb_monitor_tap_set_enabled(
     gb_engine_handle engine,
     std::uint32_t enabled) noexcept;
@@ -231,12 +224,6 @@ GB_API gb_result GB_CALL gb_monitor_tap_read(
 GB_API gb_result GB_CALL gb_monitor_tap_get_statistics(
     gb_engine_handle engine,
     gb_monitor_tap_statistics* statistics) noexcept;
-
-// ABI 9 experimental processed microphone source tap. The realtime render
-// thread writes the Voice-DSP microphone branch after Pitch/Formant + mute,
-// but before Program Mic Gain/dynamics/Master. Managed Remote Monitor code
-// drains it continuously and decides whether My Voice is audible. The tap can
-// never modify the Program/VB-CABLE mix.
 GB_API gb_result GB_CALL gb_voice_monitor_tap_set_enabled(
     gb_engine_handle engine,
     std::uint32_t enabled) noexcept;
@@ -249,10 +236,6 @@ GB_API gb_result GB_CALL gb_voice_monitor_tap_read(
 GB_API gb_result GB_CALL gb_voice_monitor_tap_get_statistics(
     gb_engine_handle engine,
     gb_monitor_tap_statistics* statistics) noexcept;
-
-// ABI 10 Remote Phone Mic input. Managed code supplies bounded 48 kHz mono
-// float PCM from a non-realtime worker. The realtime render thread only reads
-// this SPSC ring or zero-fills on starvation.
 GB_API gb_result GB_CALL gb_set_input_source_mode(
     gb_engine_handle engine,
     std::uint32_t source_mode) noexcept;

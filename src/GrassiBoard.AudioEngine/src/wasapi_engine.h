@@ -66,6 +66,7 @@ public:
     {
         return looper_engine_.SetTransport(transport);
     }
+    gb_result SeekLooper(std::uint64_t frame) noexcept { return looper_engine_.Seek(frame); }
     std::uint32_t ReadLooperMonitor(float* stereoSamples, std::uint32_t capacityFrames) noexcept
     {
         return looper_engine_.ReadMonitor(stereoSamples, capacityFrames);
@@ -121,8 +122,6 @@ private:
     FloatRingBuffer ring_buffer_;
     LivePitchProcessor pitch_processor_;
     LooperEngine looper_engine_;
-    // Mixer calls LooperEngine::RenderFrame exactly once per Program render frame.
-    // Looper audio goes only to its dedicated monitor tap, never into Program mix.
     MixerDynamicsProcessor mixer_processor_{&looper_engine_};
     SoundboardMixer soundboard_mixer_;
     MediaStreamBuffer media_stream_;
