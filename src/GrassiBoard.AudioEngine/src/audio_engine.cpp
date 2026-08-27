@@ -10,103 +10,57 @@
 
 namespace {
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-constexpr std::uint32_t kApiVersion = 10;
-constexpr char kEngineVersion[] = "1.3.0-gate2";
+constexpr std::uint32_t kApiVersion = 11;
+constexpr char kEngineVersion[] = "1.4.0-gate3";
 #else
 constexpr std::uint32_t kApiVersion = 8;
 constexpr char kEngineVersion[] = "1.0.1";
 #endif
 
-gb_result WriteUtf8Result(
-    const std::string& value,
-    char* const buffer,
-    const std::uint32_t capacity,
-    std::uint32_t* const required) noexcept
+gb_result WriteUtf8Result(const std::string& value, char* const buffer, const std::uint32_t capacity, std::uint32_t* const required) noexcept
 {
-    if (required == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-
+    if (required == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     const auto requiredBytes = static_cast<std::uint32_t>(value.size() + 1U);
     *required = requiredBytes;
-    if (buffer == nullptr || capacity == 0U) {
-        return GB_OK;
-    }
-    if (capacity < requiredBytes) {
-        return GB_ERROR_BUFFER_TOO_SMALL;
-    }
-
+    if (buffer == nullptr || capacity == 0U) return GB_OK;
+    if (capacity < requiredBytes) return GB_ERROR_BUFFER_TOO_SMALL;
     std::memcpy(buffer, value.c_str(), requiredBytes);
     return GB_OK;
 }
 
-gb_result Enumerate(const EDataFlow flow, char* const buffer, const std::uint32_t capacity,
-    std::uint32_t* const required) noexcept
+gb_result Enumerate(const EDataFlow flow, char* const buffer, const std::uint32_t capacity, std::uint32_t* const required) noexcept
 {
     try {
         std::string json;
         const gb_result result = grassiboard::EnumerateAudioDevicesJson(flow, json);
-        if (result != GB_OK) {
-            return result;
-        }
+        if (result != GB_OK) return result;
         return WriteUtf8Result(json, buffer, capacity, required);
     }
-    catch (...) {
-        return GB_ERROR_INTERNAL;
-    }
+    catch (...) { return GB_ERROR_INTERNAL; }
 }
 }
 
-std::uint32_t GB_CALL gb_get_api_version() noexcept
-{
-    return kApiVersion;
-}
+std::uint32_t GB_CALL gb_get_api_version() noexcept { return kApiVersion; }
+const char* GB_CALL gb_get_version() noexcept { return kEngineVersion; }
+std::uint32_t GB_CALL gb_engine_ping(const std::uint32_t value) noexcept { return value ^ 0x47524244U; }
 
-const char* GB_CALL gb_get_version() noexcept
-{
-    return kEngineVersion;
-}
-
-std::uint32_t GB_CALL gb_engine_ping(const std::uint32_t value) noexcept
-{
-    return value ^ 0x47524244U;
-}
-
-gb_result GB_CALL gb_enumerate_input_devices(
-    char* const buffer,
-    const std::uint32_t capacity,
-    std::uint32_t* const required) noexcept
+gb_result GB_CALL gb_enumerate_input_devices(char* const buffer, const std::uint32_t capacity, std::uint32_t* const required) noexcept
 {
     return Enumerate(eCapture, buffer, capacity, required);
 }
 
-gb_result GB_CALL gb_enumerate_output_devices(
-    char* const buffer,
-    const std::uint32_t capacity,
-    std::uint32_t* const required) noexcept
+gb_result GB_CALL gb_enumerate_output_devices(char* const buffer, const std::uint32_t capacity, std::uint32_t* const required) noexcept
 {
     return Enumerate(eRender, buffer, capacity, required);
 }
 
-gb_result GB_CALL gb_engine_create(
-    const std::uint32_t requested_api_version,
-    gb_engine_handle* const engine) noexcept
+gb_result GB_CALL gb_engine_create(const std::uint32_t requested_api_version, gb_engine_handle* const engine) noexcept
 {
-    if (engine == nullptr || requested_api_version != kApiVersion) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-
+    if (engine == nullptr || requested_api_version != kApiVersion) return GB_ERROR_INVALID_ARGUMENT;
     grassiboard::WasapiEngine* instance = nullptr;
-    try {
-        instance = new grassiboard::WasapiEngine();
-    }
-    catch (const std::bad_alloc&) {
-        return GB_ERROR_OUT_OF_MEMORY;
-    }
-    catch (...) {
-        return GB_ERROR_INTERNAL;
-    }
-
+    try { instance = new grassiboard::WasapiEngine(); }
+    catch (const std::bad_alloc&) { return GB_ERROR_OUT_OF_MEMORY; }
+    catch (...) { return GB_ERROR_INTERNAL; }
     *engine = instance;
     return GB_OK;
 }
@@ -116,392 +70,229 @@ void GB_CALL gb_engine_destroy(const gb_engine_handle engine) noexcept
     delete static_cast<grassiboard::WasapiEngine*>(engine);
 }
 
-gb_result GB_CALL gb_engine_start(
-    const gb_engine_handle engine,
-    const char* const input_device_id_utf8,
-    const char* const monitor_device_id_utf8) noexcept
+gb_result GB_CALL gb_engine_start(const gb_engine_handle engine, const char* const input_device_id_utf8, const char* const monitor_device_id_utf8) noexcept
 {
-    if (engine == nullptr || input_device_id_utf8 == nullptr || monitor_device_id_utf8 == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-
-    try {
-        return static_cast<grassiboard::WasapiEngine*>(engine)->Start(
-            input_device_id_utf8, monitor_device_id_utf8);
-    }
-    catch (...) {
-        return GB_ERROR_INTERNAL;
-    }
+    if (engine == nullptr || input_device_id_utf8 == nullptr || monitor_device_id_utf8 == nullptr) return GB_ERROR_INVALID_ARGUMENT;
+    try { return static_cast<grassiboard::WasapiEngine*>(engine)->Start(input_device_id_utf8, monitor_device_id_utf8); }
+    catch (...) { return GB_ERROR_INTERNAL; }
 }
 
 gb_result GB_CALL gb_engine_stop(const gb_engine_handle engine) noexcept
 {
-    if (engine == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-
-    try {
-        return static_cast<grassiboard::WasapiEngine*>(engine)->Stop();
-    }
-    catch (...) {
-        return GB_ERROR_INTERNAL;
-    }
+    if (engine == nullptr) return GB_ERROR_INVALID_ARGUMENT;
+    try { return static_cast<grassiboard::WasapiEngine*>(engine)->Stop(); }
+    catch (...) { return GB_ERROR_INTERNAL; }
 }
 
 gb_result GB_CALL gb_set_pitch_semitones(const gb_engine_handle engine, const float semitones) noexcept
 {
-    if (engine == nullptr || !std::isfinite(semitones)) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || !std::isfinite(semitones)) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchSemitones(semitones);
     return GB_OK;
 }
 
 gb_result GB_CALL gb_set_pitch_cents(const gb_engine_handle engine, const float cents) noexcept
 {
-    if (engine == nullptr || !std::isfinite(cents)) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || !std::isfinite(cents)) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchCents(cents);
     return GB_OK;
 }
 
 gb_result GB_CALL gb_set_pitch_bypass(const gb_engine_handle engine, const std::uint32_t bypass) noexcept
 {
-    if (engine == nullptr || bypass > 1U) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || bypass > 1U) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchBypass(bypass != 0U);
     return GB_OK;
 }
 
 gb_result GB_CALL gb_set_formant_semitones(const gb_engine_handle engine, const float semitones) noexcept
 {
-    if (engine == nullptr || !std::isfinite(semitones)) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || !std::isfinite(semitones)) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetFormantSemitones(semitones);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_set_formant_preservation(
-    const gb_engine_handle engine,
-    const std::uint32_t preserve) noexcept
+gb_result GB_CALL gb_set_formant_preservation(const gb_engine_handle engine, const std::uint32_t preserve) noexcept
 {
-    if (engine == nullptr || preserve > 1U) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || preserve > 1U) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetFormantPreservation(preserve != 0U);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_set_pitch_quality(
-    const gb_engine_handle engine,
-    const std::uint32_t quality_mode) noexcept
+gb_result GB_CALL gb_set_pitch_quality(const gb_engine_handle engine, const std::uint32_t quality_mode) noexcept
 {
-    if (engine == nullptr || quality_mode > static_cast<std::uint32_t>(grassiboard::PitchQualityMode::HighQuality)) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-    static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchQuality(
-        static_cast<grassiboard::PitchQualityMode>(quality_mode));
+    if (engine == nullptr || quality_mode > static_cast<std::uint32_t>(grassiboard::PitchQualityMode::HighQuality)) return GB_ERROR_INVALID_ARGUMENT;
+    static_cast<grassiboard::WasapiEngine*>(engine)->SetPitchQuality(static_cast<grassiboard::PitchQualityMode>(quality_mode));
     return GB_OK;
 }
 
-gb_result GB_CALL gb_load_sound_clip(
-    const gb_engine_handle engine,
-    const std::uint64_t clip_key,
-    const float* const interleaved_stereo_samples,
-    const std::uint64_t frame_count) noexcept
+gb_result GB_CALL gb_load_sound_clip(const gb_engine_handle engine, const std::uint64_t clip_key, const float* const interleaved_stereo_samples, const std::uint64_t frame_count) noexcept
 {
-    if (engine == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-    try {
-        return static_cast<grassiboard::WasapiEngine*>(engine)->LoadSoundClip(
-            clip_key, interleaved_stereo_samples, frame_count);
-    }
-    catch (...) {
-        return GB_ERROR_INTERNAL;
-    }
+    if (engine == nullptr) return GB_ERROR_INVALID_ARGUMENT;
+    try { return static_cast<grassiboard::WasapiEngine*>(engine)->LoadSoundClip(clip_key, interleaved_stereo_samples, frame_count); }
+    catch (...) { return GB_ERROR_INTERNAL; }
 }
 
-gb_result GB_CALL gb_play_sound_clip(
-    const gb_engine_handle engine,
-    const std::uint64_t clip_key,
-    const float volume,
-    const std::uint32_t loop,
-    const std::uint32_t restart) noexcept
+gb_result GB_CALL gb_play_sound_clip(const gb_engine_handle engine, const std::uint64_t clip_key, const float volume, const std::uint32_t loop, const std::uint32_t restart) noexcept
 {
-    if (engine == nullptr || !std::isfinite(volume) || loop > 1U || restart > 1U) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-    return static_cast<grassiboard::WasapiEngine*>(engine)->PlaySoundClip(
-        clip_key, volume, loop != 0U, restart != 0U);
+    if (engine == nullptr || !std::isfinite(volume) || loop > 1U || restart > 1U) return GB_ERROR_INVALID_ARGUMENT;
+    return static_cast<grassiboard::WasapiEngine*>(engine)->PlaySoundClip(clip_key, volume, loop != 0U, restart != 0U);
 }
 
-gb_result GB_CALL gb_stop_sound_clip(
-    const gb_engine_handle engine,
-    const std::uint64_t clip_key) noexcept
+gb_result GB_CALL gb_stop_sound_clip(const gb_engine_handle engine, const std::uint64_t clip_key) noexcept
 {
-    return engine == nullptr
-        ? GB_ERROR_INVALID_ARGUMENT
-        : static_cast<grassiboard::WasapiEngine*>(engine)->StopSoundClip(clip_key);
+    return engine == nullptr ? GB_ERROR_INVALID_ARGUMENT : static_cast<grassiboard::WasapiEngine*>(engine)->StopSoundClip(clip_key);
 }
 
 gb_result GB_CALL gb_stop_all_sounds(const gb_engine_handle engine) noexcept
 {
-    return engine == nullptr
-        ? GB_ERROR_INVALID_ARGUMENT
-        : static_cast<grassiboard::WasapiEngine*>(engine)->StopAllSounds();
+    return engine == nullptr ? GB_ERROR_INVALID_ARGUMENT : static_cast<grassiboard::WasapiEngine*>(engine)->StopAllSounds();
 }
 
-gb_result GB_CALL gb_media_write(
-    const gb_engine_handle engine,
-    const float* const interleaved_stereo_samples,
-    const std::uint32_t frame_count,
-    std::uint32_t* const accepted_frames) noexcept
+gb_result GB_CALL gb_media_write(const gb_engine_handle engine, const float* const interleaved_stereo_samples, const std::uint32_t frame_count, std::uint32_t* const accepted_frames) noexcept
 {
-    if (engine == nullptr || interleaved_stereo_samples == nullptr ||
-        frame_count == 0U || accepted_frames == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-    return static_cast<grassiboard::WasapiEngine*>(engine)->WriteMedia(
-        interleaved_stereo_samples, frame_count, *accepted_frames);
+    if (engine == nullptr || interleaved_stereo_samples == nullptr || frame_count == 0U || accepted_frames == nullptr) return GB_ERROR_INVALID_ARGUMENT;
+    return static_cast<grassiboard::WasapiEngine*>(engine)->WriteMedia(interleaved_stereo_samples, frame_count, *accepted_frames);
 }
 
-gb_result GB_CALL gb_media_set_active(
-    const gb_engine_handle engine,
-    const std::uint32_t active) noexcept
+gb_result GB_CALL gb_media_set_active(const gb_engine_handle engine, const std::uint32_t active) noexcept
 {
-    if (engine == nullptr || active > 1U) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || active > 1U) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetMediaActive(active != 0U);
     return GB_OK;
 }
 
 gb_result GB_CALL gb_media_clear(const gb_engine_handle engine) noexcept
 {
-    if (engine == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->ClearMedia();
     return GB_OK;
 }
 
-gb_result GB_CALL gb_media_set_monitor_latency(
-    const gb_engine_handle engine,
-    const std::uint32_t latency_frames) noexcept
+gb_result GB_CALL gb_media_set_monitor_latency(const gb_engine_handle engine, const std::uint32_t latency_frames) noexcept
 {
-    if (engine == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetMediaMonitorLatency(latency_frames);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_set_microphone_muted(
-    const gb_engine_handle engine,
-    const std::uint32_t muted) noexcept
+gb_result GB_CALL gb_set_microphone_muted(const gb_engine_handle engine, const std::uint32_t muted) noexcept
 {
-    if (engine == nullptr || muted > 1U) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || muted > 1U) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetMicrophoneMuted(muted != 0U);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_set_mixer_settings(
-    const gb_engine_handle engine,
-    const gb_mixer_settings* const settings) noexcept
+gb_result GB_CALL gb_set_mixer_settings(const gb_engine_handle engine, const gb_mixer_settings* const settings) noexcept
 {
     if (engine == nullptr || settings == nullptr || settings->struct_size != sizeof(gb_mixer_settings) ||
-        !std::isfinite(settings->mic_gain_db) ||
-        !std::isfinite(settings->soundboard_gain_db) ||
-        !std::isfinite(settings->master_gain_db) ||
-        !std::isfinite(settings->gate_threshold_db) ||
-        !std::isfinite(settings->compressor_threshold_db) ||
-        !std::isfinite(settings->compressor_ratio) ||
-        !std::isfinite(settings->limiter_ceiling_db) ||
-        !std::isfinite(settings->ducking_amount_db) ||
-        !std::isfinite(settings->pitch_wet_mix) ||
-        settings->gate_enabled > 1U || settings->compressor_enabled > 1U ||
-        settings->limiter_enabled > 1U || settings->ducking_enabled > 1U ||
-        settings->clipping_protection_enabled > 1U) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+        !std::isfinite(settings->mic_gain_db) || !std::isfinite(settings->soundboard_gain_db) ||
+        !std::isfinite(settings->master_gain_db) || !std::isfinite(settings->gate_threshold_db) ||
+        !std::isfinite(settings->compressor_threshold_db) || !std::isfinite(settings->compressor_ratio) ||
+        !std::isfinite(settings->limiter_ceiling_db) || !std::isfinite(settings->ducking_amount_db) ||
+        !std::isfinite(settings->pitch_wet_mix) || settings->gate_enabled > 1U ||
+        settings->compressor_enabled > 1U || settings->limiter_enabled > 1U ||
+        settings->ducking_enabled > 1U || settings->clipping_protection_enabled > 1U) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetMixerSettings(*settings);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_get_audio_statistics(
-    const gb_engine_handle engine,
-    gb_audio_statistics* const statistics) noexcept
+gb_result GB_CALL gb_get_audio_statistics(const gb_engine_handle engine, gb_audio_statistics* const statistics) noexcept
 {
-    if (engine == nullptr || statistics == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-
+    if (engine == nullptr || statistics == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->GetStatistics(*statistics);
     return GB_OK;
 }
 
-
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-gb_result GB_CALL gb_monitor_tap_set_enabled(
-    const gb_engine_handle engine,
-    const std::uint32_t enabled) noexcept
+gb_result GB_CALL gb_monitor_tap_set_enabled(const gb_engine_handle engine, const std::uint32_t enabled) noexcept
 {
-    if (engine == nullptr || enabled > 1U) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || enabled > 1U) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetMonitorTapEnabled(enabled != 0U);
     return GB_OK;
 }
 
 gb_result GB_CALL gb_monitor_tap_clear(const gb_engine_handle engine) noexcept
 {
-    if (engine == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->ClearMonitorTap();
     return GB_OK;
 }
 
-gb_result GB_CALL gb_monitor_tap_read(
-    const gb_engine_handle engine,
-    float* const interleaved_stereo_samples,
-    const std::uint32_t capacity_frames,
-    std::uint32_t* const read_frames) noexcept
+gb_result GB_CALL gb_monitor_tap_read(const gb_engine_handle engine, float* const interleaved_stereo_samples, const std::uint32_t capacity_frames, std::uint32_t* const read_frames) noexcept
 {
-    if (engine == nullptr || interleaved_stereo_samples == nullptr || capacity_frames == 0U || read_frames == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-    *read_frames = static_cast<grassiboard::WasapiEngine*>(engine)->ReadMonitorTap(
-        interleaved_stereo_samples, capacity_frames);
+    if (engine == nullptr || interleaved_stereo_samples == nullptr || capacity_frames == 0U || read_frames == nullptr) return GB_ERROR_INVALID_ARGUMENT;
+    *read_frames = static_cast<grassiboard::WasapiEngine*>(engine)->ReadMonitorTap(interleaved_stereo_samples, capacity_frames);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_monitor_tap_get_statistics(
-    const gb_engine_handle engine,
-    gb_monitor_tap_statistics* const statistics) noexcept
+gb_result GB_CALL gb_monitor_tap_get_statistics(const gb_engine_handle engine, gb_monitor_tap_statistics* const statistics) noexcept
 {
-    if (engine == nullptr || statistics == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || statistics == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->GetMonitorTapStatistics(*statistics);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_voice_monitor_tap_set_enabled(
-    const gb_engine_handle engine,
-    const std::uint32_t enabled) noexcept
+gb_result GB_CALL gb_voice_monitor_tap_set_enabled(const gb_engine_handle engine, const std::uint32_t enabled) noexcept
 {
-    if (engine == nullptr || enabled > 1U) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || enabled > 1U) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetVoiceMonitorTapEnabled(enabled != 0U);
     return GB_OK;
 }
 
 gb_result GB_CALL gb_voice_monitor_tap_clear(const gb_engine_handle engine) noexcept
 {
-    if (engine == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->ClearVoiceMonitorTap();
     return GB_OK;
 }
 
-gb_result GB_CALL gb_voice_monitor_tap_read(
-    const gb_engine_handle engine,
-    float* const interleaved_stereo_samples,
-    const std::uint32_t capacity_frames,
-    std::uint32_t* const read_frames) noexcept
+gb_result GB_CALL gb_voice_monitor_tap_read(const gb_engine_handle engine, float* const interleaved_stereo_samples, const std::uint32_t capacity_frames, std::uint32_t* const read_frames) noexcept
 {
-    if (engine == nullptr || interleaved_stereo_samples == nullptr || capacity_frames == 0U || read_frames == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-    *read_frames = static_cast<grassiboard::WasapiEngine*>(engine)->ReadVoiceMonitorTap(
-        interleaved_stereo_samples, capacity_frames);
+    if (engine == nullptr || interleaved_stereo_samples == nullptr || capacity_frames == 0U || read_frames == nullptr) return GB_ERROR_INVALID_ARGUMENT;
+    *read_frames = static_cast<grassiboard::WasapiEngine*>(engine)->ReadVoiceMonitorTap(interleaved_stereo_samples, capacity_frames);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_voice_monitor_tap_get_statistics(
-    const gb_engine_handle engine,
-    gb_monitor_tap_statistics* const statistics) noexcept
+gb_result GB_CALL gb_voice_monitor_tap_get_statistics(const gb_engine_handle engine, gb_monitor_tap_statistics* const statistics) noexcept
 {
-    if (engine == nullptr || statistics == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || statistics == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->GetVoiceMonitorTapStatistics(*statistics);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_set_input_source_mode(
-    const gb_engine_handle engine,
-    const std::uint32_t source_mode) noexcept
+gb_result GB_CALL gb_set_input_source_mode(const gb_engine_handle engine, const std::uint32_t source_mode) noexcept
 {
-    if (engine == nullptr || source_mode > GB_INPUT_SOURCE_REMOTE) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || source_mode > GB_INPUT_SOURCE_REMOTE) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->SetInputSourceMode(source_mode);
     return GB_OK;
 }
 
-gb_result GB_CALL gb_remote_input_push(
-    const gb_engine_handle engine,
-    const float* const mono_samples,
-    const std::uint32_t frame_count,
-    std::uint32_t* const accepted_frames) noexcept
+gb_result GB_CALL gb_remote_input_push(const gb_engine_handle engine, const float* const mono_samples, const std::uint32_t frame_count, std::uint32_t* const accepted_frames) noexcept
 {
-    if (engine == nullptr || mono_samples == nullptr || frame_count == 0U || accepted_frames == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-    *accepted_frames = static_cast<grassiboard::WasapiEngine*>(engine)->WriteRemoteInput(
-        mono_samples, frame_count);
+    if (engine == nullptr || mono_samples == nullptr || frame_count == 0U || accepted_frames == nullptr) return GB_ERROR_INVALID_ARGUMENT;
+    *accepted_frames = static_cast<grassiboard::WasapiEngine*>(engine)->WriteRemoteInput(mono_samples, frame_count);
     return GB_OK;
 }
 
 gb_result GB_CALL gb_remote_input_reset(const gb_engine_handle engine) noexcept
 {
-    if (engine == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->ResetRemoteInput();
     return GB_OK;
 }
 
-gb_result GB_CALL gb_get_remote_input_statistics(
-    const gb_engine_handle engine,
-    gb_remote_input_statistics* const statistics) noexcept
+gb_result GB_CALL gb_get_remote_input_statistics(const gb_engine_handle engine, gb_remote_input_statistics* const statistics) noexcept
 {
-    if (engine == nullptr || statistics == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (engine == nullptr || statistics == nullptr) return GB_ERROR_INVALID_ARGUMENT;
     static_cast<grassiboard::WasapiEngine*>(engine)->GetRemoteInputStatistics(*statistics);
     return GB_OK;
 }
 #endif
 
-gb_result GB_CALL gb_get_last_error(
-    const gb_engine_handle engine,
-    char* const buffer,
-    const std::uint32_t capacity,
-    std::uint32_t* const required) noexcept
+gb_result GB_CALL gb_get_last_error(const gb_engine_handle engine, char* const buffer, const std::uint32_t capacity, std::uint32_t* const required) noexcept
 {
-    if (engine == nullptr) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
-
-    try {
-        return WriteUtf8Result(
-            static_cast<grassiboard::WasapiEngine*>(engine)->GetLastError(),
-            buffer,
-            capacity,
-            required);
-    }
-    catch (...) {
-        return GB_ERROR_INTERNAL;
-    }
+    if (engine == nullptr) return GB_ERROR_INVALID_ARGUMENT;
+    try { return WriteUtf8Result(static_cast<grassiboard::WasapiEngine*>(engine)->GetLastError(), buffer, capacity, required); }
+    catch (...) { return GB_ERROR_INTERNAL; }
 }
