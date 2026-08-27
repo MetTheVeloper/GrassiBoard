@@ -4,8 +4,8 @@
 #include "looper_engine.h"
 #include "mixer_processor.h"
 #include "media_stream.h"
-#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
 #include "monitor_tap_buffer.h"
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
 #include "remote_input_buffer.h"
 #endif
 #include "pitch_processor.h"
@@ -73,6 +73,11 @@ public:
     }
     void GetLooperState(gb_looper_state& state) const noexcept { looper_engine_.GetState(state); }
 
+    gb_result StartLooperRecord() noexcept;
+    void StopLooperRecord() noexcept;
+    std::uint32_t ReadLooperRecord(float* stereoSamples, std::uint32_t capacityFrames) noexcept;
+    void GetLooperRecordState(gb_looper_record_state& state) const noexcept;
+
     gb_result LoadSoundClip(std::uint64_t key, const float* stereoSamples, std::uint64_t frameCount);
     gb_result PlaySoundClip(std::uint64_t key, float volume, bool loop, bool restart) noexcept;
     gb_result StopSoundClip(std::uint64_t key) noexcept;
@@ -108,6 +113,7 @@ private:
     void Worker() noexcept;
     void ResetStatistics() noexcept;
     void SignalStart(gb_result result, HRESULT detail) noexcept;
+    void QuiesceLooperRecordWriter() noexcept;
 
     mutable std::mutex control_mutex_;
     std::mutex start_mutex_;
@@ -125,6 +131,11 @@ private:
     MixerDynamicsProcessor mixer_processor_{&looper_engine_};
     SoundboardMixer soundboard_mixer_;
     MediaStreamBuffer media_stream_;
+    MonitorTapBuffer looper_record_tap_;
+    std::atomic<bool> looper_record_enabled_{false};
+    std::atomic<bool> looper_record_writing_{false};
+    std::atomic<std::uint32_t> looper_record_source_mode_{GB_INPUT_SOURCE_WINDOWS};
+    std::atomic<bool> looper_record_source_changed_{false};
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
     MonitorTapBuffer monitor_tap_;
     MonitorTapBuffer voice_monitor_tap_;
