@@ -72,13 +72,51 @@ Current Gate 3 implementation on the branch includes:
 - Program Mic Mute therefore does not destroy an intentional Looper take;
 - no delayed live microphone monitoring during recording;
 - microphone-source change during an active Take fails safe/discards instead of combining two inputs;
+- engine stop during an active Take fails safe/discards the partial Take;
 - Stop hands the recorded first Take into the same reusable trim/zoom/seek editor used by imported Master audio;
 - first recorded Master is still trimmed by the user before committing it as Master;
-- Gate 3 managed/native deterministic smoke coverage exists in the repository.
+- recording safety ceiling is **10 minutes / 28,800,000 frames at 48 kHz**;
+- record diagnostics use cumulative drained + currently buffered frames rather than a shrinking queue-only counter;
+- Gate 3 managed/native deterministic smoke coverage exists in the repository;
+- the legacy managed smoke ABI/source contract has been aligned to ABI 11 and now verifies the Gate 3 Record Tap placement rather than stale Gate 2 comment text;
+- Remote Phone Mic diagnostics now report native ABI 11 consistently.
 
-### Gate 3 validation rule
+### Gate 3 local automated validation
 
-Do not wait for GitHub Actions. The next validation is performed on the user's Windows checkout using the assistant-provided local command, followed by the real microphone checklist.
+One command now performs the complete local automated Gate 3 validation path: local project build, native `ctest`, managed smoke execution, Gate 3 ABI/Record Tap source-contract checks, and optionally launches the resulting app.
+
+From the repository root on `feature/grassilooper-v1.4`:
+
+```powershell
+.\tools\Test-GrassiLooperGate3Local.ps1 -Run
+```
+
+The command must end with:
+
+```text
+GATE 3 LOCAL AUTOMATED VALIDATION: PASS
+```
+
+After that, perform the real microphone/audio checklist below. A local automated PASS does **not** unlock Gate 4 by itself.
+
+### Gate 3 real Windows acceptance checklist
+
+```text
+[ ] Start the normal GrassiBoard audio engine
+[ ] Select Windows Mic; keep Voice FX neutral/off; Record First Loop, speak, then Stop Recording
+[ ] Recorded waveform opens in the existing trim editor
+[ ] Trim START/END, audition the Take, and Set As Master Loop
+[ ] No delayed live microphone self-monitor is heard while recording
+[ ] Enable Pitch/Formant/Voice FX; record another first Take; the printed Take contains the processed Voice FX
+[ ] Route Phone Mic; Record First Loop; processed Phone Mic is captured through the same Take flow
+[ ] While recording, switch microphone source; the Take is safely discarded instead of combining sources
+[ ] While recording, stop the normal audio engine; the partial Take is safely discarded
+[ ] Leave the Looper workspace while recording; recording cancels safely
+[ ] Windows Mic / Phone Mic / Voice FX / Soundboard / Media Deck / Remote Control / Remote Monitor still work
+[ ] Program/VB-CABLE output remains unchanged by Looper recording
+```
+
+Gate 3 passes only after the user explicitly accepts the real Windows result.
 
 ## Gate sequence
 
@@ -86,7 +124,7 @@ Do not wait for GitHub Actions. The next validation is performed on the user's W
 Gate 0  Freeze v1.3 baseline                         USER ACCEPTED
 Gate 1  UI + project + waveform                     USER ACCEPTED
 Gate 2  Master Loop + transport + local monitor     USER ACCEPTED
-Gate 3  First Mic Master + processed Record Tap     CURRENT / LOCAL TEST NEXT
+Gate 3  First Mic Master + processed Record Tap     CURRENT / LOCAL + REAL TEST NEXT
 Gate 4  Child layers + recording modes              LOCKED
 Gate 5  Record alignment / latency compensation     LOCKED
 Gate 6  Voice FX snapshots + session restore        LOCKED
