@@ -72,10 +72,26 @@ internal sealed partial class NativeAudioEngine
             readFrames = 0U;
             return NativeResult.InvalidArgument;
         }
-
         fixed (float* pointer = interleavedStereo)
         {
             return NativeMethods.ReadLooperMonitor(_engine, pointer, capacityFrames, out readFrames);
+        }
+    }
+
+    public NativeResult StartLooperRecord() => NativeMethods.StartLooperRecord(_engine);
+    public NativeResult StopLooperRecord() => NativeMethods.StopLooperRecord(_engine);
+    public NativeResult GetLooperRecordState(out LooperRecordNativeState state) => NativeMethods.GetLooperRecordState(_engine, out state);
+
+    public unsafe NativeResult ReadLooperRecord(float[] interleavedStereo, uint capacityFrames, out uint readFrames)
+    {
+        if (capacityFrames == 0U || (ulong)capacityFrames * 2UL > (ulong)interleavedStereo.LongLength)
+        {
+            readFrames = 0U;
+            return NativeResult.InvalidArgument;
+        }
+        fixed (float* pointer = interleavedStereo)
+        {
+            return NativeMethods.ReadLooperRecord(_engine, pointer, capacityFrames, out readFrames);
         }
     }
 
@@ -83,21 +99,24 @@ internal sealed partial class NativeAudioEngine
     {
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_load_master")]
         internal static partial NativeResult LoadLooperMaster(nint engine, float* samples, ulong frameCount);
-
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_clear")]
         internal static partial NativeResult ClearLooper(nint engine);
-
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_set_transport")]
         internal static partial NativeResult SetLooperTransport(nint engine, uint transport);
-
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_seek")]
         internal static partial NativeResult SeekLooper(nint engine, ulong frame);
-
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_get_state")]
         internal static partial NativeResult GetLooperState(nint engine, out LooperNativeState state);
-
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_monitor_read")]
         internal static partial NativeResult ReadLooperMonitor(nint engine, float* samples, uint capacityFrames, out uint readFrames);
+        [LibraryImport(LibraryName, EntryPoint = "gb_looper_record_start")]
+        internal static partial NativeResult StartLooperRecord(nint engine);
+        [LibraryImport(LibraryName, EntryPoint = "gb_looper_record_stop")]
+        internal static partial NativeResult StopLooperRecord(nint engine);
+        [LibraryImport(LibraryName, EntryPoint = "gb_looper_record_read")]
+        internal static partial NativeResult ReadLooperRecord(nint engine, float* samples, uint capacityFrames, out uint readFrames);
+        [LibraryImport(LibraryName, EntryPoint = "gb_looper_record_get_state")]
+        internal static partial NativeResult GetLooperRecordState(nint engine, out LooperRecordNativeState state);
     }
 }
 
@@ -106,6 +125,12 @@ internal enum LooperTransportState : uint
     Stopped = 0U,
     Paused = 1U,
     Playing = 2U
+}
+
+internal enum LooperRecordSourceMode : uint
+{
+    Windows = 0U,
+    Remote = 1U
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -120,4 +145,17 @@ internal struct LooperNativeState
     public uint MonitorFillFrames;
     public uint MonitorCapacityFrames;
     public ulong MonitorOverrunCount;
+}
+
+[StructLayout(LayoutKind.Sequential)]
+internal struct LooperRecordNativeState
+{
+    public uint StructSize;
+    public uint Active;
+    public uint SourceMode;
+    public uint SourceChanged;
+    public uint FillFrames;
+    public uint CapacityFrames;
+    public ulong CapturedFrames;
+    public ulong OverrunFrames;
 }
