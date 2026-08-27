@@ -2,6 +2,10 @@ add_executable(GrassiBoard.Mixer.Tests
   mixer_processor_tests.cpp
   ../../src/GrassiBoard.AudioEngine/src/mixer_processor.cpp
   ../../src/GrassiBoard.AudioEngine/src/mixer_processor.h
+  ../../src/GrassiBoard.AudioEngine/src/looper_engine.cpp
+  ../../src/GrassiBoard.AudioEngine/src/looper_engine.h
+  ../../src/GrassiBoard.AudioEngine/src/monitor_tap_buffer.cpp
+  ../../src/GrassiBoard.AudioEngine/src/monitor_tap_buffer.h
 )
 
 target_compile_features(GrassiBoard.Mixer.Tests PRIVATE cxx_std_20)
