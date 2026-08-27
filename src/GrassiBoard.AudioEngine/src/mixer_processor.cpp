@@ -1,5 +1,7 @@
 #include "mixer_processor.h"
 
+#include "looper_engine.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -66,6 +68,11 @@ MixerFrame MixerDynamicsProcessor::ProcessFrame(
     const float mediaLeft,
     const float mediaRight) noexcept
 {
+    // This is the one per-render-frame hook for GrassiLooper. It advances the
+    // native shared sample clock and writes only to the dedicated Looper monitor
+    // ring; no Looper sample is ever added to Program/VB-CABLE here.
+    if (looper_clock_ != nullptr) looper_clock_->RenderFrame();
+
     mic_gain_ = Smooth(mic_gain_, target_mic_gain_, gain_smoothing_);
     board_gain_ = Smooth(board_gain_, target_board_gain_, gain_smoothing_);
     master_gain_ = Smooth(master_gain_, target_master_gain_, gain_smoothing_);

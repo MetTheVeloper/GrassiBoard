@@ -1,150 +1,160 @@
 # GrassiLooper development status
 
-> Authoritative short handoff for GrassiLooper work. Read this file first in every new development session, then read the relevant Gate in `docs/looper-roadmap.md`.
+> Authoritative short handoff for GrassiLooper work. Read this file first, then the active Gate in `docs/looper-roadmap.md`.
 
 ## Current baseline
 
-- GrassiBoard feature baseline: **v1.3.0 Full Remote Audio / Remote Phone Microphone — USER ACCEPTED / PERSONAL-STABLE by real local Windows + Android testing**
-- Frozen v1.3 implementation commit: `f27b39055971da14bb8fa3753f28d5b690757a8f`
-- Gate 0 freeze commit on `main`: `819b1e3449b91b9502886fda997eca70764a37ac`
-- GrassiLooper development branch: `feature/grassilooper-v1.4`
-- Long-lived draft integration PR: **#10** — do not merge before all Gates are accepted
-- Current native ABI in source: **10**
-- Native engine source version string at the frozen baseline: `1.3.0-gate2`
-- Program microphone route: **external VB-CABLE, unchanged**
-- Final packaged installer after the last v1.3 implementation commit: **not separately manual clean-install verified**
+- GrassiBoard v1.3 feature baseline: **USER ACCEPTED / PERSONAL-STABLE**.
+- Frozen Gate 0 main commit: `819b1e3449b91b9502886fda997eca70764a37ac`.
+- Long-lived integration branch: `feature/grassilooper-v1.4`.
+- Native production ABI entering Looper work: **10**.
+- Program microphone route remains **external VB-CABLE**; Looper must not replace or alter it.
+- The final v1.3 packaged installer was not separately manual clean-install verified; Looper work does not retroactively change that distinction.
 
-## GrassiLooper roadmap
-
-- Source of truth: `docs/looper-roadmap.md`
-- Target release family: **v1.4.x**
-- Development model: **Gate-based**
-- `main` remains frozen until all nine implementation/acceptance Gates complete and the final merge is explicitly approved.
-
-## Gate 0 — Freeze/document v1.3 baseline
+## Gate 0 — Freeze v1.3 baseline
 
 Status: **USER ACCEPTED — 2026-08-26**
 
-- [x] v1.3 feature path frozen/documented as USER ACCEPTED / PERSONAL-STABLE.
-- [x] Feature acceptance remains explicitly separated from final installer clean-install verification.
-- [x] User explicitly approved Gate 0 on 2026-08-26.
-
-## Gate 1 — UI foundation + project model + reusable waveform architecture
+## Gate 1 — UI foundation + project model + reusable waveform
 
 Status: **USER ACCEPTED — 2026-08-26**
 
-Implemented and accepted:
+Accepted implementation includes:
 
-- [x] dedicated Looper workspace between Mixer and Routing;
-- [x] existing Board / Voice / Mixer / Routing / Settings navigation preserved;
-- [x] empty-project UX with Import Audio and deliberately locked Record First Loop action;
-- [x] `LooperProjectModel`, `LooperMasterModel`, `LooperTrackModel`, and in-memory `LooperProjectStore` foundation;
-- [x] reusable `WaveformEnvelope` and off-UI-thread `WaveformAnalysisService`;
-- [x] reusable efficient `WaveformView` (`FrameworkElement` + `DrawingContext` / `OnRender`);
-- [x] reusable `LooperTrackRow` structure for future child layers;
-- [x] WAV/MP3 imported-Master path normalized to 48 kHz stereo;
-- [x] large waveform trim editor with draggable START / END handles;
-- [x] selection label follows trim;
-- [x] Set As Master copies only the selected sample region and establishes the sample-defined Master frame count;
-- [x] Master redefinition remains allowed before dependent child tracks and becomes locked afterward;
-- [x] real Windows UI test reported smooth waveform interaction with no freeze;
-- [x] existing Windows Mic / Phone Mic / Voice FX / Soundboard / Media / Remote / Remote Monitor / VB-CABLE regression checklist reported clean by the user.
+- dedicated Looper workspace;
+- in-memory project/Master/Track model foundation;
+- reusable `WaveformView` based on `FrameworkElement` + `DrawingContext`;
+- off-UI-thread WAV/MP3 decode + waveform analysis at 48 kHz stereo;
+- imported-Master START/END trim editor;
+- sample-defined Master frame count and Master-length lock after dependent tracks exist;
+- real Windows UI test reported smooth waveform interaction and no regression in the requested existing GrassiBoard paths.
 
-Gate 1 implementation commit:
-
-`fc342b40e989f12a6a40749a4a19af3154f7fad3` — `feat(looper): implement Gate 1 UI and waveform foundation`
-
-Gate 1 inherited build-debt fixes:
-
-- SIPSorcery updated from `10.0.13` to `10.0.15` rather than suppressing NuGet security auditing;
-- legacy package-source smoke bridge added while a stricter XML-aware Gate 1 check verifies the real dependency;
-- portable `README-FIRST.txt` contract restored;
-- package script made defensive while produced portable package verification remains strict.
-
-Final automated verification before manual acceptance:
-
-- GitHub Actions **Build #95** / run `32954855982`
-- Remote Web generate: PASS
-- Native build: PASS
-- Native tests: **8/8 PASS**
-- Managed smoke + Looper Gate 1 smoke: PASS
-- WPF publish: PASS
-- portable package + verification: PASS
-- single-file installer + verification: PASS
-- artifact uploads: PASS
-- overall result: **SUCCESS**
-
-User manual acceptance notes (2026-08-26):
-
-- imported waveform rendered smoothly without UI freeze;
-- trim handles and selection timing behaved correctly;
-- selected region became the Master correctly;
-- user reported no problems in the requested regression checks.
-
-## Product decisions captured after Gate 1 acceptance
-
-### Imported-Master selection audition
-
-The main roadmap already requires `preview selected region` in the Imported Master path. It was intentionally absent from Gate 1 because Gate 1 contained no playback/monitor engine.
-
-**Scheduled for Gate 2**, together with the Master transport/local-monitor foundation:
-
-- add one Play/Pause control to the large imported-Master trim editor;
-- audition only the current START → END selection;
-- audition wraps continuously inside that selection;
-- changing START or END invalidates the current audition position and returns it to the new selection start;
-- if a trim boundary changes while audition is playing, playback restarts from the new selection start rather than continuing from an obsolete offset;
-- if paused, the next Play starts from the selection start after a boundary change;
-- no separate Stop button is required for this editor audition control.
-
-This preview must reuse the Gate 2 monitor/playback infrastructure rather than creating an unrelated second audio player.
-
-### New Project semantics and multi-project library
-
-Current Gate 1 behavior is deliberately in-memory only: `New Project` calls `LooperProjectStore.Reset()`, replaces `Current` with a fresh project, and the previous in-memory Looper project is no longer retained by the store. The original imported source file on disk is not deleted, but the Looper project state itself is currently discarded because persistence has not been implemented yet.
-
-The roadmap already assigns project autosave + project reopen to Gate 8. The user's requested multi-project workflow is therefore scheduled as an explicit **Gate 8 persistence requirement**:
-
-- persistent Project Library / Recent Projects list;
-- each project keeps a stable ID, name, created time, and modified time;
-- `New Project` must safely save the current dirty project before switching to a fresh project;
-- creating a new project must not overwrite or silently discard the previous saved project;
-- saved projects can be selected and reopened later;
-- missing/corrupt asset states remain explicit rather than silently losing project data;
-- project deletion, when added, must be an explicit destructive action rather than a side effect of `New Project`.
-
-A full version-history/revision system is **not** required for the v1.4 MVP; the requirement is a library of multiple independently saved Looper projects that can be reopened.
-
-Reason for Gate 8 placement: Tracks, Voice FX snapshots, trim/mixer metadata, and asset ownership are still evolving through Gates 3–7. Freezing the durable project schema before those structures exist would create avoidable migration/rewrite risk. Gate 8 is the correct point to make the complete project format durable.
-
-Until Gate 8, `New Project` remains a disposable in-memory reset and should be treated as destructive during development testing.
+Gate 1 implementation commit: `fc342b40e989f12a6a40749a4a19af3154f7fad3`.
 
 ## Current Gate
 
 ### Gate 2 — Master Loop engine + transport + local monitor
 
-Status: **UNLOCKED / READY FOR IMPLEMENTATION**
+Status: **IMPLEMENTED IN SOURCE / AUTOMATED VERIFICATION PENDING / USER TEST PENDING**
 
-Gate 2 scope from the roadmap:
+Gate 3 remains **LOCKED** until Gate 2 is CI-green, manually tested on Windows, and explicitly accepted by the user.
 
-- sample-accurate Master buffer;
-- shared Looper playhead;
-- Play / Pause / Stop;
-- gapless loop wrap;
-- Looper local monitor output;
-- playhead visualization;
-- Master length lock contract;
-- memory/performance benchmark and initial supported Loop-size safety limits;
-- **Imported-Master START/END selection Play/Pause audition described above.**
+### Gate 2 implementation contract
 
-Gate 3 recording work remains locked until Gate 2 is implemented, CI-green, manually tested, and explicitly accepted.
+Implemented in this iteration:
+
+- native `LooperEngine` owns the authoritative Master PCM buffer and sample-frame playhead;
+- one shared Looper clock advances exactly once per existing Program render frame;
+- Looper PCM is written only to a dedicated bounded monitor tap and is **not** added to Program/VB-CABLE output;
+- Play starts/resumes from the current playhead;
+- Pause publishes the paused state, waits out any in-flight realtime frame, drains stale monitor PCM, and preserves the exact playhead;
+- Stop publishes stopped state, waits out any in-flight realtime frame, drains monitor PCM, and returns the playhead exactly to frame `0`;
+- loop wrap is modulo the Master frame count with no intentional gap;
+- a 32-frame seam fade is applied only to sufficiently long loops to reduce arbitrary trim-boundary clicks without changing loop length;
+- local Looper monitoring uses the selected GrassiBoard monitor endpoint through a separate WASAPI shared-mode sink;
+- the local monitor follows the native clock through a bounded prebuffer plus small drop/duplicate drift correction; these corrections never move the authoritative project playhead;
+- imported-Master editor has one Play/Pause audition control for the current START → END selection;
+- changing START/END resets audition to the new START; while dragging, native re-copy is debounced briefly to avoid large PCM copy storms;
+- Master Play/Pause/Stop and playhead visualization are wired to native state;
+- leaving the Looper workspace stops Looper playback;
+- microphone recording, record tap, Tracks and recording modes remain intentionally absent until later Gates.
+
+### Native API / ABI decision
+
+Gate 2 adds Looper functions to the existing native boundary while retaining **ABI version 10** for this branch. ABI 11 remains reserved for the later recording boundary when public recording functions actually require the progression described by the roadmap.
+
+Added Gate 2 native API family:
+
+```text
+gb_looper_load_master
+gb_looper_clear
+gb_looper_set_transport
+gb_looper_get_state
+gb_looper_monitor_read
+```
+
+### Safety baseline
+
+The existing imported-audio service already limits source files to **10 minutes**, so Gate 2 keeps that limit rather than silently widening it.
+
+At 48,000 Hz, stereo, 32-bit float:
+
+```text
+10-minute Master frames         28,800,000
+one Master PCM copy             230,400,000 bytes
+one Master PCM copy             ~219.7 MiB
+managed Master + native Master  ~439.5 MiB steady PCM storage
+```
+
+A full-length import can temporarily require more memory while the original decoded import, selected managed Master, and native Master copy overlap before garbage collection. This is why 10 minutes is an initial hard safety ceiling, not a promise to increase loop length during Gate 2.
+
+The roadmap's **30–60 minute** Gate 2 requirement refers to continuous playback/soak duration, not a 30–60 minute Master loop.
+
+### Automated coverage added
+
+Native deterministic Gate 2 tests cover:
+
+- exact PCM modulo wrap;
+- Pause freezing the exact sample frame;
+- resume from the paused frame;
+- Stop returning exactly to frame `0`;
+- one-hour-equivalent modulo clock arithmetic without wall-clock timing;
+- one minute worth of the real `RenderFrame` path as a CPU benchmark;
+- 10-minute memory-size arithmetic;
+- rejection of an oversized Master;
+- clear/reset semantics.
+
+Managed smoke coverage checks:
+
+- managed/native Looper state layout;
+- 10-minute memory safety constant;
+- transport/audition XAML wiring;
+- frame-zero playhead rendering contract;
+- native Looper API/source-clock integration contract.
+
+CI result for this implementation: **PENDING**.
+
+## Gate 2 manual acceptance checklist
+
+After CI is green, real Windows testing must verify:
+
+```text
+[ ] Start the normal GrassiBoard audio engine
+[ ] Import WAV and MP3
+[ ] Drag START / END and use Play selection
+[ ] Audition loops only START → END
+[ ] Pause/resume audition behaves correctly
+[ ] Changing START/END while auditioning returns to the new START
+[ ] Set selection as Master
+[ ] Master Play loops continuously with no growing gap
+[ ] Listen specifically for seam clicks on arbitrary trim points
+[ ] Pause 5–10 seconds, then Play resumes from the same playhead
+[ ] Stop returns the playhead exactly to the beginning
+[ ] Local audio comes from the selected Monitor Output
+[ ] Leaving Looper stops its playback
+[ ] 30–60 minute continuous short-loop soak shows no growing delay/drift
+[ ] Windows Mic still works
+[ ] Phone Mic still works
+[ ] Voice FX / Pitch / Formant still work
+[ ] Soundboard still works
+[ ] Media Deck still works
+[ ] Remote Control still works
+[ ] Remote Monitor still works
+[ ] Program/VB-CABLE output remains unchanged
+```
+
+## Product decisions already scheduled
+
+### Project Library — Gate 8
+
+Gate 8 must provide a persistent multi-project library/recent-projects workflow with stable project identity, safe save-before-switch behavior, reopen support, explicit missing/corrupt asset states, and explicit deletion. Until Gate 8, `New Project` remains a destructive in-memory development reset.
 
 ## Gate sequence
 
 ```text
 Gate 0  Freeze v1.3 baseline                         USER ACCEPTED
 Gate 1  UI + project + waveform                     USER ACCEPTED
-Gate 2  Master Loop + transport + local monitor     CURRENT / UNLOCKED
+Gate 2  Master Loop + transport + local monitor     CURRENT / CI PENDING
 Gate 3  First Mic Master + processed Record Tap     LOCKED
 Gate 4  Child layers + recording modes              LOCKED
 Gate 5  Record alignment / latency compensation     LOCKED
@@ -153,7 +163,3 @@ Gate 7  Track editor + mixer polish                 LOCKED
 Gate 8  Persistence + Project Library + DAW ZIP     LOCKED
 Gate 9  Regression + soak + final acceptance        LOCKED
 ```
-
-## Working rule
-
-After every implementation iteration, update this file with current Gate, implementation result, automated-test result, required user test, known issues/hotfixes, explicit acceptance, and next permitted Gate.

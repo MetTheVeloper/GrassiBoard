@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include <cstdint>
 
@@ -37,6 +37,12 @@ enum gb_input_source_mode : std::uint32_t {
     GB_INPUT_SOURCE_REMOTE = 1
 };
 
+enum gb_looper_transport : std::uint32_t {
+    GB_LOOPER_STOPPED = 0,
+    GB_LOOPER_PAUSED = 1,
+    GB_LOOPER_PLAYING = 2
+};
+
 struct gb_audio_statistics {
     std::uint32_t struct_size;
     std::uint32_t running;
@@ -69,6 +75,17 @@ struct gb_audio_statistics {
     std::uint32_t media_alignment_frames;
 };
 
+struct gb_looper_state {
+    std::uint32_t struct_size;
+    std::uint32_t transport;
+    std::uint32_t sample_rate;
+    std::uint32_t channels;
+    std::uint64_t loop_frames;
+    std::uint64_t playhead_frame;
+    std::uint32_t monitor_fill_frames;
+    std::uint32_t monitor_capacity_frames;
+    std::uint64_t monitor_overrun_count;
+};
 
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
 struct gb_monitor_tap_statistics {
@@ -140,6 +157,28 @@ GB_API gb_result GB_CALL gb_set_pitch_bypass(gb_engine_handle engine, std::uint3
 GB_API gb_result GB_CALL gb_set_formant_semitones(gb_engine_handle engine, float semitones) noexcept;
 GB_API gb_result GB_CALL gb_set_formant_preservation(gb_engine_handle engine, std::uint32_t preserve) noexcept;
 GB_API gb_result GB_CALL gb_set_pitch_quality(gb_engine_handle engine, std::uint32_t quality_mode) noexcept;
+
+// GrassiLooper Gate 2 is an additive ABI-10 extension: loading/copying happens
+// on the control thread, while the realtime Program render callback advances one
+// authoritative sample clock and writes Looper-only PCM into a bounded monitor tap.
+// The Looper monitor tap never modifies the Program/VB-CABLE mix.
+GB_API gb_result GB_CALL gb_looper_load_master(
+    gb_engine_handle engine,
+    const float* interleaved_stereo_samples,
+    std::uint64_t frame_count) noexcept;
+GB_API gb_result GB_CALL gb_looper_clear(gb_engine_handle engine) noexcept;
+GB_API gb_result GB_CALL gb_looper_set_transport(
+    gb_engine_handle engine,
+    std::uint32_t transport) noexcept;
+GB_API gb_result GB_CALL gb_looper_get_state(
+    gb_engine_handle engine,
+    gb_looper_state* state) noexcept;
+GB_API gb_result GB_CALL gb_looper_monitor_read(
+    gb_engine_handle engine,
+    float* interleaved_stereo_samples,
+    std::uint32_t capacity_frames,
+    std::uint32_t* read_frames) noexcept;
+
 // Sound clips must be decoded to interleaved 48 kHz stereo float PCM before
 // they cross this boundary. The engine copies clip data outside the render callback.
 GB_API gb_result GB_CALL gb_load_sound_clip(

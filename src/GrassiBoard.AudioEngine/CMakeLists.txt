@@ -3,10 +3,15 @@
   src/audio_engine.cpp
   src/device_enumerator.cpp
   src/device_enumerator.h
-  src/mixer_processor.cpp
-  src/mixer_processor.h
+  src/looper_api.cpp
+  src/looper_engine.cpp
+  src/looper_engine.h
   src/media_stream.cpp
   src/media_stream.h
+  src/mixer_processor.cpp
+  src/mixer_processor.h
+  src/monitor_tap_buffer.cpp
+  src/monitor_tap_buffer.h
   src/pitch_processor.cpp
   src/pitch_processor.h
   src/soundboard_mixer.cpp
@@ -25,8 +30,6 @@ target_link_libraries(GrassiBoard.AudioEngine PRIVATE signalsmith-stretch)
 target_compile_definitions(GrassiBoard.AudioEngine PRIVATE GRASSIBOARD_AUDIO_ENGINE_EXPORTS)
 if(GRASSIBOARD_REMOTE_MONITOR_TAP)
   target_sources(GrassiBoard.AudioEngine PRIVATE
-    src/monitor_tap_buffer.cpp
-    src/monitor_tap_buffer.h
     src/remote_input_buffer.cpp
     src/remote_input_buffer.h
   )

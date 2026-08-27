@@ -20,7 +20,7 @@ internal sealed class WaveformView : FrameworkElement
 
     public static readonly DependencyProperty PlayheadPositionProperty = DependencyProperty.Register(
         nameof(PlayheadPosition), typeof(double), typeof(WaveformView),
-        new FrameworkPropertyMetadata(0.0, FrameworkPropertyMetadataOptions.AffectsRender));
+        new FrameworkPropertyMetadata(-1.0, FrameworkPropertyMetadataOptions.AffectsRender));
 
     public static readonly DependencyProperty SelectionStartProperty = DependencyProperty.Register(
         nameof(SelectionStart), typeof(double), typeof(WaveformView),
@@ -104,9 +104,10 @@ internal sealed class WaveformView : FrameworkElement
             drawingContext.DrawLine(handlePen, new Point(selectionEnd * width, 0), new Point(selectionEnd * width, height));
         }
 
-        double playhead = Math.Clamp(PlayheadPosition, 0.0, 1.0);
-        if (playhead > 0.0)
+        double playhead = PlayheadPosition;
+        if (double.IsFinite(playhead) && playhead >= 0.0)
         {
+            playhead = Math.Clamp(playhead, 0.0, 1.0);
             drawingContext.DrawLine(new Pen(Brushes.White, 1.0), new Point(playhead * width, 0), new Point(playhead * width, height));
         }
     }

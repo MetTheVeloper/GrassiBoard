@@ -5,6 +5,8 @@
 
 namespace grassiboard {
 
+class LooperEngine;
+
 struct MixerFrame final {
     float microphone = 0.0F;
     float board_left = 0.0F;
@@ -17,6 +19,9 @@ struct MixerFrame final {
 
 class MixerDynamicsProcessor final {
 public:
+    explicit MixerDynamicsProcessor(LooperEngine* looperClock = nullptr) noexcept
+        : looper_clock_(looperClock) {}
+
     void Prepare(std::uint32_t sampleRate) noexcept;
     void Reset() noexcept;
     void BeginBlock() noexcept;
@@ -40,6 +45,11 @@ private:
     static float DbToLinear(float db) noexcept;
     static float Smooth(float current, float target, float coefficient) noexcept;
     static float SoftProtect(float sample) noexcept;
+
+    // Non-owning Gate-2 clock hook. ProcessFrame is invoked exactly once for every
+    // Program render frame. LooperEngine only advances its own clock/tap here; its
+    // PCM is never added to this Program mixer output.
+    LooperEngine* looper_clock_ = nullptr;
 
     std::atomic<float> mic_gain_db_{0.0F};
     std::atomic<float> soundboard_gain_db_{0.0F};

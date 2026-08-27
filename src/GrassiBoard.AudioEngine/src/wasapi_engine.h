@@ -1,6 +1,7 @@
-﻿#pragma once
+#pragma once
 
 #include "grassiboard/audio_engine.h"
+#include "looper_engine.h"
 #include "mixer_processor.h"
 #include "media_stream.h"
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
@@ -55,6 +56,22 @@ public:
     void SetFormantSemitones(float semitones) noexcept;
     void SetFormantPreservation(bool preserve) noexcept;
     void SetPitchQuality(PitchQualityMode mode) noexcept;
+
+    gb_result LoadLooperMaster(const float* stereoSamples, std::uint64_t frameCount)
+    {
+        return looper_engine_.LoadMaster(stereoSamples, frameCount);
+    }
+    void ClearLooper() noexcept { looper_engine_.Clear(); }
+    gb_result SetLooperTransport(std::uint32_t transport) noexcept
+    {
+        return looper_engine_.SetTransport(transport);
+    }
+    std::uint32_t ReadLooperMonitor(float* stereoSamples, std::uint32_t capacityFrames) noexcept
+    {
+        return looper_engine_.ReadMonitor(stereoSamples, capacityFrames);
+    }
+    void GetLooperState(gb_looper_state& state) const noexcept { looper_engine_.GetState(state); }
+
     gb_result LoadSoundClip(std::uint64_t key, const float* stereoSamples, std::uint64_t frameCount);
     gb_result PlaySoundClip(std::uint64_t key, float volume, bool loop, bool restart) noexcept;
     gb_result StopSoundClip(std::uint64_t key) noexcept;
@@ -103,7 +120,10 @@ private:
 
     FloatRingBuffer ring_buffer_;
     LivePitchProcessor pitch_processor_;
-    MixerDynamicsProcessor mixer_processor_;
+    LooperEngine looper_engine_;
+    // Mixer calls LooperEngine::RenderFrame exactly once per Program render frame.
+    // Looper audio goes only to its dedicated monitor tap, never into Program mix.
+    MixerDynamicsProcessor mixer_processor_{&looper_engine_};
     SoundboardMixer soundboard_mixer_;
     MediaStreamBuffer media_stream_;
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)

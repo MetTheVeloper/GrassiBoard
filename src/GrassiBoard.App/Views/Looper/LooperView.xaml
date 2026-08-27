@@ -8,7 +8,7 @@
                 <StackPanel>
                     <TextBlock Text="GRASSILOOPER" Style="{StaticResource EyebrowTextStyle}" />
                     <TextBlock Text="Looper" Style="{StaticResource SectionTitleStyle}" Margin="0,5,0,0" />
-                    <TextBlock Text="Sample-accurate Master Loop workspace · Gate 1 foundation"
+                    <TextBlock Text="Sample-accurate Master Loop workspace · Gate 2 native transport"
                                Style="{StaticResource MutedTextStyle}" Margin="0,5,0,0" />
                 </StackPanel>
                 <Button Content="New project" Command="{Binding NewProjectCommand}"
@@ -46,6 +46,7 @@
                     </Grid>
                     <Border Margin="0,16,0,0" Height="210" CornerRadius="8" ClipToBounds="True" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                         <looper:WaveformView WaveformData="{Binding PendingWaveform}"
+                                             PlayheadPosition="{Binding PendingPlayheadPosition}"
                                              SelectionStart="{Binding SelectionStart, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              SelectionEnd="{Binding SelectionEnd, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                              IsEditable="True" ShowTrimHandles="True" />
@@ -53,10 +54,15 @@
                     <Grid Margin="0,12,0,0">
                         <TextBlock Text="{Binding SelectionLabel}" FontFamily="{StaticResource MonoFont}" FontSize="11" VerticalAlignment="Center" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="{Binding AuditionPlayPauseLabel}" Command="{Binding AuditionPlayPauseCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}" MinWidth="112" Margin="0,0,8,0" />
                             <Button Content="Cancel" Command="{Binding CancelImportCommand}" Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" />
                             <Button Content="Set As Master Loop" Command="{Binding SetAsMasterCommand}" />
                         </StackPanel>
                     </Grid>
+                    <TextBlock Text="Changing START or END resets audition to the new START; active playback restarts after the trim gesture settles."
+                               Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,9,0,0" />
+                    <TextBlock Text="{Binding EngineRequirementLabel}" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
                 </StackPanel>
             </Border>
 
@@ -73,16 +79,35 @@
                                 <TextBlock Text="{Binding MasterFrameLabel}" HorizontalAlignment="Right" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
                             </StackPanel>
                         </Grid>
-                        <Border Height="82" Margin="0,14,0,0" CornerRadius="7" ClipToBounds="True">
+                        <Border Height="96" Margin="0,14,0,0" CornerRadius="7" ClipToBounds="True">
                             <looper:WaveformView WaveformData="{Binding Master.Waveform}"
                                                  WaveformColor="{Binding Master.DisplayColor}"
+                                                 PlayheadPosition="{Binding MasterPlayheadPosition}"
                                                  CompactMode="True" />
                         </Border>
+
                         <Grid Margin="0,12,0,0">
-                            <TextBlock Text="Master length is sample-defined; BPM is not the project clock."
-                                       Style="{StaticResource MutedTextStyle}" VerticalAlignment="Center" />
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Button Content="{Binding TransportPlayPauseLabel}" Command="{Binding TransportPlayPauseCommand}"
+                                        MinWidth="92" Margin="0,0,8,0" />
+                                <Button Content="Stop" Command="{Binding TransportStopCommand}"
+                                        Style="{StaticResource SecondaryButtonStyle}" MinWidth="82" />
+                                <TextBlock Text="{Binding MasterPositionLabel}" FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                           VerticalAlignment="Center" Margin="14,0,0,0" />
+                            </StackPanel>
                             <Button Content="Import different Master" Command="{Binding ImportAudioCommand}"
                                     Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Right" />
+                        </Grid>
+
+                        <Grid Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="{Binding EngineRequirementLabel}" Style="{StaticResource MutedTextStyle}" />
+                                <TextBlock Text="{Binding MonitorRouteLabel}" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding LoopSafetyLabel}" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
+                                <TextBlock Text="{Binding MonitorDiagnosticsLabel}" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <TextBlock Text="One native sample clock · BPM is not the project clock."
+                                       Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
                     </StackPanel>
                 </Border>
@@ -92,7 +117,7 @@
                         <TextBlock Text="TRACKS" Style="{StaticResource EyebrowTextStyle}" />
                         <TextBlock Text="Layers" Style="{StaticResource SectionTitleStyle}" Margin="0,4,0,0" />
                     </StackPanel>
-                    <TextBlock Text="Recording unlocks in Gate 4" Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    <TextBlock Text="Child-layer recording unlocks in Gate 4" Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                 </Grid>
                 <ItemsControl ItemsSource="{Binding Project.Tracks}">
                     <ItemsControl.ItemTemplate>
@@ -103,7 +128,7 @@
                 </ItemsControl>
                 <Border Style="{StaticResource CardStyle}" Padding="22"
                         Visibility="{Binding HasChildTracks, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                    <TextBlock Text="No child layers yet. Gate 1 intentionally stops before the multi-track recording engine."
+                    <TextBlock Text="No child layers yet. Gate 2 establishes the shared Master clock and monitor before recording is added."
                                Style="{StaticResource MutedTextStyle}" TextAlignment="Center" />
                 </Border>
             </StackPanel>

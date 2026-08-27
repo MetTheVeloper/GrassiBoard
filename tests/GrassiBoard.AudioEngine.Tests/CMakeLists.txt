@@ -36,6 +36,23 @@ else()
 endif()
 add_test(NAME GrassiBoard.AudioEngine.MonitorTapRingTest COMMAND GrassiBoard.MonitorTap.Tests)
 
+add_executable(GrassiBoard.LooperEngine.Tests
+  looper_engine_tests.cpp
+  ${CMAKE_SOURCE_DIR}/src/GrassiBoard.AudioEngine/src/looper_engine.cpp
+  ${CMAKE_SOURCE_DIR}/src/GrassiBoard.AudioEngine/src/monitor_tap_buffer.cpp
+)
+target_compile_features(GrassiBoard.LooperEngine.Tests PRIVATE cxx_std_20)
+target_include_directories(GrassiBoard.LooperEngine.Tests PRIVATE
+  ${CMAKE_SOURCE_DIR}/src/GrassiBoard.AudioEngine/include
+  ${CMAKE_SOURCE_DIR}/src/GrassiBoard.AudioEngine/src
+)
+if(MSVC)
+  target_compile_options(GrassiBoard.LooperEngine.Tests PRIVATE /W4 /WX /permissive- /EHsc)
+else()
+  target_compile_options(GrassiBoard.LooperEngine.Tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+endif()
+add_test(NAME GrassiBoard.AudioEngine.LooperGate2Test COMMAND GrassiBoard.LooperEngine.Tests)
+
 if(GRASSIBOARD_REMOTE_MONITOR_TAP)
   add_executable(GrassiBoard.RemoteInput.Tests
     remote_input_buffer_tests.cpp
