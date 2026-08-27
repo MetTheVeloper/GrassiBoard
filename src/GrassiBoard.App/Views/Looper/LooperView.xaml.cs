@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Threading;
 using GrassiBoard.Models;
+using GrassiBoard.Services;
 using GrassiBoard.Services.Looper;
 using GrassiBoard.ViewModels;
 
@@ -140,7 +141,7 @@ public partial class LooperView : UserControl
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
                 writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
                 writer.Write(16);
-                writer.Write((short)3); // IEEE float PCM
+                writer.Write((short)3);
                 writer.Write((short)LooperRecordService.Channels);
                 writer.Write(LooperRecordService.SampleRate);
                 writer.Write(LooperRecordService.SampleRate * LooperRecordService.Channels * sizeof(float));
