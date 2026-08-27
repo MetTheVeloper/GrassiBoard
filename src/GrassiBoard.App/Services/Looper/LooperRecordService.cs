@@ -20,6 +20,7 @@ internal sealed class LooperRecordService : IDisposable
     private CancellationTokenSource? _workerCancellation;
     private Task? _worker;
     private List<float>? _samples;
+    private long _drainedFrames;
     private bool _recording;
     private bool _disposed;
     private string _lastError = string.Empty;
@@ -38,8 +39,22 @@ internal sealed class LooperRecordService : IDisposable
     {
         state = default;
         NativeAudioEngine? engine;
-        lock (_sync) engine = _engine ?? NativeAudioEngine.FindRunningProcessEngine();
-        return engine is not null && engine.GetLooperRecordState(out state) == NativeResult.Ok;
+        long drainedFrames;
+        lock (_sync)
+        {
+            engine = _engine ?? NativeAudioEngine.FindRunningProcessEngine();
+            drainedFrames = _drainedFrames;
+        }
+        if (engine is null || engine.GetLooperRecordState(out state) != NativeResult.Ok)
+        {
+            return false;
+        }
+
+        // The native SPSC state reports the frames currently buffered. The managed
+        // worker drains that buffer continuously, so expose a stable cumulative
+        // diagnostic to the UI instead of a number that falls back toward zero.
+        state.CapturedFrames = checked((ulong)Math.Max(0L, drainedFrames) + state.FillFrames);
+        return true;
     }
 
     public Task<bool> StartAsync(CancellationToken cancellationToken = default)
@@ -63,6 +78,7 @@ internal sealed class LooperRecordService : IDisposable
             }
 
             _samples = new List<float>(SampleRate * Channels * 8);
+            _drainedFrames = 0L;
             _workerCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             _recording = true;
             _lastError = string.Empty;
@@ -97,6 +113,12 @@ internal sealed class LooperRecordService : IDisposable
             _workerCancellation?.Dispose();
             _workerCancellation = null;
 
+            if (engine.GetStatistics(out AudioStatistics audioState) != NativeResult.Ok || audioState.Running == 0U)
+            {
+                _lastError = "The GrassiBoard audio engine stopped during the Take. The partial Take was discarded safely.";
+                _samples = null;
+                return null;
+            }
             if (engine.GetLooperRecordState(out LooperRecordNativeState state) != NativeResult.Ok)
             {
                 _lastError = "Looper Record Tap state could not be read after Stop.";
@@ -147,6 +169,7 @@ internal sealed class LooperRecordService : IDisposable
             _recording = false;
             _samples = null;
             _worker = null;
+            _drainedFrames = 0L;
         }
         try { worker?.GetAwaiter().GetResult(); } catch { }
         lock (_sync)
@@ -175,7 +198,6 @@ internal sealed class LooperRecordService : IDisposable
                 if (readResult != NativeResult.Ok) return;
                 if (readFrames == 0U) break;
                 readAnything = true;
-                int sampleCount = checked((int)readFrames * Channels);
                 lock (_sync)
                 {
                     if (_samples is null) return;
@@ -187,6 +209,7 @@ internal sealed class LooperRecordService : IDisposable
                         float sample = buffer[index];
                         _samples.Add(float.IsFinite(sample) ? sample : 0.0F);
                     }
+                    _drainedFrames += acceptedFrames;
                     if (currentFrames + acceptedFrames >= MaxCaptureFrames)
                     {
                         engine.StopLooperRecord();
