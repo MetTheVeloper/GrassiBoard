@@ -1,4 +1,4 @@
-﻿using GrassiBoard.Shared;
+using GrassiBoard.Shared;
 using GrassiBoard;
 using GrassiBoard.Infrastructure;
 using GrassiBoard.Models;
@@ -100,11 +100,11 @@ if (args is ["--diagnose-add-pad-ui", string uiAudioPath])
     return uiFailure is null && loaded && themeChanged ? 0 : 21;
 }
 
-if (BuildInfo.CurrentVersion != "1.2.0" || NativeAudioEngine.ExpectedApiVersion != 10U)
+if (BuildInfo.CurrentVersion != "1.2.0" || NativeAudioEngine.ExpectedApiVersion != 11U)
 {
     Console.Error.WriteLine(
         $"Managed version/native ABI contract is inconsistent. " +
-        $"Expected version=1.2.0 development baseline, ABI=10; actual version={BuildInfo.CurrentVersion}, ABI={NativeAudioEngine.ExpectedApiVersion}.");
+        $"Expected version=1.2.0 development baseline, ABI=11; actual version={BuildInfo.CurrentVersion}, ABI={NativeAudioEngine.ExpectedApiVersion}.");
     return 1;
 }
 
@@ -535,17 +535,17 @@ if (remoteServerSource.Contains("NativeAudioEngine", StringComparison.Ordinal) |
     !remoteMonitorSpikeSource.Contains("SetMonitorTapEnabled(true)", StringComparison.Ordinal) ||
     !remoteMonitorSpikeSource.Contains("ReadMonitorTap", StringComparison.Ordinal) ||
     !remoteMonitorSpikeSource.Contains("PumpNativeSoundboardTapAsync", StringComparison.Ordinal) ||
-    !nativeAudioEngineSource.Contains("ExpectedApiVersion = 10U", StringComparison.Ordinal) ||
+    !nativeAudioEngineSource.Contains("ExpectedApiVersion = 11U", StringComparison.Ordinal) ||
     !nativeAudioEngineSource.Contains("gb_monitor_tap_read", StringComparison.Ordinal) ||
     !nativeAudioEngineSource.Contains("gb_voice_monitor_tap_read", StringComparison.Ordinal) ||
-        !nativeHeaderSource.Contains("gb_set_input_source_mode", StringComparison.Ordinal) ||
+    !nativeHeaderSource.Contains("gb_set_input_source_mode", StringComparison.Ordinal) ||
     !nativeHeaderSource.Contains("gb_remote_input_push", StringComparison.Ordinal) ||
     !nativeHeaderSource.Contains("gb_get_remote_input_statistics", StringComparison.Ordinal) ||
     !nativeHeaderSource.Contains("gb_monitor_tap_set_enabled", StringComparison.Ordinal) ||
     !nativeHeaderSource.Contains("gb_voice_monitor_tap_set_enabled", StringComparison.Ordinal) ||
     !nativeHeaderSource.Contains("gb_monitor_tap_get_statistics", StringComparison.Ordinal) ||
-    !nativeEngineSource.Contains("constexpr std::uint32_t kApiVersion = 10", StringComparison.Ordinal) ||
-        !nativeWasapiSource.Contains("remote_input_.Read", StringComparison.Ordinal) ||
+    !nativeEngineSource.Contains("constexpr std::uint32_t kApiVersion = 11", StringComparison.Ordinal) ||
+    !nativeWasapiSource.Contains("remote_input_.Read", StringComparison.Ordinal) ||
     !nativeWasapiSource.Contains("GB_INPUT_SOURCE_REMOTE", StringComparison.Ordinal) ||
     !nativeWasapiSource.Contains("input_source_mode_.store(GB_INPUT_SOURCE_WINDOWS", StringComparison.Ordinal) ||
     !nativeWasapiSource.Contains("active_input_source_mode_.load", StringComparison.Ordinal) ||
@@ -577,7 +577,7 @@ if (remoteServerSource.Contains("NativeAudioEngine", StringComparison.Ordinal) |
     !remotePhoneMicSpikeSource.Contains("RemotePhoneMicPcmBridge", StringComparison.Ordinal) ||
     !remotePhoneMicSpikeSource.Contains("routeRequested = bridge.RouteRequested", StringComparison.Ordinal) ||
     !remotePhoneMicSpikeSource.Contains("routedToAudioEngine = bridge.Routed", StringComparison.Ordinal) ||
-    !remotePhoneMicSpikeSource.Contains("nativeAbi = 10", StringComparison.Ordinal) ||
+    !remotePhoneMicSpikeSource.Contains("nativeAbi = 11", StringComparison.Ordinal) ||
     !remotePhoneMicSpikeSource.Contains("jitterFillFrames", StringComparison.Ordinal) ||
     !remotePhoneMicBridgeSource.Contains("OutputSampleRate = 48_000", StringComparison.Ordinal) ||
     !remotePhoneMicBridgeSource.Contains("OutputBlockFrames = 480", StringComparison.Ordinal) ||
@@ -605,14 +605,14 @@ if (remoteServerSource.Contains("NativeAudioEngine", StringComparison.Ordinal) |
     !remotePhoneMicWebSource.Contains("scheduleRecovery", StringComparison.Ordinal) ||
     !remotePhoneMicWebSource.Contains("pageshow", StringComparison.Ordinal) ||
     !remotePhoneMicWebSource.Contains("iceConnectionState === 'disconnected'", StringComparison.Ordinal) ||
-        !remotePhoneMicWebSource.Contains("mic.spike.route.set", StringComparison.Ordinal) ||
+    !remotePhoneMicWebSource.Contains("mic.spike.route.set", StringComparison.Ordinal) ||
     !remotePhoneMicWebSource.Contains("getUserMedia", StringComparison.Ordinal) ||
     !remotePhoneMicWebSource.Contains("new RTCPeerConnection({ iceServers: [] })", StringComparison.Ordinal) ||
     !remotePhoneMicWebSource.Contains("addTrack(track, stream)", StringComparison.Ordinal) ||
     !remotePhoneMicWebSource.Contains("mic.spike.offer", StringComparison.Ordinal) ||
     !remotePhoneMicWebSource.Contains("echoCancellation: true", StringComparison.Ordinal) ||
     !remotePhoneMicWebSource.Contains("echoCancellation: false", StringComparison.Ordinal) ||
-        !remotePhoneMicPageSource.Contains("Route Phone Mic", StringComparison.Ordinal) ||
+    !remotePhoneMicPageSource.Contains("Route Phone Mic", StringComparison.Ordinal) ||
     !remotePhoneMicPageSource.Contains("Enable Phone Mic", StringComparison.Ordinal) ||
     !remotePhoneMicPageSource.Contains("RTP packets", StringComparison.Ordinal) ||
     !remotePhoneMicPageSource.Contains("Decoded frames", StringComparison.Ordinal) ||
@@ -720,7 +720,7 @@ if (statisticsSize != 144)
 int remoteInputStatisticsSize = System.Runtime.InteropServices.Marshal.SizeOf<RemoteInputStatistics>();
 if (remoteInputStatisticsSize != 56)
 {
-    Console.Error.WriteLine($"Managed Remote Input ABI-10 statistics layout failed: {remoteInputStatisticsSize} bytes.");
+    Console.Error.WriteLine($"Managed Remote Input ABI-11 statistics layout failed: {remoteInputStatisticsSize} bytes.");
     return 38;
 }
 
