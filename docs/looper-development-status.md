@@ -35,9 +35,12 @@ Gate 1 implementation commit: `fc342b40e989f12a6a40749a4a19af3154f7fad3`.
 
 ### Gate 2 — Master Loop engine + transport + local monitor
 
-Status: **IMPLEMENTED IN SOURCE / AUTOMATED VERIFICATION PENDING / USER TEST PENDING**
+Status: **CI GREEN / AWAITING USER MANUAL ACCEPTANCE**
 
-Gate 3 remains **LOCKED** until Gate 2 is CI-green, manually tested on Windows, and explicitly accepted by the user.
+Gate 3 remains **LOCKED** until Gate 2 is manually tested on Windows and explicitly accepted by the user.
+
+Gate 2 implementation commit: `8d8169634cd7c4e34452ef317678043caebe4847`.
+Gate 2 build-fix commits: `cedc753ea516f7e9015f224912985eea29564ef5`, `b355ff2ff782900adfe5188c99ff8fad2b8e7a6d`.
 
 ### Gate 2 implementation contract
 
@@ -112,11 +115,24 @@ Managed smoke coverage checks:
 - frame-zero playhead rendering contract;
 - native Looper API/source-clock integration contract.
 
-CI result for this implementation: **PENDING**.
+### Automated verification result
+
+GitHub Actions **Build #100** / run `33054680743` on code commit `b355ff2ff782900adfe5188c99ff8fad2b8e7a6d`: **SUCCESS**.
+
+- Remote Web install/generate: PASS
+- native configure/build: PASS
+- native tests: **9/9 PASS**, including `GrassiBoard.AudioEngine.LooperGate2Test`
+- managed smoke tests: PASS
+- WPF self-contained publish: PASS
+- portable package creation + contract verification: PASS
+- installer creation + contract verification: PASS
+- portable, symbols, installer and test-results artifact uploads: PASS
+
+Build #98 and #99 exposed only test-build integration debt (include path / `/WX` constexpr warning, then Mixer test linker dependency). Both were fixed before Build #100; no Gate 2 runtime acceptance claim is made from CI alone.
 
 ## Gate 2 manual acceptance checklist
 
-After CI is green, real Windows testing must verify:
+Real Windows testing must verify:
 
 ```text
 [ ] Start the normal GrassiBoard audio engine
@@ -154,7 +170,7 @@ Gate 8 must provide a persistent multi-project library/recent-projects workflow 
 ```text
 Gate 0  Freeze v1.3 baseline                         USER ACCEPTED
 Gate 1  UI + project + waveform                     USER ACCEPTED
-Gate 2  Master Loop + transport + local monitor     CURRENT / CI PENDING
+Gate 2  Master Loop + transport + local monitor     CURRENT / CI GREEN / USER TEST PENDING
 Gate 3  First Mic Master + processed Record Tap     LOCKED
 Gate 4  Child layers + recording modes              LOCKED
 Gate 5  Record alignment / latency compensation     LOCKED
