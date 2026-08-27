@@ -8,28 +8,31 @@
                 <StackPanel>
                     <TextBlock Text="GRASSILOOPER" Style="{StaticResource EyebrowTextStyle}" />
                     <TextBlock Text="Looper" Style="{StaticResource SectionTitleStyle}" Margin="0,5,0,0" />
-                    <TextBlock Text="Sample-accurate Master Loop workspace · Gate 2 native transport"
+                    <TextBlock Text="Sample-accurate Master workspace · Gate 3 processed microphone capture"
                                Style="{StaticResource MutedTextStyle}" Margin="0,5,0,0" />
                 </StackPanel>
-                <Button Content="New project" Command="{Binding NewProjectCommand}"
+                <Button x:Name="NewProjectButton" Content="New project" Command="{Binding NewProjectCommand}"
                         Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
 
             <Border Style="{StaticResource CardStyle}" Padding="28"
                     Visibility="{Binding IsEmptyProject, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <StackPanel HorizontalAlignment="Center" MaxWidth="560" Margin="20,44">
+                <StackPanel HorizontalAlignment="Center" MaxWidth="620" Margin="20,40">
                     <Border Width="56" Height="56" CornerRadius="28" Background="{DynamicResource SelectedSurfaceBrush}">
                         <TextBlock Text="&#xE768;" FontFamily="{StaticResource IconFont}" FontSize="23"
                                    Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <TextBlock Text="New Loop Project" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,16,0,0" />
-                    <TextBlock Text="Import a base audio file now, or build the first Master from microphone when Gate 3 unlocks recording."
+                    <TextBlock Text="Import a base audio file, or record a free first Master from the currently selected GrassiBoard microphone source."
                                Style="{StaticResource MutedTextStyle}" TextAlignment="Center" Margin="0,8,0,20" />
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <Button Content="Import Audio" Command="{Binding ImportAudioCommand}" MinWidth="132" Margin="0,0,10,0" />
-                        <Button Content="Record First Loop" IsEnabled="False" Style="{StaticResource SecondaryButtonStyle}"
-                                MinWidth="150" ToolTip="Microphone Master recording is intentionally locked until Gate 3." />
+                        <Button x:Name="ImportAudioButton" Content="Import Audio" Command="{Binding ImportAudioCommand}" MinWidth="132" Margin="0,0,10,0" />
+                        <Button x:Name="RecordFirstLoopButton" Content="Record First Loop" Click="OnRecordFirstLoopClick"
+                                MinWidth="160" />
                     </StackPanel>
+                    <TextBlock x:Name="RecordStatusText"
+                               Text="Processed Voice FX are printed into the Take. The live microphone is recorded but not locally monitored."
+                               Style="{StaticResource MutedTextStyle}" TextAlignment="Center" Margin="0,12,0,0" TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
 
@@ -155,7 +158,7 @@
                 </ItemsControl>
                 <Border Style="{StaticResource CardStyle}" Padding="22"
                         Visibility="{Binding HasChildTracks, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                    <TextBlock Text="No child layers yet. Gate 2 establishes the shared Master clock and monitor before recording is added."
+                    <TextBlock Text="No child layers yet. Gate 3 adds the processed microphone Master; aligned child recording unlocks in Gate 4."
                                Style="{StaticResource MutedTextStyle}" TextAlignment="Center" />
                 </Border>
             </StackPanel>
