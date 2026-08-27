@@ -11,6 +11,19 @@
     <DefineConstants>$(DefineConstants);REMOTE_MONITOR_SPIKE</DefineConstants>
   </PropertyGroup>
 
+  <!--
+    The historical full-app smoke Program contains release/baseline assertions that
+    evolve independently from an in-progress Looper Gate. For local Gate iteration,
+    select a tiny entrypoint while retaining all Looper ModuleInitializer smoke files.
+    This lets Gate 1/2/3 deterministic checks run locally without GitHub Actions.
+  -->
+  <ItemGroup Condition="'$(LooperLocalGateSmoke)' == 'true'">
+    <Compile Remove="Program.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(LooperLocalGateSmoke)' != 'true'">
+    <Compile Remove="Program.LooperLocal.cs" />
+  </ItemGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\src\GrassiBoard.Shared\GrassiBoard.Shared.csproj" />
     <ProjectReference Include="..\..\src\GrassiBoard.App\GrassiBoard.App.csproj" />
