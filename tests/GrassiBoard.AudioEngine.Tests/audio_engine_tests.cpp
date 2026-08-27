@@ -8,9 +8,10 @@
 int main()
 {
     static_assert(sizeof(gb_audio_statistics) == 144U, "Native statistics ABI layout changed unexpectedly.");
+    static_assert(sizeof(gb_looper_record_state) == 40U, "Gate 3 Looper record-state ABI layout changed unexpectedly.");
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-    constexpr std::uint32_t expectedApiVersion = 10U;
-    constexpr const char* expectedEngineVersion = "1.3.0-gate2";
+    constexpr std::uint32_t expectedApiVersion = 11U;
+    constexpr const char* expectedEngineVersion = "1.4.0-gate3";
 #else
     constexpr std::uint32_t expectedApiVersion = 8U;
     constexpr const char* expectedEngineVersion = "1.0.1";
@@ -123,6 +124,24 @@ int main()
         return 10;
     }
 
+    gb_looper_record_state recordState{};
+    float recordBuffer[8]{};
+    std::uint32_t recordReadFrames = 99U;
+    if (gb_looper_record_start(engine) != GB_ERROR_NOT_RUNNING ||
+        gb_looper_record_stop(engine) != GB_OK ||
+        gb_looper_record_read(engine, recordBuffer, 4U, &recordReadFrames) != GB_OK ||
+        recordReadFrames != 0U ||
+        gb_looper_record_get_state(engine, &recordState) != GB_OK ||
+        recordState.struct_size != sizeof(gb_looper_record_state) ||
+        recordState.active != 0U ||
+        recordState.capacity_frames < 48'000U ||
+        gb_looper_record_read(engine, nullptr, 4U, &recordReadFrames) != GB_ERROR_INVALID_ARGUMENT ||
+        gb_looper_record_get_state(engine, nullptr) != GB_ERROR_INVALID_ARGUMENT) {
+        std::cerr << "Gate 3 Looper Record Tap ABI contract failed.\n";
+        gb_engine_destroy(engine);
+        return 11;
+    }
+
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
     static_assert(sizeof(gb_remote_input_statistics) == 56U, "Remote Input ABI statistics layout changed unexpectedly.");
     gb_monitor_tap_statistics tapStatistics{};
@@ -148,9 +167,9 @@ int main()
         tapStatistics.capacity_frames < 48'000U ||
         gb_voice_monitor_tap_clear(engine) != GB_OK ||
         gb_voice_monitor_tap_set_enabled(engine, 0U) != GB_OK) {
-        std::cerr << "Remote Monitor ABI-10 Soundboard/My Voice tap contract failed.\n";
+        std::cerr << "Remote Monitor ABI-11 Soundboard/My Voice tap contract failed.\n";
         gb_engine_destroy(engine);
-        return 11;
+        return 12;
     }
 
     const float remoteInputSamples[]{0.1F, -0.2F, 0.3F, -0.4F};
@@ -171,7 +190,7 @@ int main()
         gb_get_remote_input_statistics(engine, &remoteStatistics) != GB_OK ||
         remoteStatistics.fill_frames != 0U ||
         gb_set_input_source_mode(engine, GB_INPUT_SOURCE_WINDOWS) != GB_OK) {
-        std::cerr << "Remote Phone Mic ABI-10 input contract failed.\n";
+        std::cerr << "Remote Phone Mic ABI-11 input contract failed.\n";
         gb_engine_destroy(engine);
         return 13;
     }
@@ -180,10 +199,10 @@ int main()
     if (gb_engine_stop(engine) != GB_OK) {
         std::cerr << "Stopping an idle engine failed.\n";
         gb_engine_destroy(engine);
-        return 12;
+        return 14;
     }
     gb_engine_destroy(engine);
 
-    std::cout << "Native ABI smoke test passed.\n";
+    std::cout << "Native ABI 11 + Gate 3 record-tap smoke test passed.\n";
     return 0;
 }
