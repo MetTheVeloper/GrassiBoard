@@ -23,9 +23,10 @@ constexpr std::uint16_t kCaptureChannels = 1U;
 constexpr std::uint16_t kRenderChannels = 2U;
 constexpr std::size_t kRingCapacityFrames = kSampleRate * 2U;
 constexpr std::size_t kMediaCapacityFrames = kSampleRate * 4U;
+constexpr std::size_t kLooperRecordTapCapacityFrames = kSampleRate * 2U;
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
 constexpr std::size_t kMonitorTapCapacityFrames = kSampleRate * 2U;
-constexpr std::size_t kRemoteInputCapacityFrames = kSampleRate / 4U; // 250 ms hard native bound
+constexpr std::size_t kRemoteInputCapacityFrames = kSampleRate / 4U;
 #endif
 
 WAVEFORMATEX MakeFloatFormat(const std::uint16_t channels) noexcept
@@ -49,12 +50,9 @@ HRESULT GetDevice(
 {
     if (id.empty()) {
         HRESULT result = enumerator->GetDefaultAudioEndpoint(flow, eCommunications, device);
-        if (FAILED(result)) {
-            result = enumerator->GetDefaultAudioEndpoint(flow, eConsole, device);
-        }
+        if (FAILED(result)) result = enumerator->GetDefaultAudioEndpoint(flow, eConsole, device);
         return result;
     }
-
     return enumerator->GetDevice(id.c_str(), device);
 }
 
@@ -67,25 +65,16 @@ HRESULT InitializeClient(
     ComPtr<IAudioClient> audioClient;
     HRESULT result = device->Activate(
         __uuidof(IAudioClient), CLSCTX_ALL, nullptr, reinterpret_cast<void**>(audioClient.GetAddressOf()));
-    if (FAILED(result)) {
-        return result;
-    }
+    if (FAILED(result)) return result;
 
     constexpr DWORD flags = AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
         AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
         AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY |
         AUDCLNT_STREAMFLAGS_NOPERSIST;
-    result = audioClient->Initialize(
-        AUDCLNT_SHAREMODE_SHARED, flags, 0, 0, &format, nullptr);
-    if (FAILED(result)) {
-        return result;
-    }
-
+    result = audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED, flags, 0, 0, &format, nullptr);
+    if (FAILED(result)) return result;
     result = audioClient->SetEventHandle(eventHandle);
-    if (FAILED(result)) {
-        return result;
-    }
-
+    if (FAILED(result)) return result;
     *client = audioClient.Detach();
     return S_OK;
 }
@@ -110,9 +99,7 @@ void FloatRingBuffer::Reset() noexcept
 
 bool FloatRingBuffer::Push(const float sample) noexcept
 {
-    if (size_ == samples_.size()) {
-        return false;
-    }
+    if (size_ == samples_.size()) return false;
     samples_[write_index_] = sample;
     write_index_ = (write_index_ + 1U) % samples_.size();
     ++size_;
@@ -139,6 +126,7 @@ std::size_t FloatRingBuffer::Size() const noexcept
 WasapiEngine::WasapiEngine()
     : ring_buffer_(kRingCapacityFrames)
     , media_stream_(kMediaCapacityFrames)
+    , looper_record_tap_(kLooperRecordTapCapacityFrames)
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
     , monitor_tap_(kMonitorTapCapacityFrames)
     , voice_monitor_tap_(kMonitorTapCapacityFrames)
@@ -155,18 +143,12 @@ WasapiEngine::~WasapiEngine()
 gb_result WasapiEngine::Start(const std::string& inputDeviceId, const std::string& monitorDeviceId)
 {
     std::scoped_lock lock(control_mutex_);
-    if (worker_.joinable() || running_.load(std::memory_order_acquire)) {
-        return GB_ERROR_ALREADY_RUNNING;
-    }
-    if (inputDeviceId.empty() || monitorDeviceId.empty()) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (worker_.joinable() || running_.load(std::memory_order_acquire)) return GB_ERROR_ALREADY_RUNNING;
+    if (inputDeviceId.empty() || monitorDeviceId.empty()) return GB_ERROR_INVALID_ARGUMENT;
 
     input_device_id_ = Utf8ToWide(inputDeviceId);
     monitor_device_id_ = Utf8ToWide(monitorDeviceId);
-    if (input_device_id_.empty() || monitor_device_id_.empty()) {
-        return GB_ERROR_INVALID_ARGUMENT;
-    }
+    if (input_device_id_.empty() || monitor_device_id_.empty()) return GB_ERROR_INVALID_ARGUMENT;
 
     stop_event_ = CreateEventW(nullptr, TRUE, FALSE, nullptr);
     if (stop_event_ == nullptr) {
@@ -190,11 +172,8 @@ gb_result WasapiEngine::Start(const std::string& inputDeviceId, const std::strin
     start_condition_.wait(startLock, [this] { return start_complete_; });
     const gb_result result = start_result_;
     startLock.unlock();
-
     if (result != GB_OK) {
-        if (worker_.joinable()) {
-            worker_.join();
-        }
+        if (worker_.joinable()) worker_.join();
         CloseHandle(stop_event_);
         stop_event_ = nullptr;
     }
@@ -204,11 +183,11 @@ gb_result WasapiEngine::Start(const std::string& inputDeviceId, const std::strin
 gb_result WasapiEngine::Stop()
 {
     std::scoped_lock lock(control_mutex_);
+    StopLooperRecord();
     if (!worker_.joinable()) {
         running_.store(false, std::memory_order_release);
         return GB_OK;
     }
-
     SetEvent(stop_event_);
     worker_.join();
     CloseHandle(stop_event_);
@@ -229,58 +208,29 @@ void WasapiEngine::SetPitchCents(const float cents) noexcept
     UpdatePitchTarget();
 }
 
-void WasapiEngine::SetPitchBypass(const bool bypass) noexcept
-{
-    pitch_processor_.SetBypass(bypass);
-}
-
-void WasapiEngine::SetFormantSemitones(const float semitones) noexcept
-{
-    pitch_processor_.SetFormantSemitones(semitones);
-}
-
-void WasapiEngine::SetFormantPreservation(const bool preserve) noexcept
-{
-    pitch_processor_.SetFormantPreservation(preserve);
-}
-
+void WasapiEngine::SetPitchBypass(const bool bypass) noexcept { pitch_processor_.SetBypass(bypass); }
+void WasapiEngine::SetFormantSemitones(const float semitones) noexcept { pitch_processor_.SetFormantSemitones(semitones); }
+void WasapiEngine::SetFormantPreservation(const bool preserve) noexcept { pitch_processor_.SetFormantPreservation(preserve); }
 void WasapiEngine::SetPitchQuality(const PitchQualityMode mode) noexcept
 {
     pitch_processor_.SetQualityMode(mode);
     UpdateMediaAlignment();
 }
 
-gb_result WasapiEngine::LoadSoundClip(
-    const std::uint64_t key,
-    const float* const stereoSamples,
-    const std::uint64_t frameCount)
+gb_result WasapiEngine::LoadSoundClip(const std::uint64_t key, const float* const stereoSamples, const std::uint64_t frameCount)
 {
     return soundboard_mixer_.LoadClip(key, stereoSamples, frameCount);
 }
 
-gb_result WasapiEngine::PlaySoundClip(
-    const std::uint64_t key,
-    const float volume,
-    const bool loop,
-    const bool restart) noexcept
+gb_result WasapiEngine::PlaySoundClip(const std::uint64_t key, const float volume, const bool loop, const bool restart) noexcept
 {
     return soundboard_mixer_.Play(key, volume, loop, restart);
 }
 
-gb_result WasapiEngine::StopSoundClip(const std::uint64_t key) noexcept
-{
-    return soundboard_mixer_.Stop(key);
-}
+gb_result WasapiEngine::StopSoundClip(const std::uint64_t key) noexcept { return soundboard_mixer_.Stop(key); }
+gb_result WasapiEngine::StopAllSounds() noexcept { return soundboard_mixer_.StopAll(); }
 
-gb_result WasapiEngine::StopAllSounds() noexcept
-{
-    return soundboard_mixer_.StopAll();
-}
-
-gb_result WasapiEngine::WriteMedia(
-    const float* const stereoSamples,
-    const std::uint32_t frameCount,
-    std::uint32_t& acceptedFrames) noexcept
+gb_result WasapiEngine::WriteMedia(const float* const stereoSamples, const std::uint32_t frameCount, std::uint32_t& acceptedFrames) noexcept
 {
     if (stereoSamples == nullptr || frameCount == 0U) {
         acceptedFrames = 0U;
@@ -292,27 +242,59 @@ gb_result WasapiEngine::WriteMedia(
 
 void WasapiEngine::SetMediaActive(const bool active) noexcept
 {
-    if (active) {
-        UpdateMediaAlignment();
-    }
+    if (active) UpdateMediaAlignment();
     media_stream_.SetActive(active);
 }
-
-void WasapiEngine::ClearMedia() noexcept
-{
-    media_stream_.Clear();
-}
-
+void WasapiEngine::ClearMedia() noexcept { media_stream_.Clear(); }
 void WasapiEngine::SetMediaMonitorLatency(const std::uint32_t latencyFrames) noexcept
 {
-    media_monitor_latency_frames_.store(
-        std::min<std::uint32_t>(latencyFrames, kSampleRate), std::memory_order_release);
+    media_monitor_latency_frames_.store(std::min<std::uint32_t>(latencyFrames, kSampleRate), std::memory_order_release);
     UpdateMediaAlignment();
 }
+void WasapiEngine::SetMicrophoneMuted(const bool muted) noexcept { microphone_muted_.store(muted, std::memory_order_release); }
 
-void WasapiEngine::SetMicrophoneMuted(const bool muted) noexcept
+void WasapiEngine::QuiesceLooperRecordWriter() noexcept
 {
-    microphone_muted_.store(muted, std::memory_order_release);
+    looper_record_enabled_.store(false, std::memory_order_release);
+    while (looper_record_writing_.load(std::memory_order_acquire)) std::this_thread::yield();
+}
+
+gb_result WasapiEngine::StartLooperRecord() noexcept
+{
+    if (!running_.load(std::memory_order_acquire)) return GB_ERROR_NOT_RUNNING;
+    QuiesceLooperRecordWriter();
+    looper_record_tap_.Reset();
+    std::uint32_t source = GB_INPUT_SOURCE_WINDOWS;
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+    source = active_input_source_mode_.load(std::memory_order_acquire);
+#endif
+    looper_record_source_mode_.store(source, std::memory_order_release);
+    looper_record_source_changed_.store(false, std::memory_order_release);
+    looper_record_enabled_.store(true, std::memory_order_release);
+    return GB_OK;
+}
+
+void WasapiEngine::StopLooperRecord() noexcept
+{
+    QuiesceLooperRecordWriter();
+}
+
+std::uint32_t WasapiEngine::ReadLooperRecord(float* const stereoSamples, const std::uint32_t capacityFrames) noexcept
+{
+    return looper_record_tap_.Read(stereoSamples, capacityFrames);
+}
+
+void WasapiEngine::GetLooperRecordState(gb_looper_record_state& state) const noexcept
+{
+    state = {};
+    state.struct_size = sizeof(gb_looper_record_state);
+    state.active = looper_record_enabled_.load(std::memory_order_acquire) ? 1U : 0U;
+    state.source_mode = looper_record_source_mode_.load(std::memory_order_acquire);
+    state.source_changed = looper_record_source_changed_.load(std::memory_order_acquire) ? 1U : 0U;
+    state.fill_frames = looper_record_tap_.FillFrames();
+    state.capacity_frames = looper_record_tap_.CapacityFrames();
+    state.captured_frames = looper_record_tap_.FillFrames();
+    state.overrun_frames = looper_record_tap_.OverrunCount();
 }
 
 void WasapiEngine::SetMixerSettings(const gb_mixer_settings& settings) noexcept
@@ -321,10 +303,7 @@ void WasapiEngine::SetMixerSettings(const gb_mixer_settings& settings) noexcept
     mixer_processor_.SetSoundboardGainDb(settings.soundboard_gain_db);
     mixer_processor_.SetMasterGainDb(settings.master_gain_db);
     mixer_processor_.SetNoiseGate(settings.gate_enabled != 0U, settings.gate_threshold_db);
-    mixer_processor_.SetCompressor(
-        settings.compressor_enabled != 0U,
-        settings.compressor_threshold_db,
-        settings.compressor_ratio);
+    mixer_processor_.SetCompressor(settings.compressor_enabled != 0U, settings.compressor_threshold_db, settings.compressor_ratio);
     mixer_processor_.SetLimiter(settings.limiter_enabled != 0U, settings.limiter_ceiling_db);
     mixer_processor_.SetDucking(settings.ducking_enabled != 0U, settings.ducking_amount_db);
     mixer_processor_.SetClippingProtection(settings.clipping_protection_enabled != 0U);
@@ -342,21 +321,16 @@ void WasapiEngine::UpdateMediaAlignment() noexcept
 {
     const std::uint32_t pitchLatency = pitch_processor_.GetLatencySamples();
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-    const bool remoteInput =
-        active_input_source_mode_.load(std::memory_order_relaxed) == GB_INPUT_SOURCE_REMOTE;
+    const bool remoteInput = active_input_source_mode_.load(std::memory_order_relaxed) == GB_INPUT_SOURCE_REMOTE;
     const std::uint64_t sourceBufferFrames = remoteInput
         ? remote_input_.FillFrames()
-        : static_cast<std::uint64_t>(capture_buffer_frames_.load(std::memory_order_relaxed)) +
-            ring_buffer_fill_frames_.load(std::memory_order_relaxed);
+        : static_cast<std::uint64_t>(capture_buffer_frames_.load(std::memory_order_relaxed)) + ring_buffer_fill_frames_.load(std::memory_order_relaxed);
 #else
-    const std::uint64_t sourceBufferFrames =
-        static_cast<std::uint64_t>(capture_buffer_frames_.load(std::memory_order_relaxed)) +
-        ring_buffer_fill_frames_.load(std::memory_order_relaxed);
+    const std::uint64_t sourceBufferFrames = static_cast<std::uint64_t>(capture_buffer_frames_.load(std::memory_order_relaxed)) + ring_buffer_fill_frames_.load(std::memory_order_relaxed);
 #endif
     const std::uint64_t microphonePath = sourceBufferFrames + pitchLatency;
     const std::uint64_t monitorPath = media_monitor_latency_frames_.load(std::memory_order_relaxed);
-    const std::uint64_t aligned = std::min<std::uint64_t>(
-        microphonePath + monitorPath, static_cast<std::uint64_t>(kMediaCapacityFrames - 1U));
+    const std::uint64_t aligned = std::min<std::uint64_t>(microphonePath + monitorPath, static_cast<std::uint64_t>(kMediaCapacityFrames - 1U));
     media_alignment_pitch_frames_.store(pitchLatency, std::memory_order_release);
     media_alignment_frames_.store(static_cast<std::uint32_t>(aligned), std::memory_order_release);
 }
@@ -398,24 +372,11 @@ void WasapiEngine::GetStatistics(gb_audio_statistics& statistics) const noexcept
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
 void WasapiEngine::SetMonitorTapEnabled(const bool enabled) noexcept
 {
-    if (enabled) {
-        monitor_tap_.Reset();
-    }
+    if (enabled) monitor_tap_.Reset();
     monitor_tap_enabled_.store(enabled, std::memory_order_release);
 }
-
-void WasapiEngine::ClearMonitorTap() noexcept
-{
-    monitor_tap_.Reset();
-}
-
-std::uint32_t WasapiEngine::ReadMonitorTap(
-    float* const stereoSamples,
-    const std::uint32_t capacityFrames) noexcept
-{
-    return monitor_tap_.Read(stereoSamples, capacityFrames);
-}
-
+void WasapiEngine::ClearMonitorTap() noexcept { monitor_tap_.Reset(); }
+std::uint32_t WasapiEngine::ReadMonitorTap(float* const stereoSamples, const std::uint32_t capacityFrames) noexcept { return monitor_tap_.Read(stereoSamples, capacityFrames); }
 void WasapiEngine::GetMonitorTapStatistics(gb_monitor_tap_statistics& statistics) const noexcept
 {
     statistics = {};
@@ -425,27 +386,13 @@ void WasapiEngine::GetMonitorTapStatistics(gb_monitor_tap_statistics& statistics
     statistics.capacity_frames = monitor_tap_.CapacityFrames();
     statistics.overrun_count = monitor_tap_.OverrunCount();
 }
-
 void WasapiEngine::SetVoiceMonitorTapEnabled(const bool enabled) noexcept
 {
-    if (enabled) {
-        voice_monitor_tap_.Reset();
-    }
+    if (enabled) voice_monitor_tap_.Reset();
     voice_monitor_tap_enabled_.store(enabled, std::memory_order_release);
 }
-
-void WasapiEngine::ClearVoiceMonitorTap() noexcept
-{
-    voice_monitor_tap_.Reset();
-}
-
-std::uint32_t WasapiEngine::ReadVoiceMonitorTap(
-    float* const stereoSamples,
-    const std::uint32_t capacityFrames) noexcept
-{
-    return voice_monitor_tap_.Read(stereoSamples, capacityFrames);
-}
-
+void WasapiEngine::ClearVoiceMonitorTap() noexcept { voice_monitor_tap_.Reset(); }
+std::uint32_t WasapiEngine::ReadVoiceMonitorTap(float* const stereoSamples, const std::uint32_t capacityFrames) noexcept { return voice_monitor_tap_.Read(stereoSamples, capacityFrames); }
 void WasapiEngine::GetVoiceMonitorTapStatistics(gb_monitor_tap_statistics& statistics) const noexcept
 {
     statistics = {};
@@ -455,26 +402,12 @@ void WasapiEngine::GetVoiceMonitorTapStatistics(gb_monitor_tap_statistics& stati
     statistics.capacity_frames = voice_monitor_tap_.CapacityFrames();
     statistics.overrun_count = voice_monitor_tap_.OverrunCount();
 }
-
 void WasapiEngine::SetInputSourceMode(const std::uint32_t sourceMode) noexcept
 {
-    input_source_mode_.store(
-        sourceMode == GB_INPUT_SOURCE_REMOTE ? GB_INPUT_SOURCE_REMOTE : GB_INPUT_SOURCE_WINDOWS,
-        std::memory_order_release);
+    input_source_mode_.store(sourceMode == GB_INPUT_SOURCE_REMOTE ? GB_INPUT_SOURCE_REMOTE : GB_INPUT_SOURCE_WINDOWS, std::memory_order_release);
 }
-
-std::uint32_t WasapiEngine::WriteRemoteInput(
-    const float* const monoSamples,
-    const std::uint32_t frameCount) noexcept
-{
-    return remote_input_.Write(monoSamples, frameCount);
-}
-
-void WasapiEngine::ResetRemoteInput() noexcept
-{
-    remote_input_.Reset();
-}
-
+std::uint32_t WasapiEngine::WriteRemoteInput(const float* const monoSamples, const std::uint32_t frameCount) noexcept { return remote_input_.Write(monoSamples, frameCount); }
+void WasapiEngine::ResetRemoteInput() noexcept { remote_input_.Reset(); }
 void WasapiEngine::GetRemoteInputStatistics(gb_remote_input_statistics& statistics) const noexcept
 {
     statistics = {};
@@ -493,32 +426,18 @@ void WasapiEngine::GetRemoteInputStatistics(gb_remote_input_statistics& statisti
 std::string WasapiEngine::GetLastError() const
 {
     const HRESULT result = last_hresult_.load(std::memory_order_acquire);
-    if (SUCCEEDED(result)) {
-        return {};
-    }
-
+    if (SUCCEEDED(result)) return {};
     LPWSTR message = nullptr;
-    const DWORD length = FormatMessageW(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-        nullptr,
-        static_cast<DWORD>(result),
-        0,
-        reinterpret_cast<LPWSTR>(&message),
-        0,
-        nullptr);
-
+    const DWORD length = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+        nullptr, static_cast<DWORD>(result), 0, reinterpret_cast<LPWSTR>(&message), 0, nullptr);
     std::ostringstream stream;
     stream << "HRESULT 0x" << std::hex << static_cast<std::uint32_t>(result);
     if (length > 0U && message != nullptr) {
         std::wstring text(message, length);
-        while (!text.empty() && (text.back() == L'\r' || text.back() == L'\n' || text.back() == L' ')) {
-            text.pop_back();
-        }
+        while (!text.empty() && (text.back() == L'\r' || text.back() == L'\n' || text.back() == L' ')) text.pop_back();
         stream << ": " << WideToUtf8(text);
     }
-    if (message != nullptr) {
-        LocalFree(message);
-    }
+    if (message != nullptr) LocalFree(message);
     return stream.str();
 }
 
@@ -550,6 +469,11 @@ void WasapiEngine::ResetStatistics() noexcept
     media_stream_.Clear();
     media_stream_.SetActive(false);
     soundboard_mixer_.ResetPlayback();
+    looper_record_enabled_.store(false, std::memory_order_release);
+    looper_record_writing_.store(false, std::memory_order_release);
+    looper_record_source_mode_.store(GB_INPUT_SOURCE_WINDOWS, std::memory_order_release);
+    looper_record_source_changed_.store(false, std::memory_order_release);
+    looper_record_tap_.Reset();
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
     monitor_tap_.Reset();
     voice_monitor_tap_.Reset();
@@ -562,9 +486,7 @@ void WasapiEngine::ResetStatistics() noexcept
 
 void WasapiEngine::SignalStart(const gb_result result, const HRESULT detail) noexcept
 {
-    if (FAILED(detail)) {
-        last_hresult_.store(detail, std::memory_order_release);
-    }
+    if (FAILED(detail)) last_hresult_.store(detail, std::memory_order_release);
     {
         std::scoped_lock lock(start_mutex_);
         start_result_ = result;
@@ -592,75 +514,42 @@ void WasapiEngine::Worker() noexcept
     ComPtr<IAudioRenderClient> renderService;
     HRESULT result = S_OK;
 
-    if (captureEvent == nullptr || renderEvent == nullptr) {
-        result = HRESULT_FROM_WIN32(::GetLastError());
-    }
-    if (SUCCEEDED(result)) {
-        result = CoCreateInstance(
-            __uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator));
-    }
-    if (SUCCEEDED(result)) {
-        result = GetDevice(enumerator.Get(), eCapture, input_device_id_, &captureDevice);
-    }
-    if (SUCCEEDED(result)) {
-        result = GetDevice(enumerator.Get(), eRender, monitor_device_id_, &renderDevice);
-    }
+    if (captureEvent == nullptr || renderEvent == nullptr) result = HRESULT_FROM_WIN32(::GetLastError());
+    if (SUCCEEDED(result)) result = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, IID_PPV_ARGS(&enumerator));
+    if (SUCCEEDED(result)) result = GetDevice(enumerator.Get(), eCapture, input_device_id_, &captureDevice);
+    if (SUCCEEDED(result)) result = GetDevice(enumerator.Get(), eRender, monitor_device_id_, &renderDevice);
 
     const WAVEFORMATEX captureFormat = MakeFloatFormat(kCaptureChannels);
     const WAVEFORMATEX renderFormat = MakeFloatFormat(kRenderChannels);
-    if (SUCCEEDED(result)) {
-        result = InitializeClient(captureDevice.Get(), captureFormat, captureEvent, &captureClient);
-    }
-    if (SUCCEEDED(result)) {
-        result = InitializeClient(renderDevice.Get(), renderFormat, renderEvent, &renderClient);
-    }
-    if (SUCCEEDED(result)) {
-        result = captureClient->GetService(IID_PPV_ARGS(&captureService));
-    }
-    if (SUCCEEDED(result)) {
-        result = renderClient->GetService(IID_PPV_ARGS(&renderService));
-    }
+    if (SUCCEEDED(result)) result = InitializeClient(captureDevice.Get(), captureFormat, captureEvent, &captureClient);
+    if (SUCCEEDED(result)) result = InitializeClient(renderDevice.Get(), renderFormat, renderEvent, &renderClient);
+    if (SUCCEEDED(result)) result = captureClient->GetService(IID_PPV_ARGS(&captureService));
+    if (SUCCEEDED(result)) result = renderClient->GetService(IID_PPV_ARGS(&renderService));
 
     UINT32 captureFrames = 0;
     UINT32 renderFrames = 0;
-    if (SUCCEEDED(result)) {
-        result = captureClient->GetBufferSize(&captureFrames);
-    }
-    if (SUCCEEDED(result)) {
-        result = renderClient->GetBufferSize(&renderFrames);
-    }
+    if (SUCCEEDED(result)) result = captureClient->GetBufferSize(&captureFrames);
+    if (SUCCEEDED(result)) result = renderClient->GetBufferSize(&renderFrames);
     if (SUCCEEDED(result)) {
         capture_buffer_frames_.store(captureFrames, std::memory_order_relaxed);
         render_buffer_frames_.store(renderFrames, std::memory_order_relaxed);
-
         try {
             const UINT32 maximumBlockFrames = std::max(captureFrames, renderFrames);
             pitch_input_buffer_.resize(maximumBlockFrames);
             pitch_output_buffer_.resize(maximumBlockFrames);
-            if (!pitch_processor_.Prepare(kSampleRate, kCaptureChannels, maximumBlockFrames)) {
-                result = E_FAIL;
-            }
+            if (!pitch_processor_.Prepare(kSampleRate, kCaptureChannels, maximumBlockFrames)) result = E_FAIL;
             mixer_processor_.Prepare(kSampleRate);
         }
-        catch (...) {
-            result = E_OUTOFMEMORY;
-        }
+        catch (...) { result = E_OUTOFMEMORY; }
     }
 
     if (SUCCEEDED(result)) {
-
         BYTE* initialBuffer = nullptr;
         result = renderService->GetBuffer(renderFrames, &initialBuffer);
-        if (SUCCEEDED(result)) {
-            result = renderService->ReleaseBuffer(renderFrames, AUDCLNT_BUFFERFLAGS_SILENT);
-        }
+        if (SUCCEEDED(result)) result = renderService->ReleaseBuffer(renderFrames, AUDCLNT_BUFFERFLAGS_SILENT);
     }
-    if (SUCCEEDED(result)) {
-        result = captureClient->Start();
-    }
-    if (SUCCEEDED(result)) {
-        result = renderClient->Start();
-    }
+    if (SUCCEEDED(result)) result = captureClient->Start();
+    if (SUCCEEDED(result)) result = renderClient->Start();
 
     if (FAILED(result)) {
         if (renderClient) renderClient->Stop();
@@ -668,36 +557,25 @@ void WasapiEngine::Worker() noexcept
         SignalStart(GB_ERROR_AUDIO_CLIENT, result);
         if (captureEvent != nullptr) CloseHandle(captureEvent);
         if (renderEvent != nullptr) CloseHandle(renderEvent);
-        renderService.Reset();
-        captureService.Reset();
-        renderClient.Reset();
-        captureClient.Reset();
-        renderDevice.Reset();
-        captureDevice.Reset();
-        enumerator.Reset();
+        renderService.Reset(); captureService.Reset(); renderClient.Reset(); captureClient.Reset(); renderDevice.Reset(); captureDevice.Reset(); enumerator.Reset();
         CoUninitialize();
         return;
     }
 
     running_.store(true, std::memory_order_release);
     SignalStart(GB_OK, S_OK);
-
     DWORD mmcssTaskIndex = 0;
     HANDLE mmcssHandle = AvSetMmThreadCharacteristicsW(L"Pro Audio", &mmcssTaskIndex);
     const std::array<HANDLE, 3> events{stop_event_, captureEvent, renderEvent};
     bool active = true;
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-    std::uint32_t workerInputSourceMode =
-        input_source_mode_.load(std::memory_order_acquire);
+    std::uint32_t workerInputSourceMode = input_source_mode_.load(std::memory_order_acquire);
     active_input_source_mode_.store(workerInputSourceMode, std::memory_order_release);
 #endif
 
     while (active) {
-        const DWORD waitResult = WaitForMultipleObjects(
-            static_cast<DWORD>(events.size()), events.data(), FALSE, 2000U);
-        if (waitResult == WAIT_OBJECT_0) {
-            break;
-        }
+        const DWORD waitResult = WaitForMultipleObjects(static_cast<DWORD>(events.size()), events.data(), FALSE, 2000U);
+        if (waitResult == WAIT_OBJECT_0) break;
 
         if (waitResult == WAIT_OBJECT_0 + 1U) {
             UINT32 packetFrames = 0;
@@ -707,55 +585,34 @@ void WasapiEngine::Worker() noexcept
                 DWORD flags = 0;
                 UINT64 devicePosition = 0;
                 UINT64 performancePosition = 0;
-                result = captureService->GetBuffer(
-                    &data, &packetFrames, &flags, &devicePosition, &performancePosition);
-                if (FAILED(result)) {
-                    break;
-                }
+                result = captureService->GetBuffer(&data, &packetFrames, &flags, &devicePosition, &performancePosition);
+                if (FAILED(result)) break;
                 if (packetFrames > pitch_input_buffer_.size() || packetFrames > pitch_output_buffer_.size()) {
                     captureService->ReleaseBuffer(packetFrames);
                     result = E_BOUNDS;
                     break;
                 }
-
-                if ((flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0U) {
-                    discontinuity_count_.fetch_add(1U, std::memory_order_relaxed);
-                }
-
+                if ((flags & AUDCLNT_BUFFERFLAGS_DATA_DISCONTINUITY) != 0U) discontinuity_count_.fetch_add(1U, std::memory_order_relaxed);
                 const bool silent = (flags & AUDCLNT_BUFFERFLAGS_SILENT) != 0U || data == nullptr;
                 const float* samples = reinterpret_cast<const float*>(data);
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-                const bool useWindowsInput =
-                    active_input_source_mode_.load(std::memory_order_relaxed) == GB_INPUT_SOURCE_WINDOWS;
+                const bool useWindowsInput = active_input_source_mode_.load(std::memory_order_relaxed) == GB_INPUT_SOURCE_WINDOWS;
 #else
                 constexpr bool useWindowsInput = true;
 #endif
                 if (useWindowsInput) {
                     bool overrun = false;
+                    for (UINT32 frame = 0; frame < packetFrames; ++frame) pitch_input_buffer_[frame] = silent ? 0.0F : SafeSample(samples[frame]);
+                    pitch_processor_.Process(pitch_input_buffer_.data(), pitch_output_buffer_.data(), packetFrames);
                     for (UINT32 frame = 0; frame < packetFrames; ++frame) {
-                        const float sample = silent ? 0.0F : SafeSample(samples[frame]);
-                        pitch_input_buffer_[frame] = sample;
+                        if (!ring_buffer_.Push(SafeSample(pitch_output_buffer_[frame]))) overrun = true;
                     }
-
-                    pitch_processor_.Process(
-                        pitch_input_buffer_.data(), pitch_output_buffer_.data(), packetFrames);
-                    for (UINT32 frame = 0; frame < packetFrames; ++frame) {
-                        if (!ring_buffer_.Push(SafeSample(pitch_output_buffer_[frame]))) {
-                            overrun = true;
-                        }
-                    }
-                    if (overrun) {
-                        overrun_count_.fetch_add(1U, std::memory_order_relaxed);
-                    }
+                    if (overrun) overrun_count_.fetch_add(1U, std::memory_order_relaxed);
                     captured_frames_.fetch_add(packetFrames, std::memory_order_relaxed);
-                    ring_buffer_fill_frames_.store(
-                        static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
+                    ring_buffer_fill_frames_.store(static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
                 }
-
                 result = captureService->ReleaseBuffer(packetFrames);
-                if (FAILED(result)) {
-                    break;
-                }
+                if (FAILED(result)) break;
                 result = captureService->GetNextPacketSize(&packetFrames);
             }
         }
@@ -780,118 +637,93 @@ void WasapiEngine::Worker() noexcept
                         bool underrun = false;
                         bool mediaUnderrun = false;
                         mixer_processor_.BeginBlock();
-                        if (media_stream_.IsActive() &&
-                            pitch_processor_.GetLatencySamples() !=
-                                media_alignment_pitch_frames_.load(std::memory_order_relaxed)) {
-                            UpdateMediaAlignment();
-                        }
-                        media_stream_.SynchronizeDelay(
-                            media_alignment_frames_.load(std::memory_order_relaxed));
+                        if (media_stream_.IsActive() && pitch_processor_.GetLatencySamples() != media_alignment_pitch_frames_.load(std::memory_order_relaxed)) UpdateMediaAlignment();
+                        media_stream_.SynchronizeDelay(media_alignment_frames_.load(std::memory_order_relaxed));
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-                        const std::uint32_t requestedInputSourceMode =
-                            input_source_mode_.load(std::memory_order_acquire);
+                        const std::uint32_t requestedInputSourceMode = input_source_mode_.load(std::memory_order_acquire);
                         if (requestedInputSourceMode != workerInputSourceMode) {
-                            // Both source branches are already 48 kHz mono and enter the same
-                            // prepared Voice DSP. Do not reset/reconfigure Pitch here: source
-                            // switching runs on the realtime worker and must stay allocation-free.
-                            // Clearing the physical staging ring is sufficient to prevent stale
-                            // Windows frames from reappearing after the atomic source handoff.
+                            if (looper_record_enabled_.load(std::memory_order_acquire) &&
+                                requestedInputSourceMode != looper_record_source_mode_.load(std::memory_order_acquire)) {
+                                looper_record_source_changed_.store(true, std::memory_order_release);
+                                looper_record_enabled_.store(false, std::memory_order_release);
+                            }
                             ring_buffer_.Reset();
                             workerInputSourceMode = requestedInputSourceMode;
                             active_input_source_mode_.store(workerInputSourceMode, std::memory_order_release);
                             UpdateMediaAlignment();
                         }
-
                         std::uint32_t remoteReadFrames = 0U;
                         if (workerInputSourceMode == GB_INPUT_SOURCE_REMOTE) {
                             remoteReadFrames = remote_input_.Read(pitch_input_buffer_.data(), available);
-                            pitch_processor_.Process(
-                                pitch_input_buffer_.data(), pitch_output_buffer_.data(), available);
+                            pitch_processor_.Process(pitch_input_buffer_.data(), pitch_output_buffer_.data(), available);
                             captured_frames_.fetch_add(remoteReadFrames, std::memory_order_relaxed);
-                            if (remoteReadFrames < available) {
-                                underrun = true;
-                            }
+                            if (remoteReadFrames < available) underrun = true;
                         }
 #endif
                         for (UINT32 frame = 0; frame < available; ++frame) {
                             float microphoneSample = 0.0F;
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-                            if (workerInputSourceMode == GB_INPUT_SOURCE_REMOTE) {
-                                microphoneSample = SafeSample(pitch_output_buffer_[frame]);
-                            }
+                            if (workerInputSourceMode == GB_INPUT_SOURCE_REMOTE) microphoneSample = SafeSample(pitch_output_buffer_[frame]);
                             else
 #endif
-                            if (!ring_buffer_.Pop(microphoneSample)) {
-                                underrun = true;
+                            if (!ring_buffer_.Pop(microphoneSample)) underrun = true;
+
+                            if (looper_record_enabled_.load(std::memory_order_acquire)) {
+                                looper_record_writing_.store(true, std::memory_order_release);
+                                if (looper_record_enabled_.load(std::memory_order_acquire)) {
+                                    std::uint32_t activeSource = GB_INPUT_SOURCE_WINDOWS;
+#if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
+                                    activeSource = workerInputSourceMode;
+#endif
+                                    if (activeSource != looper_record_source_mode_.load(std::memory_order_acquire)) {
+                                        looper_record_source_changed_.store(true, std::memory_order_release);
+                                        looper_record_enabled_.store(false, std::memory_order_release);
+                                    }
+                                    else {
+                                        const float recorded = SafeSample(microphoneSample);
+                                        looper_record_tap_.Push(recorded, recorded);
+                                    }
+                                }
+                                looper_record_writing_.store(false, std::memory_order_release);
                             }
-                            if (microphone_muted_.load(std::memory_order_relaxed)) {
-                                microphoneSample = 0.0F;
-                            }
+
+                            // Program Mic Mute happens after the dedicated Looper Record Tap.
+                            if (microphone_muted_.load(std::memory_order_relaxed)) microphoneSample = 0.0F;
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
                             if (voice_monitor_tap_enabled_.load(std::memory_order_relaxed)) {
-                                // My Voice tap: post Pitch/Formant + Mic Mute, but pre
-                                // Program Mic Gain/dynamics/Master. Duplicate mono into
-                                // stereo so the managed monitor worker can share the same
-                                // bounded 48 kHz stereo framing as the other source taps.
                                 const float processedVoice = SafeSample(microphoneSample);
                                 voice_monitor_tap_.Push(processedVoice, processedVoice);
                             }
 #endif
-
                             float boardLeft = 0.0F;
                             float boardRight = 0.0F;
                             soundboard_mixer_.MixFrame(boardLeft, boardRight);
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-                            if (monitor_tap_enabled_.load(std::memory_order_relaxed)) {
-                                // Raw Soundboard source tap: post per-pad volume, pre Program
-                                // Soundboard gain/master processing. The tap is write-only from
-                                // this realtime thread and cannot alter the Program mix.
-                                monitor_tap_.Push(SafeSample(boardLeft), SafeSample(boardRight));
-                            }
+                            if (monitor_tap_enabled_.load(std::memory_order_relaxed)) monitor_tap_.Push(SafeSample(boardLeft), SafeSample(boardRight));
 #endif
                             float mediaLeft = 0.0F;
                             float mediaRight = 0.0F;
-                            if (media_stream_.IsActive() && !media_stream_.Pop(mediaLeft, mediaRight)) {
-                                mediaUnderrun = true;
-                            }
-                            const MixerFrame mixed = mixer_processor_.ProcessFrame(
-                                microphoneSample, boardLeft, boardRight, mediaLeft, mediaRight);
+                            if (media_stream_.IsActive() && !media_stream_.Pop(mediaLeft, mediaRight)) mediaUnderrun = true;
+                            const MixerFrame mixed = mixer_processor_.ProcessFrame(microphoneSample, boardLeft, boardRight, mediaLeft, mediaRight);
                             const float masterLeft = SafeSample(mixed.left);
                             const float masterRight = SafeSample(mixed.right);
-
                             microphonePeak = std::max(microphonePeak, std::abs(mixed.microphone));
                             boardPeak = std::max({boardPeak, std::abs(mixed.board_left), std::abs(mixed.board_right)});
                             mediaPeak = std::max({mediaPeak, std::abs(mixed.media_left), std::abs(mixed.media_right)});
                             masterPeak = std::max({masterPeak, std::abs(masterLeft), std::abs(masterRight)});
                             microphoneSquareSum += static_cast<double>(mixed.microphone) * mixed.microphone;
-                            boardSquareSum += (static_cast<double>(mixed.board_left) * mixed.board_left +
-                                static_cast<double>(mixed.board_right) * mixed.board_right) * 0.5;
-                            mediaSquareSum += (static_cast<double>(mixed.media_left) * mixed.media_left +
-                                static_cast<double>(mixed.media_right) * mixed.media_right) * 0.5;
-                            masterSquareSum += (static_cast<double>(masterLeft) * masterLeft +
-                                static_cast<double>(masterRight) * masterRight) * 0.5;
+                            boardSquareSum += (static_cast<double>(mixed.board_left) * mixed.board_left + static_cast<double>(mixed.board_right) * mixed.board_right) * 0.5;
+                            mediaSquareSum += (static_cast<double>(mixed.media_left) * mixed.media_left + static_cast<double>(mixed.media_right) * mixed.media_right) * 0.5;
+                            masterSquareSum += (static_cast<double>(masterLeft) * masterLeft + static_cast<double>(masterRight) * masterRight) * 0.5;
                             samples[frame * kRenderChannels] = masterLeft;
                             samples[frame * kRenderChannels + 1U] = masterRight;
                         }
-                        if (underrun) {
-                            underrun_count_.fetch_add(1U, std::memory_order_relaxed);
-                        }
-                        if (mediaUnderrun) {
-                            media_underrun_count_.fetch_add(1U, std::memory_order_relaxed);
-                        }
-                        const float boardRms = available == 0U
-                            ? 0.0F
-                            : static_cast<float>(std::sqrt(boardSquareSum / static_cast<double>(available)));
-                        const float masterRms = available == 0U
-                            ? 0.0F
-                            : static_cast<float>(std::sqrt(masterSquareSum / static_cast<double>(available)));
-                        const float mediaRms = available == 0U
-                            ? 0.0F
-                            : static_cast<float>(std::sqrt(mediaSquareSum / static_cast<double>(available)));
-                        const float microphoneRms = available == 0U
-                            ? 0.0F
-                            : static_cast<float>(std::sqrt(
-                                microphoneSquareSum / static_cast<double>(available)));
+                        if (underrun) underrun_count_.fetch_add(1U, std::memory_order_relaxed);
+                        if (mediaUnderrun) media_underrun_count_.fetch_add(1U, std::memory_order_relaxed);
+                        const float boardRms = available == 0U ? 0.0F : static_cast<float>(std::sqrt(boardSquareSum / static_cast<double>(available)));
+                        const float masterRms = available == 0U ? 0.0F : static_cast<float>(std::sqrt(masterSquareSum / static_cast<double>(available)));
+                        const float mediaRms = available == 0U ? 0.0F : static_cast<float>(std::sqrt(mediaSquareSum / static_cast<double>(available)));
+                        const float microphoneRms = available == 0U ? 0.0F : static_cast<float>(std::sqrt(microphoneSquareSum / static_cast<double>(available)));
                         input_peak_.store(microphonePeak, std::memory_order_relaxed);
                         input_rms_.store(microphoneRms, std::memory_order_relaxed);
                         output_peak_.store(masterPeak, std::memory_order_relaxed);
@@ -904,23 +736,16 @@ void WasapiEngine::Worker() noexcept
                         media_rms_.store(mediaRms, std::memory_order_relaxed);
                         rendered_frames_.fetch_add(available, std::memory_order_relaxed);
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
-                        ring_buffer_fill_frames_.store(
-                            workerInputSourceMode == GB_INPUT_SOURCE_REMOTE
-                                ? remote_input_.FillFrames()
-                                : static_cast<std::uint32_t>(ring_buffer_.Size()),
-                            std::memory_order_relaxed);
+                        ring_buffer_fill_frames_.store(workerInputSourceMode == GB_INPUT_SOURCE_REMOTE ? remote_input_.FillFrames() : static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
 #else
-                        ring_buffer_fill_frames_.store(
-                            static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
+                        ring_buffer_fill_frames_.store(static_cast<std::uint32_t>(ring_buffer_.Size()), std::memory_order_relaxed);
 #endif
                         result = renderService->ReleaseBuffer(available, 0U);
                     }
                 }
             }
         }
-        else if (waitResult == WAIT_FAILED) {
-            result = HRESULT_FROM_WIN32(::GetLastError());
-        }
+        else if (waitResult == WAIT_FAILED) result = HRESULT_FROM_WIN32(::GetLastError());
 
         if (FAILED(result)) {
             last_hresult_.store(result, std::memory_order_release);
@@ -928,6 +753,7 @@ void WasapiEngine::Worker() noexcept
         }
     }
 
+    looper_record_enabled_.store(false, std::memory_order_release);
     renderClient->Stop();
     captureClient->Stop();
     running_.store(false, std::memory_order_release);
@@ -944,6 +770,7 @@ void WasapiEngine::Worker() noexcept
     media_stream_.Clear();
     media_stream_.SetActive(false);
     soundboard_mixer_.ResetPlayback();
+    looper_record_tap_.Reset();
 #if defined(GRASSIBOARD_REMOTE_MONITOR_TAP)
     monitor_tap_.Reset();
     voice_monitor_tap_.Reset();
@@ -951,19 +778,10 @@ void WasapiEngine::Worker() noexcept
     active_input_source_mode_.store(GB_INPUT_SOURCE_WINDOWS, std::memory_order_release);
     remote_input_.Reset();
 #endif
-
-    if (mmcssHandle != nullptr) {
-        AvRevertMmThreadCharacteristics(mmcssHandle);
-    }
+    if (mmcssHandle != nullptr) AvRevertMmThreadCharacteristics(mmcssHandle);
     CloseHandle(captureEvent);
     CloseHandle(renderEvent);
-    renderService.Reset();
-    captureService.Reset();
-    renderClient.Reset();
-    captureClient.Reset();
-    renderDevice.Reset();
-    captureDevice.Reset();
-    enumerator.Reset();
+    renderService.Reset(); captureService.Reset(); renderClient.Reset(); captureClient.Reset(); renderDevice.Reset(); captureDevice.Reset(); enumerator.Reset();
     CoUninitialize();
 }
 
