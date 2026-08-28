@@ -32,19 +32,24 @@ internal static class LooperGate2Smoke
         [
             "AuditionPlayPauseCommand",
             "AuditionSeekCommand",
-            "TransportPlayPauseCommand",
-            "TransportStopCommand",
             "EditMasterCommand",
             "PendingPlayheadPosition",
             "MasterPlayheadPosition",
             "LooperMonitorOutputCombo",
-            "OnFitSelectionClick"
+            "OnFitSelectionClick",
+            "OnTransportPlayPauseClick",
+            "OnTransportStopClick"
         ];
-        if (requiredXaml.Any(contract => !looperXaml.Contains(contract, StringComparison.Ordinal)))
+        string[] missingXaml = requiredXaml
+            .Where(contract => !looperXaml.Contains(contract, StringComparison.Ordinal))
+            .ToArray();
+        if (missingXaml.Length != 0)
         {
-            throw new InvalidOperationException("Gate 2 Looper transport/editor XAML contract failed.");
+            throw new InvalidOperationException($"Gate 2 Looper transport/editor XAML contract failed. Missing: {string.Join(", ", missingXaml)}");
         }
-        if (!looperViewModel.Contains("OnSelectionRestartTick", StringComparison.Ordinal) ||
+        if (!looperViewModel.Contains("TransportPlayPauseCommand", StringComparison.Ordinal) ||
+            !looperViewModel.Contains("TransportStopCommand", StringComparison.Ordinal) ||
+            !looperViewModel.Contains("OnSelectionRestartTick", StringComparison.Ordinal) ||
             !looperViewModel.Contains("SeekPendingSelection", StringComparison.Ordinal) ||
             !looperViewModel.Contains("EditMasterAsync", StringComparison.Ordinal) ||
             !looperViewModel.Contains("EditorWaveformBuckets", StringComparison.Ordinal) ||
