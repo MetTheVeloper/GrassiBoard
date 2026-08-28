@@ -39,7 +39,7 @@ try {
         if ($LASTEXITCODE -ne 0) { throw "Gate 3 baseline / shared Looper smoke validation failed with exit code $LASTEXITCODE." }
     }
 
-    Write-Host 'Checking Gate 4 child-layer source/UI contracts...' -ForegroundColor Cyan
+    Write-Host 'Checking Gate 4 child-layer and calibrated record-alignment contracts...' -ForegroundColor Cyan
     Require-Text `
         (Join-Path $repositoryRoot 'src\GrassiBoard.AudioEngine\include\grassiboard\audio_engine.h') `
         @('gb_looper_track_set_audio', 'gb_looper_track_remove', 'gb_looper_track_set_mix') `
@@ -50,19 +50,30 @@ try {
         @('MaxChildTrackBytes', 'anySolo', 'track.samples', 'previousFrames != frameCount') `
         'Gate 4 native child Track engine'
 
-    # The deterministic Gate 4 ModuleInitializer smoke executes the actual
-    # One Cycle / Loop Replace / Overdub composer behavior during a full run.
-    # These checks intentionally verify only stable structural markers instead
-    # of requiring an implementation-specific literal branch name.
     Require-Text `
         (Join-Path $repositoryRoot 'src\GrassiBoard.App\Services\Looper\LooperLayerComposer.cs') `
         @('LooperLayerRecordMode.OneCycle', 'LooperLayerRecordMode.Overdub', 'frame % loopLength') `
         'Gate 4 layer mode composer'
 
     Require-Text `
+        (Join-Path $repositoryRoot 'src\GrassiBoard.App\Services\Looper\LooperRecordAlignmentService.cs') `
+        @('MediaSyncOffsetMilliseconds', 'GetRemoteInputStatistics', 'CalculateMonitorPathLatencyFrames', 'RemoveCapturedPreroll') `
+        'Gate 4 shared live-sync alignment'
+
+    Require-Text `
+        (Join-Path $repositoryRoot 'src\GrassiBoard.App\Services\Looper\LooperRecordService.cs') `
+        @('LooperRecordAlignmentService.TryCapture', 'rawCapturedFrames > compensationFrames', 'RemoveCapturedPreroll') `
+        'Gate 4 aligned Record Tap handoff'
+
+    Require-Text `
+        (Join-Path $repositoryRoot 'src\GrassiBoard.App\Services\Looper\LooperMonitorService.cs') `
+        @('MonitorDesiredLatencyMilliseconds = 30', 'PrebufferFrames = 1_920U', 'CalculateMonitorPathLatencyFrames') `
+        'Gate 4 Looper monitor timing estimate'
+
+    Require-Text `
         (Join-Path $repositoryRoot 'tests\GrassiBoard.App.SmokeTests\LooperGate4Smoke.cs') `
-        @('LooperLayerRecordMode.LoopReplace', 'expectedReplace', 'expectedOverdub') `
-        'Gate 4 deterministic recording-mode smoke'
+        @('LooperLayerRecordMode.LoopReplace', 'expectedReplace', 'expectedOverdub', '3_360U', 'alignedOneCycle') `
+        'Gate 4 deterministic recording/alignment smoke'
 
     Require-Text `
         (Join-Path $repositoryRoot 'src\GrassiBoard.App\Views\Looper\LooperView.xaml') `
@@ -76,7 +87,7 @@ try {
 
     Write-Host ''
     Write-Host 'GATE 4 LOCAL AUTOMATED VALIDATION: PASS' -ForegroundColor Green
-    Write-Host 'Next: perform the real multi-layer One Cycle / Replace / Overdub checklist from ChatGPT.' -ForegroundColor Green
+    Write-Host 'Next: test child-layer timing using the existing Media Sync Calibration setting.' -ForegroundColor Green
 
     if ($Run) {
         Start-Process -FilePath $appExe -WorkingDirectory (Split-Path $appExe -Parent)
