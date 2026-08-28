@@ -1,8 +1,9 @@
 using GrassiBoard.Services;
 
-if (NativeAudioEngine.ExpectedApiVersion != 11U)
+uint expectedApiVersion = NativeAudioEngine.ExpectedApiVersion;
+if (expectedApiVersion != 11U)
 {
-    Console.Error.WriteLine($"Looper local smoke expected ABI 11, got {NativeAudioEngine.ExpectedApiVersion}.");
+    Console.Error.WriteLine($"Looper local smoke expected ABI 11, got {expectedApiVersion}.");
     return 1;
 }
 
