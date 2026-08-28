@@ -6,7 +6,10 @@ internal sealed record LooperRecordedTake(
     float[] StereoSamples,
     long FrameCount,
     LooperRecordSourceMode SourceMode,
-    ulong OverrunFrames);
+    ulong OverrunFrames,
+    uint AlignmentFrames,
+    double AlignmentMilliseconds,
+    double SyncCalibrationMilliseconds);
 
 internal sealed class LooperRecordService : IDisposable
 {
@@ -21,6 +24,7 @@ internal sealed class LooperRecordService : IDisposable
     private Task? _worker;
     private List<float>? _samples;
     private long _drainedFrames;
+    private LooperRecordAlignmentSnapshot _alignmentSnapshot;
     private bool _recording;
     private bool _disposed;
     private string _lastError = string.Empty;
@@ -35,25 +39,43 @@ internal sealed class LooperRecordService : IDisposable
         get { lock (_sync) return _lastError; }
     }
 
+    public uint AlignmentFrames
+    {
+        get { lock (_sync) return _alignmentSnapshot.CompensationFrames; }
+    }
+
+    public double AlignmentMilliseconds
+    {
+        get { lock (_sync) return _alignmentSnapshot.CompensationMilliseconds; }
+    }
+
     public bool TryGetState(out LooperRecordNativeState state)
     {
         state = default;
         NativeAudioEngine? engine;
         long drainedFrames;
+        uint compensationFrames;
         lock (_sync)
         {
             engine = _engine ?? NativeAudioEngine.FindRunningProcessEngine();
             drainedFrames = _drainedFrames;
+            compensationFrames = _alignmentSnapshot.CompensationFrames;
         }
         if (engine is null || engine.GetLooperRecordState(out state) != NativeResult.Ok)
         {
             return false;
         }
 
-        // The native SPSC state reports the frames currently buffered. The managed
-        // worker drains that buffer continuously, so expose a stable cumulative
-        // diagnostic to the UI instead of a number that falls back toward zero.
-        state.CapturedFrames = checked((ulong)Math.Max(0L, drainedFrames) + state.FillFrames);
+        // Native reports the raw Record Tap position. For an aligned child Take,
+        // the first compensationFrames are deliberate capture pre-roll: the user
+        // is hearing the Master through the local output path while the microphone
+        // also traverses source buffering + Voice/Pitch processing. Expose the
+        // post-compensation project duration so One Cycle records the required tail
+        // instead of stopping before the last aligned samples arrive.
+        ulong rawCapturedFrames = checked((ulong)Math.Max(0L, drainedFrames) + state.FillFrames);
+        state.CapturedFrames = rawCapturedFrames > compensationFrames
+            ? rawCapturedFrames - compensationFrames
+            : 0U;
         return true;
     }
 
@@ -74,6 +96,14 @@ internal sealed class LooperRecordService : IDisposable
             if (result != NativeResult.Ok)
             {
                 _lastError = $"Looper Record Tap could not start ({result}).";
+                return Task.FromResult(false);
+            }
+
+            if (!LooperRecordAlignmentService.TryCapture(_engine, out _alignmentSnapshot, out string alignmentError))
+            {
+                _engine.StopLooperRecord();
+                _alignmentSnapshot = default;
+                _lastError = alignmentError;
                 return Task.FromResult(false);
             }
 
@@ -117,30 +147,35 @@ internal sealed class LooperRecordService : IDisposable
             {
                 _lastError = "The GrassiBoard audio engine stopped during the Take. The partial Take was discarded safely.";
                 _samples = null;
+                _alignmentSnapshot = default;
                 return null;
             }
             if (engine.GetLooperRecordState(out LooperRecordNativeState state) != NativeResult.Ok)
             {
                 _lastError = "Looper Record Tap state could not be read after Stop.";
                 _samples = null;
+                _alignmentSnapshot = default;
                 return null;
             }
             if (state.SourceChanged != 0U)
             {
                 _lastError = "Microphone source changed during the Take. The Take was discarded instead of combining two inputs.";
                 _samples = null;
+                _alignmentSnapshot = default;
                 return null;
             }
             if (state.OverrunFrames != 0U)
             {
                 _lastError = $"Looper Record Tap overran by {state.OverrunFrames:N0} frames. The Take was discarded.";
                 _samples = null;
+                _alignmentSnapshot = default;
                 return null;
             }
             if (_samples is null || _samples.Count < Channels)
             {
                 _lastError = "The microphone Take contained no audio frames.";
                 _samples = null;
+                _alignmentSnapshot = default;
                 return null;
             }
 
@@ -149,11 +184,33 @@ internal sealed class LooperRecordService : IDisposable
             {
                 _samples.RemoveRange(completeSamples, _samples.Count - completeSamples);
             }
-            float[] samples = _samples.ToArray();
+
+            LooperRecordAlignmentSnapshot alignment = _alignmentSnapshot;
+            float[] rawSamples = _samples.ToArray();
             _samples = null;
+            float[] samples = LooperRecordAlignmentService.RemoveCapturedPreroll(
+                rawSamples,
+                alignment.CompensationFrames);
+            if (samples.Length < Channels)
+            {
+                _lastError = alignment.CompensationFrames == 0U
+                    ? "The microphone Take contained no aligned audio frames."
+                    : $"The Take ended before its {alignment.CompensationMilliseconds:0.0} ms sync compensation completed; it was discarded.";
+                _alignmentSnapshot = default;
+                return null;
+            }
+
             long frames = samples.LongLength / Channels;
+            _alignmentSnapshot = default;
             _lastError = string.Empty;
-            return new LooperRecordedTake(samples, frames, (LooperRecordSourceMode)state.SourceMode, state.OverrunFrames);
+            return new LooperRecordedTake(
+                samples,
+                frames,
+                (LooperRecordSourceMode)state.SourceMode,
+                state.OverrunFrames,
+                alignment.CompensationFrames,
+                alignment.CompensationMilliseconds,
+                alignment.CalibrationMilliseconds);
         }
     }
 
@@ -170,6 +227,7 @@ internal sealed class LooperRecordService : IDisposable
             _samples = null;
             _worker = null;
             _drainedFrames = 0L;
+            _alignmentSnapshot = default;
         }
         try { worker?.GetAwaiter().GetResult(); } catch { }
         lock (_sync)
