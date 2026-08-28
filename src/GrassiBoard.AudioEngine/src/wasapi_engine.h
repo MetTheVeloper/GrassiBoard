@@ -72,6 +72,15 @@ public:
         return looper_engine_.ReadMonitor(stereoSamples, capacityFrames);
     }
     void GetLooperState(gb_looper_state& state) const noexcept { looper_engine_.GetState(state); }
+    gb_result SetLooperTrackAudio(std::uint32_t trackId, const float* monoSamples, std::uint64_t frameCount)
+    {
+        return looper_engine_.SetTrackAudio(trackId, monoSamples, frameCount);
+    }
+    gb_result RemoveLooperTrack(std::uint32_t trackId) noexcept { return looper_engine_.RemoveTrack(trackId); }
+    gb_result SetLooperTrackMix(std::uint32_t trackId, float gain, float pan, bool muted, bool solo) noexcept
+    {
+        return looper_engine_.SetTrackMix(trackId, gain, pan, muted, solo);
+    }
 
     gb_result StartLooperRecord() noexcept;
     void StopLooperRecord() noexcept;

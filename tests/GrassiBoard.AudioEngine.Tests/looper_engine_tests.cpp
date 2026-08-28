@@ -87,6 +87,33 @@ int main()
         return Fail("Stop must return playhead exactly to frame zero.");
     }
 
+    // Gate 4: child buffers share the exact Master playhead and only affect the
+    // dedicated Looper monitor mix, never Program/VB-CABLE.
+    const std::array<float, 8> silentMaster{};
+    const std::array<float, 4> layer{0.25F, 0.50F, -0.25F, -0.50F};
+    if (looper.LoadMaster(silentMaster.data(), 4U) != GB_OK) return Fail("Could not load silent Gate 4 Master.");
+    if (looper.SetTrackAudio(1U, layer.data(), 4U) != GB_OK) return Fail("Could not load Gate 4 child Track.");
+    if (looper.SetTransport(GB_LOOPER_PLAYING) != GB_OK) return Fail("Gate 4 child playback did not start.");
+    for (int index = 0; index < 4; ++index) looper.RenderFrame();
+    std::array<float, 8> layerRendered{};
+    if (looper.ReadMonitor(layerRendered.data(), 4U) != 4U) return Fail("Expected four child Track monitor frames.");
+    for (std::size_t frame = 0; frame < 4U; ++frame) {
+        if (!Close(layerRendered[frame * 2U], layer[frame]) || !Close(layerRendered[frame * 2U + 1U], layer[frame])) {
+            return Fail("Child Track is not aligned to the shared Master playhead.");
+        }
+    }
+
+    if (looper.SetTransport(GB_LOOPER_STOPPED) != GB_OK) return Fail("Gate 4 child Stop failed.");
+    if (looper.SetTrackMix(1U, 1.0F, 0.0F, true, false) != GB_OK) return Fail("Could not mute child Track.");
+    if (looper.SetTransport(GB_LOOPER_PLAYING) != GB_OK) return Fail("Muted child playback did not start.");
+    for (int index = 0; index < 4; ++index) looper.RenderFrame();
+    layerRendered.fill(1.0F);
+    if (looper.ReadMonitor(layerRendered.data(), 4U) != 4U) return Fail("Muted child monitor frame count mismatch.");
+    for (const float sample : layerRendered) if (!Close(sample, 0.0F)) return Fail("Muted child Track must be silent.");
+
+    if (looper.SetTransport(GB_LOOPER_STOPPED) != GB_OK) return Fail("Gate 4 second Stop failed.");
+    if (looper.RemoveTrack(1U) != GB_OK) return Fail("Could not remove child Track.");
+
     if (looper.SetTransport(GB_LOOPER_PLAYING) != GB_OK) return Fail("Diagnostic play failed.");
     constexpr std::uint64_t oneHourFrames = 60ULL * 60ULL * LooperEngine::SampleRate;
     looper.AdvanceForDiagnostics(oneHourFrames + 3U);
@@ -104,6 +131,6 @@ int main()
         return Fail("Clear must remove the Master and reset transport.");
     }
 
-    std::cout << "GrassiLooper Gate 2 native transport tests passed.\n";
+    std::cout << "GrassiLooper Gate 2 + Gate 4 native transport/track tests passed.\n";
     return 0;
 }

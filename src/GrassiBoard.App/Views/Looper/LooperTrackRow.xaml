@@ -13,7 +13,7 @@
             </Grid.ColumnDefinitions>
             <StackPanel VerticalAlignment="Center">
                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="48 kHz · aligned" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
+                <TextBlock Text="48 kHz mono · Master-length" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
             </StackPanel>
             <Border Grid.Column="2" CornerRadius="6" ClipToBounds="True" Height="54">
                 <looper:WaveformView WaveformData="{Binding Waveform}"

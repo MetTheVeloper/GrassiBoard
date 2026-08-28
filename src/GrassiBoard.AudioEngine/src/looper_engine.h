@@ -15,6 +15,8 @@ public:
     static constexpr std::uint32_t SampleRate = 48'000U;
     static constexpr std::uint32_t Channels = 2U;
     static constexpr std::uint32_t MaxSupportedLoopMinutes = 10U;
+    static constexpr std::uint32_t MaxTracks = 32U;
+    static constexpr std::uint64_t MaxChildTrackBytes = 256ULL * 1024ULL * 1024ULL;
     static constexpr std::uint64_t MaxSupportedLoopFrames =
         static_cast<std::uint64_t>(SampleRate) * 60U * MaxSupportedLoopMinutes;
 
@@ -24,6 +26,11 @@ public:
     void Clear() noexcept;
     gb_result SetTransport(std::uint32_t transport) noexcept;
     gb_result Seek(std::uint64_t frame) noexcept;
+
+    gb_result SetTrackAudio(std::uint32_t trackId, const float* monoSamples, std::uint64_t frameCount);
+    gb_result RemoveTrack(std::uint32_t trackId) noexcept;
+    gb_result SetTrackMix(std::uint32_t trackId, float gain, float pan, bool muted, bool solo) noexcept;
+
     void RenderFrame() noexcept;
     std::uint32_t ReadMonitor(float* stereoSamples, std::uint32_t capacityFrames) noexcept;
     void GetState(gb_looper_state& state) const noexcept;
@@ -39,12 +46,25 @@ public:
     }
 
 private:
+    struct Track final {
+        std::uint32_t id = 0U;
+        std::vector<float> samples;
+        float gain = 1.0F;
+        float pan = 0.0F;
+        bool muted = false;
+        bool solo = false;
+    };
+
+    Track* FindTrack(std::uint32_t trackId) noexcept;
+    const Track* FindTrack(std::uint32_t trackId) const noexcept;
+    std::uint64_t CurrentChildTrackBytes() const noexcept;
     void BeginMutation() noexcept;
     void EndMutation() noexcept;
     void AdvanceUnsafe(std::uint64_t frameCount) noexcept;
 
     MonitorTapBuffer monitor_tap_;
     std::vector<float> master_samples_;
+    std::vector<Track> tracks_;
     std::atomic<std::uint32_t> transport_{GB_LOOPER_STOPPED};
     std::atomic<std::uint64_t> loop_frames_{0U};
     std::atomic<std::uint64_t> playhead_frame_{0U};

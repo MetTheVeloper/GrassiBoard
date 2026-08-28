@@ -22,11 +22,17 @@ float SeamGain(const std::uint64_t playhead, const std::uint64_t loopFrames) noe
     }
     return 1.0F;
 }
+
+float FiniteOrZero(const float sample) noexcept
+{
+    return std::isfinite(sample) ? sample : 0.0F;
+}
 }
 
 LooperEngine::LooperEngine()
     : monitor_tap_(kMonitorCapacityFrames)
 {
+    tracks_.reserve(MaxTracks);
 }
 
 gb_result LooperEngine::LoadMaster(
@@ -40,17 +46,21 @@ gb_result LooperEngine::LoadMaster(
     transport_.store(GB_LOOPER_STOPPED, std::memory_order_release);
     BeginMutation();
     monitor_tap_.Reset();
+    const std::uint64_t previousFrames = loop_frames_.load(std::memory_order_relaxed);
     try {
         const std::size_t sampleCount = static_cast<std::size_t>(frameCount * Channels);
         master_samples_.assign(stereoSamples, stereoSamples + sampleCount);
-        for (float& sample : master_samples_) {
-            if (!std::isfinite(sample)) sample = 0.0F;
-        }
+        for (float& sample : master_samples_) sample = FiniteOrZero(sample);
+
+        // Child tracks are sample-aligned to Master length. A new length invalidates
+        // every child buffer; reloading the same Master length for transport does not.
+        if (previousFrames != 0U && previousFrames != frameCount) tracks_.clear();
         loop_frames_.store(frameCount, std::memory_order_release);
         playhead_frame_.store(0U, std::memory_order_release);
     }
     catch (const std::bad_alloc&) {
         master_samples_.clear();
+        tracks_.clear();
         loop_frames_.store(0U, std::memory_order_release);
         playhead_frame_.store(0U, std::memory_order_release);
         EndMutation();
@@ -58,6 +68,7 @@ gb_result LooperEngine::LoadMaster(
     }
     catch (...) {
         master_samples_.clear();
+        tracks_.clear();
         loop_frames_.store(0U, std::memory_order_release);
         playhead_frame_.store(0U, std::memory_order_release);
         EndMutation();
@@ -72,8 +83,8 @@ void LooperEngine::Clear() noexcept
     transport_.store(GB_LOOPER_STOPPED, std::memory_order_release);
     BeginMutation();
     monitor_tap_.Reset();
-    // Retain capacity so redefining a Master does not force another large allocation.
     master_samples_.clear();
+    tracks_.clear();
     loop_frames_.store(0U, std::memory_order_release);
     playhead_frame_.store(0U, std::memory_order_release);
     EndMutation();
@@ -91,14 +102,9 @@ gb_result LooperEngine::SetTransport(const std::uint32_t transport) noexcept
         return GB_OK;
     }
 
-    // Publish Pause/Stop first, then wait out any in-flight realtime frame before
-    // finalizing the control state. This guarantees Stop returns exactly to frame 0
-    // and Pause cannot be followed by a late playhead increment.
     transport_.store(transport, std::memory_order_release);
     BeginMutation();
-    if (transport == GB_LOOPER_STOPPED) {
-        playhead_frame_.store(0U, std::memory_order_release);
-    }
+    if (transport == GB_LOOPER_STOPPED) playhead_frame_.store(0U, std::memory_order_release);
     monitor_tap_.Reset();
     EndMutation();
     return GB_OK;
@@ -112,6 +118,89 @@ gb_result LooperEngine::Seek(const std::uint64_t frame) noexcept
     BeginMutation();
     monitor_tap_.Reset();
     playhead_frame_.store(frame, std::memory_order_release);
+    EndMutation();
+    return GB_OK;
+}
+
+gb_result LooperEngine::SetTrackAudio(
+    const std::uint32_t trackId,
+    const float* const monoSamples,
+    const std::uint64_t frameCount)
+{
+    const std::uint64_t loopFrames = loop_frames_.load(std::memory_order_acquire);
+    if (trackId == 0U || monoSamples == nullptr || frameCount == 0U || frameCount != loopFrames) {
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+
+    BeginMutation();
+    try {
+        Track* track = FindTrack(trackId);
+        if (track == nullptr) {
+            if (tracks_.size() >= MaxTracks) {
+                EndMutation();
+                return GB_ERROR_QUEUE_FULL;
+            }
+            const std::uint64_t requiredBytes = frameCount * sizeof(float);
+            if (CurrentChildTrackBytes() + requiredBytes > MaxChildTrackBytes) {
+                EndMutation();
+                return GB_ERROR_OUT_OF_MEMORY;
+            }
+            tracks_.push_back(Track{});
+            track = &tracks_.back();
+            track->id = trackId;
+        }
+
+        track->samples.assign(monoSamples, monoSamples + static_cast<std::size_t>(frameCount));
+        for (float& sample : track->samples) sample = FiniteOrZero(sample);
+    }
+    catch (const std::bad_alloc&) {
+        EndMutation();
+        return GB_ERROR_OUT_OF_MEMORY;
+    }
+    catch (...) {
+        EndMutation();
+        return GB_ERROR_INTERNAL;
+    }
+    monitor_tap_.Reset();
+    EndMutation();
+    return GB_OK;
+}
+
+gb_result LooperEngine::RemoveTrack(const std::uint32_t trackId) noexcept
+{
+    if (trackId == 0U) return GB_ERROR_INVALID_ARGUMENT;
+    BeginMutation();
+    const auto iterator = std::find_if(
+        tracks_.begin(), tracks_.end(),
+        [trackId](const Track& track) { return track.id == trackId; });
+    if (iterator == tracks_.end()) {
+        EndMutation();
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    tracks_.erase(iterator);
+    monitor_tap_.Reset();
+    EndMutation();
+    return GB_OK;
+}
+
+gb_result LooperEngine::SetTrackMix(
+    const std::uint32_t trackId,
+    const float gain,
+    const float pan,
+    const bool muted,
+    const bool solo) noexcept
+{
+    if (trackId == 0U || !std::isfinite(gain) || !std::isfinite(pan)) return GB_ERROR_INVALID_ARGUMENT;
+    BeginMutation();
+    Track* const track = FindTrack(trackId);
+    if (track == nullptr) {
+        EndMutation();
+        return GB_ERROR_INVALID_ARGUMENT;
+    }
+    track->gain = std::clamp(gain, 0.0F, 4.0F);
+    track->pan = std::clamp(pan, -1.0F, 1.0F);
+    track->muted = muted;
+    track->solo = solo;
     EndMutation();
     return GB_OK;
 }
@@ -130,10 +219,24 @@ void LooperEngine::RenderFrame() noexcept
         const std::uint64_t frameCount = loop_frames_.load(std::memory_order_acquire);
         const std::uint64_t playhead = playhead_frame_.load(std::memory_order_relaxed);
         if (frameCount > 0U && playhead < frameCount) {
-            const std::size_t sample = static_cast<std::size_t>(playhead * Channels);
-            if (sample + 1U < master_samples_.size()) {
-                const float gain = SeamGain(playhead, frameCount);
-                monitor_tap_.Push(master_samples_[sample] * gain, master_samples_[sample + 1U] * gain);
+            const std::size_t masterSample = static_cast<std::size_t>(playhead * Channels);
+            if (masterSample + 1U < master_samples_.size()) {
+                float left = master_samples_[masterSample];
+                float right = master_samples_[masterSample + 1U];
+                const bool anySolo = std::any_of(
+                    tracks_.begin(), tracks_.end(), [](const Track& track) { return track.solo && !track.muted; });
+
+                for (const Track& track : tracks_) {
+                    if (track.muted || (anySolo && !track.solo) || playhead >= track.samples.size()) continue;
+                    const float mono = FiniteOrZero(track.samples[static_cast<std::size_t>(playhead)]) * track.gain;
+                    const float leftGain = track.pan <= 0.0F ? 1.0F : 1.0F - track.pan;
+                    const float rightGain = track.pan >= 0.0F ? 1.0F : 1.0F + track.pan;
+                    left += mono * leftGain;
+                    right += mono * rightGain;
+                }
+
+                const float seam = SeamGain(playhead, frameCount);
+                monitor_tap_.Push(FiniteOrZero(left) * seam, FiniteOrZero(right) * seam);
                 playhead_frame_.store(
                     playhead + 1U == frameCount ? 0U : playhead + 1U,
                     std::memory_order_release);
@@ -171,12 +274,33 @@ void LooperEngine::AdvanceForDiagnostics(const std::uint64_t frameCount) noexcep
     AdvanceUnsafe(frameCount);
 }
 
+LooperEngine::Track* LooperEngine::FindTrack(const std::uint32_t trackId) noexcept
+{
+    const auto iterator = std::find_if(
+        tracks_.begin(), tracks_.end(),
+        [trackId](const Track& track) { return track.id == trackId; });
+    return iterator == tracks_.end() ? nullptr : &*iterator;
+}
+
+const LooperEngine::Track* LooperEngine::FindTrack(const std::uint32_t trackId) const noexcept
+{
+    const auto iterator = std::find_if(
+        tracks_.cbegin(), tracks_.cend(),
+        [trackId](const Track& track) { return track.id == trackId; });
+    return iterator == tracks_.cend() ? nullptr : &*iterator;
+}
+
+std::uint64_t LooperEngine::CurrentChildTrackBytes() const noexcept
+{
+    std::uint64_t bytes = 0U;
+    for (const Track& track : tracks_) bytes += static_cast<std::uint64_t>(track.samples.size()) * sizeof(float);
+    return bytes;
+}
+
 void LooperEngine::BeginMutation() noexcept
 {
     mutation_requested_.store(true, std::memory_order_release);
-    while (rendering_.load(std::memory_order_acquire)) {
-        std::this_thread::yield();
-    }
+    while (rendering_.load(std::memory_order_acquire)) std::this_thread::yield();
 }
 
 void LooperEngine::EndMutation() noexcept

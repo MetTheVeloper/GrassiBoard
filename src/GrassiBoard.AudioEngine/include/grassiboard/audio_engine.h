@@ -161,10 +161,16 @@ GB_API gb_result GB_CALL gb_looper_seek(gb_engine_handle engine, std::uint64_t f
 GB_API gb_result GB_CALL gb_looper_get_state(gb_engine_handle engine, gb_looper_state* state) noexcept;
 GB_API gb_result GB_CALL gb_looper_monitor_read(gb_engine_handle engine, float* interleaved_stereo_samples, std::uint32_t capacity_frames, std::uint32_t* read_frames) noexcept;
 
+// Gate 4 child buffers are mono, exactly Master-length, and share the Master
+// sample clock. They only contribute to the dedicated Looper monitor mix.
+GB_API gb_result GB_CALL gb_looper_track_set_audio(gb_engine_handle engine, std::uint32_t track_id, const float* mono_samples, std::uint64_t frame_count) noexcept;
+GB_API gb_result GB_CALL gb_looper_track_remove(gb_engine_handle engine, std::uint32_t track_id) noexcept;
+GB_API gb_result GB_CALL gb_looper_track_set_mix(gb_engine_handle engine, std::uint32_t track_id, float gain, float pan, std::uint32_t muted, std::uint32_t solo) noexcept;
+
 // Gate 3 dedicated processed-Voice record tap. The realtime worker writes the
 // selected microphone after Pitch/Fine Pitch/Formant/Voice FX/Dry-Wet but before
 // Program Mic Mute, Mic Gain, Gate and Compressor. PCM is duplicated to stereo
-// for the managed Master editor; it never enters the Program/VB-CABLE mix.
+// for the managed Master/editor and Gate 4 layer recorder.
 GB_API gb_result GB_CALL gb_looper_record_start(gb_engine_handle engine) noexcept;
 GB_API gb_result GB_CALL gb_looper_record_stop(gb_engine_handle engine) noexcept;
 GB_API gb_result GB_CALL gb_looper_record_read(gb_engine_handle engine, float* interleaved_stereo_samples, std::uint32_t capacity_frames, std::uint32_t* read_frames) noexcept;

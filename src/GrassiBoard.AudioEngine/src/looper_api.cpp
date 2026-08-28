@@ -54,6 +54,36 @@ gb_result GB_CALL gb_looper_monitor_read(
     return GB_OK;
 }
 
+gb_result GB_CALL gb_looper_track_set_audio(
+    const gb_engine_handle engine,
+    const std::uint32_t track_id,
+    const float* const mono_samples,
+    const std::uint64_t frame_count) noexcept
+{
+    if (engine == nullptr || track_id == 0U || mono_samples == nullptr || frame_count == 0U) return GB_ERROR_INVALID_ARGUMENT;
+    try { return AsEngine(engine)->SetLooperTrackAudio(track_id, mono_samples, frame_count); }
+    catch (...) { return GB_ERROR_INTERNAL; }
+}
+
+gb_result GB_CALL gb_looper_track_remove(
+    const gb_engine_handle engine,
+    const std::uint32_t track_id) noexcept
+{
+    return engine == nullptr ? GB_ERROR_INVALID_ARGUMENT : AsEngine(engine)->RemoveLooperTrack(track_id);
+}
+
+gb_result GB_CALL gb_looper_track_set_mix(
+    const gb_engine_handle engine,
+    const std::uint32_t track_id,
+    const float gain,
+    const float pan,
+    const std::uint32_t muted,
+    const std::uint32_t solo) noexcept
+{
+    if (engine == nullptr || muted > 1U || solo > 1U) return GB_ERROR_INVALID_ARGUMENT;
+    return AsEngine(engine)->SetLooperTrackMix(track_id, gain, pan, muted != 0U, solo != 0U);
+}
+
 gb_result GB_CALL gb_looper_record_start(const gb_engine_handle engine) noexcept
 {
     return engine == nullptr ? GB_ERROR_INVALID_ARGUMENT : AsEngine(engine)->StartLooperRecord();

@@ -8,10 +8,10 @@
                 <StackPanel>
                     <TextBlock Text="GRASSILOOPER" Style="{StaticResource EyebrowTextStyle}" />
                     <TextBlock Text="Looper" Style="{StaticResource SectionTitleStyle}" Margin="0,5,0,0" />
-                    <TextBlock Text="Sample-accurate Master workspace · Gate 3 processed microphone capture"
+                    <TextBlock Text="Gate 4 child layers · Gate 3 processed microphone capture preserved"
                                Style="{StaticResource MutedTextStyle}" Margin="0,5,0,0" />
                 </StackPanel>
-                <Button x:Name="NewProjectButton" Content="New project" Command="{Binding NewProjectCommand}"
+                <Button x:Name="NewProjectButton" Content="New project" Click="OnNewProjectClick"
                         Style="{StaticResource SecondaryButtonStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
             </Grid>
 
@@ -104,17 +104,17 @@
 
                         <Grid Margin="0,12,0,0">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Button Content="{Binding TransportPlayPauseLabel}" Command="{Binding TransportPlayPauseCommand}"
+                                <Button Content="{Binding TransportPlayPauseLabel}" Click="OnTransportPlayPauseClick"
                                         MinWidth="92" Margin="0,0,8,0" />
-                                <Button Content="Stop" Command="{Binding TransportStopCommand}"
+                                <Button Content="Stop" Click="OnTransportStopClick"
                                         Style="{StaticResource SecondaryButtonStyle}" MinWidth="82" />
                                 <TextBlock Text="{Binding MasterPositionLabel}" FontFamily="{StaticResource MonoFont}" FontSize="11"
                                            VerticalAlignment="Center" Margin="14,0,0,0" />
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                                <Button Content="Edit Master" Command="{Binding EditMasterCommand}"
+                                <Button x:Name="EditMasterButton" Content="Edit Master" Command="{Binding EditMasterCommand}"
                                         Style="{StaticResource SecondaryButtonStyle}" Margin="0,0,8,0" />
-                                <Button Content="Import different Master" Command="{Binding ImportAudioCommand}"
+                                <Button x:Name="ImportDifferentMasterButton" Content="Import different Master" Command="{Binding ImportAudioCommand}"
                                         Style="{StaticResource SecondaryButtonStyle}" />
                             </StackPanel>
                         </Grid>
@@ -136,7 +136,7 @@
                                 <TextBlock Text="{Binding LoopSafetyLabel}" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
                                 <TextBlock Text="{Binding MonitorDiagnosticsLabel}" Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,4,0,0" />
                             </StackPanel>
-                            <TextBlock Text="One native sample clock · BPM is not the project clock."
+                            <TextBlock Text="One native sample clock · child buffers are exactly Master-length."
                                        Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
                         </Grid>
                     </StackPanel>
@@ -147,20 +147,61 @@
                         <TextBlock Text="TRACKS" Style="{StaticResource EyebrowTextStyle}" />
                         <TextBlock Text="Layers" Style="{StaticResource SectionTitleStyle}" Margin="0,4,0,0" />
                     </StackPanel>
-                    <TextBlock Text="Child-layer recording unlocks in Gate 4" Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    <Button x:Name="AddLayerButton" Content="Add Layer" Click="OnAddLayerClick"
+                            HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="110" />
                 </Grid>
-                <ItemsControl ItemsSource="{Binding Project.Tracks}">
-                    <ItemsControl.ItemTemplate>
+
+                <Border Style="{StaticResource CardStyle}" Padding="16" Margin="0,0,0,12">
+                    <StackPanel>
+                        <Grid>
+                            <StackPanel>
+                                <TextBlock Text="ACTIVE LAYER" Style="{StaticResource EyebrowTextStyle}" />
+                                <TextBlock x:Name="ActiveLayerNameText" Text="Select a layer" FontSize="17" FontWeight="SemiBold" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                <TextBlock Text="END OF LOOP" Style="{StaticResource EyebrowTextStyle}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <ComboBox x:Name="LayerModeCombo" Width="220" SelectionChanged="OnLayerModeChanged">
+                                    <ComboBoxItem Content="One Cycle · Stop Recording" />
+                                    <ComboBoxItem Content="Loop Replace · Replace From Start" />
+                                    <ComboBoxItem Content="Overdub · Overdub From Start" />
+                                </ComboBox>
+                            </StackPanel>
+                        </Grid>
+                        <Grid Margin="0,14,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="LayerRecordButton" Content="Record Layer" Click="OnLayerRecordClick" MinWidth="120" />
+                                <Button x:Name="LayerCancelButton" Content="Cancel / Discard" Click="OnLayerCancelClick"
+                                        Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" IsEnabled="False" />
+                                <Button x:Name="LayerUndoButton" Content="Undo" Click="OnLayerUndoClick"
+                                        Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" IsEnabled="False" />
+                                <Button x:Name="DeleteLayerButton" Content="Delete Layer" Click="OnDeleteLayerClick"
+                                        Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0" />
+                            </StackPanel>
+                            <TextBlock Text="Record mid-cycle → ARMED → starts at next Master boundary"
+                                       Style="{StaticResource MutedTextStyle}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                        </Grid>
+                        <TextBlock x:Name="LayerRecordStatusText"
+                                   Text="Add or select a layer, choose a mode, then Record Layer. Live mic monitoring stays OFF."
+                                   Style="{StaticResource MutedTextStyle}" FontSize="10" Margin="0,10,0,0" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <ListBox x:Name="TrackListBox" ItemsSource="{Binding Project.Tracks}" SelectionChanged="OnTrackSelectionChanged"
+                         Background="Transparent" BorderThickness="0" Padding="0" Margin="0">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="0" />
+                            <Setter Property="Margin" Value="0" />
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            <Setter Property="Background" Value="Transparent" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
                         <DataTemplate>
                             <looper:LooperTrackRow />
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <Border Style="{StaticResource CardStyle}" Padding="22"
-                        Visibility="{Binding HasChildTracks, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
-                    <TextBlock Text="No child layers yet. Gate 3 adds the processed microphone Master; aligned child recording unlocks in Gate 4."
-                               Style="{StaticResource MutedTextStyle}" TextAlignment="Center" />
-                </Border>
+                    </ListBox.ItemTemplate>
+                </ListBox>
             </StackPanel>
 
             <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource MutedTextStyle}" Margin="2,14,2,0" TextWrapping="Wrap" />

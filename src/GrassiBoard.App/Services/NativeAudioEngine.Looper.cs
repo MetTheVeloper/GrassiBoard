@@ -65,6 +65,23 @@ internal sealed partial class NativeAudioEngine
     public NativeResult SeekLooper(ulong frame) => NativeMethods.SeekLooper(_engine, frame);
     public NativeResult GetLooperState(out LooperNativeState state) => NativeMethods.GetLooperState(_engine, out state);
 
+    public unsafe NativeResult SetLooperTrackAudio(uint trackId, float[] monoSamples, long frameCount)
+    {
+        if (trackId == 0U || frameCount <= 0L || frameCount > int.MaxValue || frameCount > monoSamples.LongLength)
+        {
+            return NativeResult.InvalidArgument;
+        }
+        fixed (float* pointer = monoSamples)
+        {
+            return NativeMethods.SetLooperTrackAudio(_engine, trackId, pointer, checked((ulong)frameCount));
+        }
+    }
+
+    public NativeResult RemoveLooperTrack(uint trackId) => NativeMethods.RemoveLooperTrack(_engine, trackId);
+
+    public NativeResult SetLooperTrackMix(uint trackId, float gain, float pan, bool muted, bool solo) =>
+        NativeMethods.SetLooperTrackMix(_engine, trackId, gain, pan, muted ? 1U : 0U, solo ? 1U : 0U);
+
     public unsafe NativeResult ReadLooperMonitor(float[] interleavedStereo, uint capacityFrames, out uint readFrames)
     {
         if (capacityFrames == 0U || (ulong)capacityFrames * 2UL > (ulong)interleavedStereo.LongLength)
@@ -107,6 +124,12 @@ internal sealed partial class NativeAudioEngine
         internal static partial NativeResult SeekLooper(nint engine, ulong frame);
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_get_state")]
         internal static partial NativeResult GetLooperState(nint engine, out LooperNativeState state);
+        [LibraryImport(LibraryName, EntryPoint = "gb_looper_track_set_audio")]
+        internal static partial NativeResult SetLooperTrackAudio(nint engine, uint trackId, float* samples, ulong frameCount);
+        [LibraryImport(LibraryName, EntryPoint = "gb_looper_track_remove")]
+        internal static partial NativeResult RemoveLooperTrack(nint engine, uint trackId);
+        [LibraryImport(LibraryName, EntryPoint = "gb_looper_track_set_mix")]
+        internal static partial NativeResult SetLooperTrackMix(nint engine, uint trackId, float gain, float pan, uint muted, uint solo);
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_monitor_read")]
         internal static partial NativeResult ReadLooperMonitor(nint engine, float* samples, uint capacityFrames, out uint readFrames);
         [LibraryImport(LibraryName, EntryPoint = "gb_looper_record_start")]
