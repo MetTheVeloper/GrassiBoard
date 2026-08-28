@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [switch]$Run
+    [switch]$Run,
+    [switch]$Quick
 )
 
 $ErrorActionPreference = 'Stop'
@@ -26,9 +27,17 @@ try {
     }
 
     Write-Host '=== GrassiLooper Gate 4 LOCAL validation ===' -ForegroundColor Cyan
-    Write-Host 'Running build/native tests plus Looper ModuleInitializer smoke tests (including Gate 4)...' -ForegroundColor Cyan
-    & $gate3
-    if ($LASTEXITCODE -ne 0) { throw "Gate 3 baseline / shared Looper smoke validation failed with exit code $LASTEXITCODE." }
+    if ($Quick) {
+        Write-Host 'Quick mode: reusing the already-built local app and skipping the accepted baseline rebuild.' -ForegroundColor Yellow
+        if (-not (Test-Path -LiteralPath $appExe)) {
+            throw 'Quick mode needs an existing successful local build. Run without -Quick once first.'
+        }
+    }
+    else {
+        Write-Host 'Running build/native tests plus Looper ModuleInitializer smoke tests (including Gate 4)...' -ForegroundColor Cyan
+        & $gate3
+        if ($LASTEXITCODE -ne 0) { throw "Gate 3 baseline / shared Looper smoke validation failed with exit code $LASTEXITCODE." }
+    }
 
     Write-Host 'Checking Gate 4 child-layer source/UI contracts...' -ForegroundColor Cyan
     Require-Text `
@@ -41,10 +50,10 @@ try {
         @('MaxChildTrackBytes', 'anySolo', 'track.samples', 'previousFrames != frameCount') `
         'Gate 4 native child Track engine'
 
-    # Gate 4's deterministic ModuleInitializer smoke test executes the actual
-    # One Cycle / Loop Replace / Overdub composer behavior above. These source
-    # checks intentionally verify only stable structural markers instead of
-    # requiring an implementation-specific literal branch name.
+    # The deterministic Gate 4 ModuleInitializer smoke executes the actual
+    # One Cycle / Loop Replace / Overdub composer behavior during a full run.
+    # These checks intentionally verify only stable structural markers instead
+    # of requiring an implementation-specific literal branch name.
     Require-Text `
         (Join-Path $repositoryRoot 'src\GrassiBoard.App\Services\Looper\LooperLayerComposer.cs') `
         @('LooperLayerRecordMode.OneCycle', 'LooperLayerRecordMode.Overdub', 'frame % loopLength') `
@@ -70,7 +79,6 @@ try {
     Write-Host 'Next: perform the real multi-layer One Cycle / Replace / Overdub checklist from ChatGPT.' -ForegroundColor Green
 
     if ($Run) {
-        if (-not (Test-Path -LiteralPath $appExe)) { throw "Local test executable was not found at $appExe" }
         Start-Process -FilePath $appExe -WorkingDirectory (Split-Path $appExe -Parent)
     }
 }
