@@ -13,6 +13,7 @@ internal sealed class LooperMonitorService : IDisposable
     public const long MaxSupportedLoopFrames = (long)SampleRate * 60L * MaxSupportedLoopMinutes;
     public const long MaxStereoFloatBytes = MaxSupportedLoopFrames * Channels * sizeof(float);
 
+    private const int MonitorDesiredLatencyMilliseconds = 30;
     private const uint PrebufferFrames = 1_920U;
     private const uint DriftBandFrames = 720U;
 
@@ -137,6 +138,19 @@ internal sealed class LooperMonitorService : IDisposable
         return engine is not null && engine.GetLooperState(out state) == NativeResult.Ok;
     }
 
+    internal static uint CalculateMonitorPathLatencyFrames(double calibrationMilliseconds)
+    {
+        double safeCalibration = Math.Clamp(
+            double.IsFinite(calibrationMilliseconds) ? calibrationMilliseconds : 0.0,
+            -100.0,
+            100.0);
+        double prebufferMilliseconds = PrebufferFrames * 1000.0 / SampleRate;
+        double totalMilliseconds = Math.Max(
+            0.0,
+            MonitorDesiredLatencyMilliseconds + prebufferMilliseconds + safeCalibration);
+        return checked((uint)Math.Round(SampleRate * totalMilliseconds / 1000.0));
+    }
+
     private NativeAudioEngine? ResolveEngine()
     {
         if (_engine is not null && _engine.IsAvailable) return _engine;
@@ -156,7 +170,7 @@ internal sealed class LooperMonitorService : IDisposable
             : _deviceEnumerator.GetDevice(requestedDeviceId);
         _openedDeviceId = requestedDeviceId;
         MonitorDeviceName = _device.FriendlyName;
-        _output = new WasapiOut(_device, AudioClientShareMode.Shared, true, 30);
+        _output = new WasapiOut(_device, AudioClientShareMode.Shared, true, MonitorDesiredLatencyMilliseconds);
         _output.Init(_sampleProvider);
         _output.PlaybackStopped += OnPlaybackStopped;
     }
