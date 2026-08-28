@@ -62,9 +62,13 @@ Important Gate 3 contract remains:
 
 ### Gate 4 — Child layers + One Cycle / Loop Replace / Overdub
 
-Status: **IMPLEMENTED / LOCAL AUTOMATED + USER MANUAL TEST NEXT**
+Status: **FUNCTIONALLY PROMISING / RECORD-SYNC HARDENING IMPLEMENTED / FULL USER RETEST NEXT**
 
-Implementation commit: `94052e8a1b4e3055fbf237c4a54c083eeb961e14` (`feat(looper): implement Gate 4 child layer recording`)
+Primary implementation commit: `94052e8a1b4e3055fbf237c4a54c083eeb961e14` (`feat(looper): implement Gate 4 child layer recording`)
+
+User manual feedback before timing hardening:
+- core Gate 4 functionality appeared correct;
+- user requested the existing Local Media microphone-sync compensation and Settings calibration be reused by Looper child recording before final Gate 4 acceptance.
 
 Gate 4 implementation includes:
 - `Add Layer` with exact Master-length **48 kHz mono float** buffers;
@@ -78,7 +82,7 @@ Gate 4 implementation includes:
 - **One Cycle** keeps exactly one Master-length pass and automatically stops recording while playback may continue;
 - **Loop Replace** circularly overwrites the child buffer from the beginning on each additional pass;
 - **Overdub** circularly adds new PCM to existing layer PCM without hard-clipping each pass;
-- deterministic Replace reference behavior: loop=8, input=12 → `[8,9,10,11,4,5,6,7]`;
+- deterministic Replace reference behavior: loop=8, input=12 -> `[8,9,10,11,4,5,6,7]`;
 - processed Windows Mic / Phone Mic capture reuses the accepted Gate 3 Record Tap;
 - Cancel/Discard preserves the pre-record Track state;
 - one meaningful Undo restores the pre-record destructive state;
@@ -86,6 +90,32 @@ Gate 4 implementation includes:
 - deleting all child layers unlocks Master redefinition; while any child exists, Edit/Import Master is explicitly disabled;
 - leaving Looper during an active layer Take cancels safely;
 - no live mic self-monitor is introduced.
+
+### Gate 4 record-sync hardening — pulled forward by explicit user request
+
+The initial roadmap placed final record alignment in Gate 5. During Gate 4 real-use testing, the user explicitly required the already-established Local Media sync behavior to apply to microphone-recorded Looper layers **before Gate 4 can be accepted**. This requirement is therefore pulled forward into Gate 4 hardening. Gate 5 remains locked and will later validate/refine timing across quality modes and edge cases rather than reintroduce a second calibration system.
+
+The implemented child-Take compensation now snapshots, at Record start:
+
+```text
+active microphone source buffer
++ current Pitch/DSP latency
++ Looper local monitor path estimate
++ existing Media Sync Calibration setting
+= child-Take record compensation
+```
+
+Important details:
+- the existing persisted `MediaSyncOffsetMilliseconds` setting is reused; there is **no separate Looper calibration slider**;
+- Windows Mic uses current capture-buffer + ring-buffer timing;
+- Phone Mic uses current Remote Input fill timing;
+- Looper local monitor timing uses its real path: **30 ms WASAPI target + 1,920-frame / 40 ms prebuffer**;
+- the user's existing signed calibration is added to that Looper monitor estimate with the same sign convention;
+- compensation is snapshotted once at Take start so a Take cannot change alignment halfway through;
+- a free first-Master recording has no existing Master clock and therefore receives no automatic project-position shift; it still uses the accepted trim workflow;
+- aligned child recording treats the initial compensation interval as capture pre-roll and removes it before composition;
+- the UI-visible captured-frame counter excludes that pre-roll, so **One Cycle records an extra compensation tail internally** before auto-stop and does not truncate the end of the musically aligned cycle;
+- source-change/engine-stop fail-safe behavior remains unchanged.
 
 ### Gate 4 local automated validation
 
@@ -95,7 +125,7 @@ From the repository root on `feature/grassilooper-v1.4`:
 .\tools\Test-GrassiLooperGate4Local.ps1 -Run
 ```
 
-This first reruns the accepted Gate 3 local baseline, then verifies the Gate 4 native child-track API/engine, deterministic One Cycle/Replace/Overdub contracts, source contracts, UI wiring, and launches the local app.
+A full run rebuilds the local app, runs native deterministic tests, executes Gate 1/2/3/4 managed ModuleInitializer smoke tests, validates One Cycle/Replace/Overdub, validates the 70 ms Looper local-monitor timing baseline, verifies shared calibration wiring, and launches the local app.
 
 The command must end with:
 
@@ -106,7 +136,10 @@ GATE 4 LOCAL AUTOMATED VALIDATION: PASS
 ### Gate 4 real Windows acceptance checklist
 
 ```text
-[ ] Existing Master → Add Layer → One Cycle: exactly one cycle is committed, recording stops automatically, Master playback continues
+[ ] Existing Master -> Add Layer -> One Cycle: exactly one aligned cycle is committed, recording stops automatically, Master playback continues
+[ ] Percussive/click reference: recorded hit onset is musically aligned with the Master after playback
+[ ] Existing Settings Media Sync Calibration affects Looper recording alignment too; no second Looper-only calibration is required
+[ ] Change calibration deliberately (for example +/-40 ms), record a fresh layer, and verify the recorded placement moves in the expected direction
 [ ] Add multiple layers: all child layers remain locked to the same Master loop and can be heard together
 [ ] Press Record mid-cycle: layer shows ARMED and starts on the next Master boundary; pressing Record again before the boundary cancels the arm
 [ ] Loop Replace for more than one pass: later pass overwrites the beginning circularly rather than extending Track length
@@ -121,13 +154,11 @@ GATE 4 LOCAL AUTOMATED VALIDATION: PASS
 [ ] Program/VB-CABLE, Soundboard, Media, Voice FX, Remote Control and Remote Monitor remain unchanged
 ```
 
-### Gate 4 timing boundary vs Gate 5
+Gate 4 passes only after the user explicitly accepts the full real Windows result.
 
-Gate 4 establishes recording-mode semantics, bounded exact-length buffers, shared Master-clock playback, and next-boundary arm behavior. The current arm detector observes the native Master boundary with a small bounded UI polling window. **Gate 5 remains responsible for final capture/DSP/playback latency measurement and sample-alignment compensation.**
+## Gate 5 scope after Gate 4 sync hardening
 
-For Gate 4 acceptance, report any gross wrong-boundary start, missed arm, gap, drift, wrong Replace/Overdub behavior, crash, source leak, or Program/VB-CABLE regression. A tiny fixed transient offset that is clearly latency-related belongs to Gate 5 and should be reported but does not get silently “fixed” with magic offsets in Gate 4.
-
-Gate 4 passes only after the user explicitly accepts the real Windows result.
+Gate 5 remains mandatory and locked until Gate 4 acceptance. Its revised role is to **validate and refine** the shared record-alignment foundation now introduced during Gate 4 hardening: quality-mode changes, timing stability, edge cases, measurement diagnostics, and any residual fixed offset found by real click/percussive testing. It must not create a competing Looper-only calibration preference.
 
 ## Gate sequence
 
@@ -136,8 +167,8 @@ Gate 0  Freeze v1.3 baseline                         USER ACCEPTED
 Gate 1  UI + project + waveform                     USER ACCEPTED
 Gate 2  Master Loop + transport + local monitor     USER ACCEPTED
 Gate 3  First Mic Master + processed Record Tap     USER ACCEPTED
-Gate 4  Child layers + recording modes              CURRENT / LOCAL + REAL TEST NEXT
-Gate 5  Record alignment / latency compensation     LOCKED
+Gate 4  Child layers + recording modes + sync       CURRENT / FULL RETEST NEXT
+Gate 5  Record alignment validation/refinement      LOCKED
 Gate 6  Voice FX snapshots + session restore        LOCKED
 Gate 7  Track editor + mixer polish                 LOCKED
 Gate 8  Persistence + Project Library + DAW ZIP     LOCKED
