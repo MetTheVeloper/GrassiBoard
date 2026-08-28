@@ -7,5 +7,5 @@ if (expectedApiVersion != 11U)
     return 1;
 }
 
-Console.WriteLine("GrassiLooper local ModuleInitializer smoke tests passed (Gate 1 + Gate 2 + Gate 3, ABI 11).");
+Console.WriteLine("GrassiLooper local ModuleInitializer smoke tests passed (Gate 1 + Gate 2 + Gate 3 + Gate 4, ABI 11).");
 return 0;
