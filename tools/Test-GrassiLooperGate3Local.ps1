@@ -14,7 +14,7 @@ function Require-Text([string]$Path, [string[]]$Needles, [string]$Label) {
     }
     $text = Get-Content -LiteralPath $Path -Raw
     foreach ($needle in $Needles) {
-        if (-not $text.Contains($needle, [StringComparison]::Ordinal)) {
+        if ($text.IndexOf($needle, [StringComparison]::Ordinal) -lt 0) {
             throw "$Label contract is missing: $needle"
         }
     }
@@ -131,7 +131,7 @@ try {
     if ($recordTapIndex -lt 0 -or $muteIndex -lt 0 -or $recordTapIndex -ge $muteIndex) {
         throw 'Gate 3 Record Tap is not verifiably before Program Mic Mute.'
     }
-    if (-not $worker.Contains('looper_record_source_changed_.store(true', [StringComparison]::Ordinal)) {
+    if ($worker.IndexOf('looper_record_source_changed_.store(true', [StringComparison]::Ordinal) -lt 0) {
         throw 'Gate 3 source-change fail-safe is missing from the native worker.'
     }
 
