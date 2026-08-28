@@ -671,7 +671,10 @@ public partial class LooperView : UserControl
             if (_recordService.IsRecording)
             {
                 _recordService.Cancel();
-                _recordingLayer?.UndoSamples = null;
+                if (_recordingLayer is not null)
+                {
+                    _recordingLayer.UndoSamples = null;
+                }
                 _recordingLayer = null;
                 ResetFirstRecordUi();
             }
