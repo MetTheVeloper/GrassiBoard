@@ -26,11 +26,11 @@ try {
     }
 
     Write-Host '=== GrassiLooper Gate 4 LOCAL validation ===' -ForegroundColor Cyan
-    Write-Host 'Running the accepted Gate 3 build/native/managed baseline first...' -ForegroundColor Cyan
+    Write-Host 'Running build/native tests plus Looper ModuleInitializer smoke tests (including Gate 4)...' -ForegroundColor Cyan
     & $gate3
-    if ($LASTEXITCODE -ne 0) { throw "Gate 3 baseline validation failed with exit code $LASTEXITCODE." }
+    if ($LASTEXITCODE -ne 0) { throw "Gate 3 baseline / shared Looper smoke validation failed with exit code $LASTEXITCODE." }
 
-    Write-Host 'Checking Gate 4 child-layer contracts...' -ForegroundColor Cyan
+    Write-Host 'Checking Gate 4 child-layer source/UI contracts...' -ForegroundColor Cyan
     Require-Text `
         (Join-Path $repositoryRoot 'src\GrassiBoard.AudioEngine\include\grassiboard\audio_engine.h') `
         @('gb_looper_track_set_audio', 'gb_looper_track_remove', 'gb_looper_track_set_mix') `
@@ -41,15 +41,19 @@ try {
         @('MaxChildTrackBytes', 'anySolo', 'track.samples', 'previousFrames != frameCount') `
         'Gate 4 native child Track engine'
 
+    # Gate 4's deterministic ModuleInitializer smoke test executes the actual
+    # One Cycle / Loop Replace / Overdub composer behavior above. These source
+    # checks intentionally verify only stable structural markers instead of
+    # requiring an implementation-specific literal branch name.
     Require-Text `
         (Join-Path $repositoryRoot 'src\GrassiBoard.App\Services\Looper\LooperLayerComposer.cs') `
-        @('OneCycle', 'LoopReplace', 'Overdub', 'frame % loopLength') `
+        @('LooperLayerRecordMode.OneCycle', 'LooperLayerRecordMode.Overdub', 'frame % loopLength') `
         'Gate 4 layer mode composer'
 
     Require-Text `
         (Join-Path $repositoryRoot 'tests\GrassiBoard.App.SmokeTests\LooperGate4Smoke.cs') `
-        @('8, 9, 10, 11, 4, 5, 6, 7', 'circular Replace') `
-        'Gate 4 deterministic Replace test'
+        @('LooperLayerRecordMode.LoopReplace', 'expectedReplace', 'expectedOverdub') `
+        'Gate 4 deterministic recording-mode smoke'
 
     Require-Text `
         (Join-Path $repositoryRoot 'src\GrassiBoard.App\Views\Looper\LooperView.xaml') `
