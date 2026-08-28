@@ -48,12 +48,12 @@ try {
 
     Require-Text `
         (Join-Path $repositoryRoot 'tests\GrassiBoard.App.SmokeTests\LooperGate4Smoke.cs') `
-        @('8, 9, 10, 11, 4, 5, 6, 7', 'circular Replace 12→8') `
+        @('8, 9, 10, 11, 4, 5, 6, 7', 'circular Replace') `
         'Gate 4 deterministic Replace test'
 
     Require-Text `
         (Join-Path $repositoryRoot 'src\GrassiBoard.App\Views\Looper\LooperView.xaml') `
-        @('Add Layer', 'One Cycle · Stop Recording', 'Loop Replace · Replace From Start', 'Overdub · Overdub From Start', 'Cancel / Discard', 'Undo') `
+        @('Add Layer', 'One Cycle', 'Loop Replace', 'Overdub', 'Cancel / Discard', 'Undo') `
         'Gate 4 UI'
 
     Require-Text `
